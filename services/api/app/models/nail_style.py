@@ -1,0 +1,28 @@
+from __future__ import annotations
+
+from sqlalchemy import Boolean, Float, JSON, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.db import Base
+from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
+
+
+class NailStyle(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "nail_styles"
+
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    image_url: Mapped[str] = mapped_column(String(512), nullable=False)
+    local_image_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    original_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    enhanced_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    source_type: Mapped[str] = mapped_column(String(50), default="seed_xlsx", nullable=False)
+    tags_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    dominant_colors_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    style_metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
+    popularity_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    is_trending: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    favorites = relationship("UserFavorite", back_populates="style", cascade="all, delete-orphan")
+    tryon_jobs = relationship("TryOnJob", back_populates="style", cascade="all, delete-orphan")
+    daily_events = relationship("StyleEventDaily", back_populates="style", cascade="all, delete-orphan")

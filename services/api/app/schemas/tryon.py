@@ -1,0 +1,19 @@
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+class TryOnJobCreateResponse(BaseModel):
+    job_id: str
+    status: str
+
+
+class TryOnJobRead(BaseModel):
+    job_id: str
+    status: str
+    result_image_url: str | None = None
+    source_hand_image_url: str | None = None
+    error_message: str | None = None
+    prompt_text: str | None = None
+    selected_style_id: str
+    created_at: datetime

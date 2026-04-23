@@ -1,0 +1,39 @@
+[project]
+name = "nailtry-ai-api"
+version = "0.1.0"
+description = "FastAPI backend for NailTry AI MVP"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "alembic>=1.14.0",
+  "email-validator>=2.2.0",
+  "fastapi>=0.115.0",
+  "httpx>=0.28.0",
+  "openai>=1.79.0",
+  "openpyxl>=3.1.5",
+  "passlib[bcrypt]>=1.7.4",
+  "pillow>=11.1.0",
+  "pydantic-settings>=2.7.0",
+  "psycopg[binary]>=3.2.0",
+  "pyjwt>=2.10.0",
+  "python-multipart>=0.0.20",
+  "redis>=6.0.0",
+  "sqlalchemy>=2.0.37",
+  "uvicorn>=0.34.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["../../tests"]

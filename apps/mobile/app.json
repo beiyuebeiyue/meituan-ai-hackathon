@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "NailTry AI",
+    "slug": "nailtry-ai",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#fff4ed"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nailtry.ai"
+    },
+    "android": {
+      "package": "com.nailtry.ai"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-media-library"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "nailtry-ai"
+      }
+    }
+  }
+}

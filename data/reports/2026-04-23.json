@@ -1,0 +1,296 @@
+{
+  "report_date": "2026-04-23",
+  "summary": "今日站内热度集中在 裸粉、通勤 风格。Mock 外部趋势显示裸粉与法式持续升温。",
+  "metrics": {
+    "homepage_impressions": 4300,
+    "homepage_clicks": 1020,
+    "homepage_ctr": 0.2372093023255814
+  },
+  "top_clicked_styles": [
+    {
+      "style_id": "f96f00e8-8262-4ddb-a253-19ac0f1ad6cf",
+      "title": "贴钻晚宴 24",
+      "image_url": "/files/seed/styles/enhanced/60bfb6eab9427da7bf60.png",
+      "impressions": 238,
+      "clicks": 79,
+      "favorites": 26,
+      "tryons": 27,
+      "publishes": 0,
+      "ctr": 0.3319327731092437
+    },
+    {
+      "style_id": "c7385ea8-478f-4bed-a740-dce295636ad8",
+      "title": "奶白简约 20",
+      "image_url": "/files/seed/styles/enhanced/cfb9b2f6b1f31cadc1ea.png",
+      "impressions": 214,
+      "clicks": 71,
+      "favorites": 23,
+      "tryons": 26,
+      "publishes": 0,
+      "ctr": 0.3317757009345794
+    },
+    {
+      "style_id": "bcbf616d-cf62-4b40-9500-72e67356a5ca",
+      "title": "镜面节日 16",
+      "image_url": "/files/seed/styles/enhanced/ff31a259a83d23c8c4ce.png",
+      "impressions": 190,
+      "clicks": 63,
+      "favorites": 21,
+      "tryons": 23,
+      "publishes": 0,
+      "ctr": 0.33157894736842103
+    },
+    {
+      "style_id": "f6e91bd6-baa7-4922-9eea-bda89decfc7c",
+      "title": "法式裸粉 25",
+      "image_url": "/files/seed/styles/enhanced/0dcf0b32e72f3f6fa4d2.png",
+      "impressions": 244,
+      "clicks": 61,
+      "favorites": 20,
+      "tryons": 20,
+      "publishes": 0,
+      "ctr": 0.25
+    },
+    {
+      "style_id": "c1df2499-5874-4c2d-a5fa-def96f407cb4",
+      "title": "贴钻晚宴 12",
+      "image_url": "/files/seed/styles/enhanced/9b97fb63f01f54e8872c.png",
+      "impressions": 166,
+      "clicks": 55,
+      "favorites": 18,
+      "tryons": 18,
+      "publishes": 0,
+      "ctr": 0.3313253012048193
+    }
+  ],
+  "top_exposed_styles": [
+    {
+      "style_id": "f6e91bd6-baa7-4922-9eea-bda89decfc7c",
+      "title": "法式裸粉 25",
+      "image_url": "/files/seed/styles/enhanced/0dcf0b32e72f3f6fa4d2.png",
+      "impressions": 244,
+      "clicks": 61,
+      "favorites": 20,
+      "tryons": 20,
+      "publishes": 0,
+      "ctr": 0.25
+    },
+    {
+      "style_id": "f96f00e8-8262-4ddb-a253-19ac0f1ad6cf",
+      "title": "贴钻晚宴 24",
+      "image_url": "/files/seed/styles/enhanced/60bfb6eab9427da7bf60.png",
+      "impressions": 238,
+      "clicks": 79,
+      "favorites": 26,
+      "tryons": 27,
+      "publishes": 0,
+      "ctr": 0.3319327731092437
+    },
+    {
+      "style_id": "dccad570-1fd8-4dcf-b2aa-84bb96ad0a9a",
+      "title": "裸透清透 23",
+      "image_url": "/files/seed/styles/enhanced/0911c36eb8d93ecb6040.png",
+      "impressions": 232,
+      "clicks": 38,
+      "favorites": 12,
+      "tryons": 15,
+      "publishes": 0,
+      "ctr": 0.16379310344827586
+    },
+    {
+      "style_id": "658ab1ac-d251-4473-952d-4ef74802af7c",
+      "title": "镜面节日 22",
+      "image_url": "/files/seed/styles/enhanced/24bdf1782bde4c25cbf0.png",
+      "impressions": 226,
+      "clicks": 45,
+      "favorites": 15,
+      "tryons": 18,
+      "publishes": 0,
+      "ctr": 0.19911504424778761
+    },
+    {
+      "style_id": "b8d46543-d639-4009-b6db-ee7f77920cf2",
+      "title": "猫眼约会 21",
+      "image_url": "/files/seed/styles/enhanced/df8e5082e19e3c6d2cba.png",
+      "impressions": 220,
+      "clicks": 55,
+      "favorites": 18,
+      "tryons": 19,
+      "publishes": 0,
+      "ctr": 0.25
+    }
+  ],
+  "high_impression_low_ctr": [
+    {
+      "style_id": "df59ec56-fd6e-4961-ab1b-fec710dfb2ce",
+      "title": "奶白简约 14",
+      "image_url": "/files/seed/styles/enhanced/b15299db25e9224e6433.png",
+      "impressions": 178,
+      "clicks": 35,
+      "favorites": 11,
+      "tryons": 11,
+      "publishes": 0,
+      "ctr": 0.19662921348314608
+    },
+    {
+      "style_id": "f9dc186e-b4be-4f1a-b9a7-e407f6bf45ed",
+      "title": "猫眼约会 15",
+      "image_url": "/files/seed/styles/enhanced/e8f5bd1c802dd24cb939.png",
+      "impressions": 184,
+      "clicks": 30,
+      "favorites": 10,
+      "tryons": 11,
+      "publishes": 0,
+      "ctr": 0.16304347826086957
+    },
+    {
+      "style_id": "cc10c74f-70c4-4507-886a-6c784c025e53",
+      "title": "贴钻晚宴 18",
+      "image_url": "/files/seed/styles/enhanced/0386a8c9ad19b50a51e3.png",
+      "impressions": 202,
+      "clicks": 40,
+      "favorites": 13,
+      "tryons": 14,
+      "publishes": 1,
+      "ctr": 0.19801980198019803
+    },
+    {
+      "style_id": "ddaa4848-ca80-487f-96e1-acf3939f8650",
+      "title": "法式裸粉 19",
+      "image_url": "/files/seed/styles/enhanced/b7a95ce3eaa347337c20.png",
+      "impressions": 208,
+      "clicks": 34,
+      "favorites": 11,
+      "tryons": 12,
+      "publishes": 0,
+      "ctr": 0.16346153846153846
+    },
+    {
+      "style_id": "658ab1ac-d251-4473-952d-4ef74802af7c",
+      "title": "镜面节日 22",
+      "image_url": "/files/seed/styles/enhanced/24bdf1782bde4c25cbf0.png",
+      "impressions": 226,
+      "clicks": 45,
+      "favorites": 15,
+      "tryons": 18,
+      "publishes": 0,
+      "ctr": 0.19911504424778761
+    }
+  ],
+  "low_impression_high_ctr": [
+    {
+      "style_id": "1eaa82cb-aefa-4899-8e90-f30a36934a89",
+      "title": "法式裸粉 01",
+      "image_url": "/files/seed/styles/enhanced/1727defff41d50951fa1.png",
+      "impressions": 100,
+      "clicks": 25,
+      "favorites": 8,
+      "tryons": 9,
+      "publishes": 0,
+      "ctr": 0.25
+    },
+    {
+      "style_id": "83d28cd0-99dd-4fb7-be48-92031c8a6caf",
+      "title": "镜面节日 04",
+      "image_url": "/files/seed/styles/enhanced/82b5b1a25cea6d12b975.png",
+      "impressions": 118,
+      "clicks": 39,
+      "favorites": 13,
+      "tryons": 13,
+      "publishes": 0,
+      "ctr": 0.3305084745762712
+    },
+    {
+      "style_id": "9615c8db-db56-4bd6-825f-4b2f14804c0e",
+      "title": "裸透清透 05",
+      "image_url": "/files/seed/styles/enhanced/8724edcc98296b6596dc.png",
+      "impressions": 124,
+      "clicks": 31,
+      "favorites": 10,
+      "tryons": 11,
+      "publishes": 0,
+      "ctr": 0.25
+    },
+    {
+      "style_id": "0cef5c93-b202-4c06-a988-06aef5358072",
+      "title": "奶白简约 08",
+      "image_url": "/files/seed/styles/enhanced/9683111116d9a690ab49.png",
+      "impressions": 142,
+      "clicks": 47,
+      "favorites": 15,
+      "tryons": 15,
+      "publishes": 0,
+      "ctr": 0.33098591549295775
+    },
+    {
+      "style_id": "01e15b04-b0f2-48d2-b2d6-b1977c80daa6",
+      "title": "猫眼约会 09",
+      "image_url": "/files/seed/styles/enhanced/49c580de6d9b0750fe60.png",
+      "impressions": 148,
+      "clicks": 37,
+      "favorites": 12,
+      "tryons": 12,
+      "publishes": 1,
+      "ctr": 0.25
+    }
+  ],
+  "top_trending_styles": [
+    {
+      "style_id": "f96f00e8-8262-4ddb-a253-19ac0f1ad6cf",
+      "title": "贴钻晚宴 24",
+      "image_url": "/files/seed/styles/enhanced/60bfb6eab9427da7bf60.png",
+      "score": 148.3
+    },
+    {
+      "style_id": "c7385ea8-478f-4bed-a740-dce295636ad8",
+      "title": "奶白简约 20",
+      "image_url": "/files/seed/styles/enhanced/cfb9b2f6b1f31cadc1ea.png",
+      "score": 136.2
+    },
+    {
+      "style_id": "bcbf616d-cf62-4b40-9500-72e67356a5ca",
+      "title": "镜面节日 16",
+      "image_url": "/files/seed/styles/enhanced/ff31a259a83d23c8c4ce.png",
+      "score": 121.6
+    },
+    {
+      "style_id": "f6e91bd6-baa7-4922-9eea-bda89decfc7c",
+      "title": "法式裸粉 25",
+      "image_url": "/files/seed/styles/enhanced/0dcf0b32e72f3f6fa4d2.png",
+      "score": 112.7
+    },
+    {
+      "style_id": "b8d46543-d639-4009-b6db-ee7f77920cf2",
+      "title": "猫眼约会 21",
+      "image_url": "/files/seed/styles/enhanced/df8e5082e19e3c6d2cba.png",
+      "score": 103.5
+    }
+  ],
+  "top_trending_tags": [
+    {
+      "tag": "裸粉",
+      "count": 19
+    },
+    {
+      "tag": "通勤",
+      "count": 13
+    },
+    {
+      "tag": "显白",
+      "count": 9
+    },
+    {
+      "tag": "法式",
+      "count": 9
+    },
+    {
+      "tag": "温柔",
+      "count": 8
+    }
+  ],
+  "actions": [
+    "提升 贴钻晚宴 24 在首页首屏的曝光权重",
+    "下调 奶白简约 14 的推荐位，优化封面和标签",
+    "扩大 法式裸粉 01 的曝光，验证潜在爆款价值"
+  ]
+}
