@@ -12,9 +12,9 @@ export function AppLayout() {
     <div className="shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-badge">NT</span>
+          <span className="brand-badge">焕</span>
           <div>
-            <h1>NailTry AI</h1>
+            <h1>焕甲</h1>
             <p>运营控制台</p>
           </div>
         </div>

@@ -56,3 +56,30 @@ def test_seed_import_handles_dedup_and_failures(db_session, tmp_path, monkeypatc
     assert result["failed_urls"] == [{"url": "http://example.com/bad.png", "error": "boom"}]
     assert (SeedService().settings.seed_path / "manifests" / "latest.json").exists()
     assert db_session.query(NailStyle).count() == 2
+
+
+def test_seed_enrich_rewrites_titles_and_descriptions_naturally(db_session, image_factory):
+    style = NailStyle(
+        title="款式 01",
+        description="来自 xlsx 种子导入的初始款式。",
+        image_url="http://example.com/seed-natural.png",
+        local_image_path=str(image_factory("seed-natural.png")),
+        source_type="seed_xlsx",
+        tags_json=[],
+        dominant_colors_json=[],
+        style_metadata_json={},
+        popularity_score=0.0,
+        is_trending=False,
+    )
+    db_session.add(style)
+    db_session.commit()
+
+    result = SeedService().enrich_style_metadata(db_session)
+    assert result["updated_count"] >= 1
+
+    db_session.refresh(style)
+    assert style.title.startswith(("这款", "最近超爱"))
+    assert "美甲" in style.title
+    assert not style.title.startswith("款式")
+    assert "推荐大家入手这款美甲" in style.description or "如果最近想换美甲" in style.description or "这款" in style.description
+    assert "来自 xlsx 种子导入的初始款式" not in style.description

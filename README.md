@@ -1,6 +1,6 @@
-# NailTry AI
+# 焕甲
 
-NailTry AI 是一个面向美团 AI 黑客松的 MVP 系统，包含：
+焕甲是一个面向美团 AI 黑客松的 MVP 系统，包含：
 
 - `apps/mobile`：React Native + Expo 用户侧 App
 - `apps/ops-web`：React + Vite 运营后台

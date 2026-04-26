@@ -1,1 +1,1 @@
-"""NailTry AI API package."""
+"""焕甲 API package."""

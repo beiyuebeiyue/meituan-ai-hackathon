@@ -1,7 +1,7 @@
 [project]
 name = "nailtry-ai-api"
 version = "0.1.0"
-description = "FastAPI backend for NailTry AI MVP"
+description = "FastAPI backend for 焕甲 MVP"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

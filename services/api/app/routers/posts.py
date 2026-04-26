@@ -1,23 +1,23 @@
-from sqlalchemy import select
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.models.user_post import UserPost
 from app.routers.helpers import serialize_post
 from app.schemas.events import StyleEventInput
-from app.schemas.posts import UserPostListResponse, UserPostRead
+from app.schemas.posts import UserPostListResponse, UserPostRead, UserPostUpdateRequest
 from app.services.event_service import EventService
+from app.services.post_service import PostService
 from app.services.style_service import StyleService
-from app.utils.files import public_url_for_path, relative_to_base, save_upload_file
+from app.utils.files import public_url_for_path, relative_to_base, save_user_upload_file, user_upload_dir
 
 
 router = APIRouter(prefix="/posts", tags=["posts"])
 style_service = StyleService()
 event_service = EventService()
+post_service = PostService()
 
 
 @router.post("", response_model=UserPostRead)
@@ -30,19 +30,17 @@ def create_post(
     user: User = Depends(get_current_user),
 ) -> UserPostRead:
     settings = get_settings()
-    saved_path = save_upload_file(image, settings.upload_path / "posts", prefix="post")
+    saved_path, _ = save_user_upload_file(image, user_upload_dir(settings.upload_path, "posts", user.uid), user.uid)
     tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
-    post = UserPost(
-        user_id=user.id,
+    post = post_service.create(
+        db,
+        user,
         title=title,
         description=description,
         image_url=public_url_for_path(saved_path),
         local_image_path=relative_to_base(saved_path),
-        tags_json=tag_list,
+        tags=tag_list,
     )
-    db.add(post)
-    db.commit()
-    db.refresh(post)
     style = style_service.create_style_from_post(db, user, post)
     event_service.record_style_events(
         db,
@@ -56,5 +54,36 @@ def list_my_posts(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> UserPostListResponse:
-    posts = list(db.scalars(select(UserPost).where(UserPost.user_id == user.id).order_by(UserPost.created_at.desc())))
+    posts = post_service.list_for_user(db, user)
     return UserPostListResponse(items=[serialize_post(post) for post in posts])
+
+
+@router.patch("/{post_id}", response_model=UserPostRead)
+def update_my_post(
+    post_id: str,
+    payload: UserPostUpdateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> UserPostRead:
+    if payload.title is not None and not payload.title.strip():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="标题不能为空")
+    post = post_service.update_owned_post(
+        db,
+        user,
+        post_id,
+        title=payload.title,
+        description=payload.description,
+        tags=payload.tags,
+        is_hidden=payload.is_hidden,
+    )
+    return serialize_post(post)
+
+
+@router.delete("/{post_id}")
+def delete_my_post(
+    post_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    post_service.delete_owned_post(db, user, post_id)
+    return {"message": "已删除发布内容"}

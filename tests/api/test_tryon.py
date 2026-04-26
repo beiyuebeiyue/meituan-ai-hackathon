@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from app.models.nail_style import NailStyle
 from app.providers.hand_landmarker_provider import HandDetectionResult, FingertipROI, Landmark
 from app.providers.openai_image_provider import GeneratedImageResult
@@ -16,7 +18,7 @@ def _create_user(client):
 
 
 def test_tryon_job_success_and_failure(client, db_session, image_factory, app_env, monkeypatch):
-    token, _ = _create_user(client)
+    token, user = _create_user(client)
     style = NailStyle(
         title="法式裸粉",
         description="desc",
@@ -78,6 +80,7 @@ def test_tryon_job_success_and_failure(client, db_session, image_factory, app_en
     assert hand_photos_response.status_code == 200
     hand_photos = hand_photos_response.json()["items"]
     assert len(hand_photos) == 1
+    assert re.search(rf"/files/uploads/hands/{user['uid']}/{user['uid']}-\d{{20}}-[0-9a-f]{{16}}\.", hand_photos[0]["image_url"]) is not None
     saved_hand_photo_id = hand_photos[0]["id"]
 
     reused_response = client.post(

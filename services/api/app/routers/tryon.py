@@ -1,12 +1,13 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.tryon import TryOnJobCreateResponse, TryOnJobRead
+from app.schemas.tryon import TryOnHistoryItemRead, TryOnHistoryListResponse, TryOnJobCreateResponse, TryOnJobRead
 from app.services.tryon_service import TryOnService
 from app.tasks.tryon_tasks import run_tryon_job
+from app.utils.files import delete_local_file
 
 
 router = APIRouter(prefix="/tryon", tags=["tryon"])
@@ -52,3 +53,40 @@ def get_tryon_job(
         selected_style_id=job.selected_style_id,
         created_at=job.created_at,
     )
+
+
+@router.get("/jobs", response_model=TryOnHistoryListResponse)
+def list_my_tryon_jobs(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> TryOnHistoryListResponse:
+    items = [
+        TryOnHistoryItemRead(
+            job_id=item.id,
+            status=item.status,
+            result_image_url=item.result_image_url,
+            source_hand_image_url=item.source_hand_image_url,
+            prompt_text=item.prompt_text,
+            selected_style_id=item.selected_style_id,
+            style_title=item.style.title,
+            style_image_url=item.style.image_url,
+            created_at=item.created_at,
+        )
+        for item in tryon_service.list_jobs(db, user)
+    ]
+    return TryOnHistoryListResponse(items=items)
+
+
+@router.delete("/jobs/{job_id}")
+def delete_tryon_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> dict[str, str]:
+    job = tryon_service.get_job(db, user, job_id)
+    if job.status == "processing":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="处理中任务暂不可删除")
+    delete_local_file(job.result_image_path)
+    db.delete(job)
+    db.commit()
+    return {"message": "已删除 AI 换甲记录"}

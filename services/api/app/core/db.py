@@ -73,14 +73,45 @@ def init_db() -> None:
 
 def sync_runtime_schema() -> None:
     inspector = inspect(database.engine)
-    if "users" not in inspector.get_table_names():
+    table_names = inspector.get_table_names()
+    if "users" not in table_names:
         return
 
     user_columns = {column["name"] for column in inspector.get_columns("users")}
     with database.engine.begin() as connection:
+        if "uid" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN uid INTEGER"))
         if "phone" not in user_columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(20)"))
+        if "birthday" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN birthday VARCHAR(20)"))
+        if "bio" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN bio TEXT"))
+        if "location_city" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN location_city VARCHAR(80)"))
+        for column_name in (
+            "show_following_public",
+            "show_followers_public",
+            "show_comments_public",
+            "show_likes_public",
+        ):
+            if column_name not in user_columns:
+                connection.execute(text(f"ALTER TABLE users ADD COLUMN {column_name} BOOLEAN DEFAULT TRUE"))
+            connection.execute(text(f"UPDATE users SET {column_name} = TRUE WHERE {column_name} IS NULL"))
+        connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_uid ON users (uid)"))
         connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_phone ON users (phone)"))
+        connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username)"))
+
+        if "user_posts" in table_names:
+            post_columns = {column["name"] for column in inspector.get_columns("user_posts")}
+            if "is_hidden" not in post_columns:
+                connection.execute(text("ALTER TABLE user_posts ADD COLUMN is_hidden BOOLEAN DEFAULT FALSE"))
+            connection.execute(text("UPDATE user_posts SET is_hidden = FALSE WHERE is_hidden IS NULL"))
+
+        if "direct_messages" in table_names:
+            message_columns = {column["name"] for column in inspector.get_columns("direct_messages")}
+            if "read_at" not in message_columns:
+                connection.execute(text("ALTER TABLE direct_messages ADD COLUMN read_at TIMESTAMP"))
 
 
 def get_db() -> Generator[Session, None, None]:

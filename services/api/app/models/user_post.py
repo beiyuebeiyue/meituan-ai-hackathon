@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import ForeignKey, JSON, String, Text
+from sqlalchemy import Boolean, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -16,5 +16,6 @@ class UserPost(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     image_url: Mapped[str] = mapped_column(String(512), nullable=False)
     local_image_path: Mapped[str] = mapped_column(String(512), nullable=False)
     tags_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     user = relationship("User", back_populates="posts")

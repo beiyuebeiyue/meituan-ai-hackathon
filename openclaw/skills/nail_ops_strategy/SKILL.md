@@ -2,7 +2,7 @@
 
 ## 目标
 
-生成 NailTry AI 的每日运营策略报告。
+生成焕甲的每日运营策略报告。
 
 ## 输入
 
@@ -34,7 +34,7 @@ Content-Type: application/json
 ```json
 {
   "report_date": "2026-04-23",
-  "markdown_content": "# NailTry AI 运营日报",
+  "markdown_content": "# 焕甲运营日报",
   "summary_text": "今日裸粉与法式热度上升。",
   "report_json": {}
 }

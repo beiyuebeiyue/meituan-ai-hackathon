@@ -8,7 +8,7 @@ def render_daily_report_markdown(report_date: date, report_json: dict[str, objec
     actions = report_json.get("actions", [])
     top_tags = report_json.get("top_trending_tags", [])
     lines = [
-        f"# NailTry AI 运营日报 - {report_date.isoformat()}",
+        f"# 焕甲运营日报 - {report_date.isoformat()}",
         "",
         "## 摘要",
         str(report_json.get("summary", "")),

@@ -12,7 +12,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     database.configure(settings.database_url)
 
-    app = FastAPI(title="NailTry AI API", version="0.1.0")
+    app = FastAPI(title="焕甲 API", version="0.1.0")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allow_origins,
@@ -29,9 +29,11 @@ def create_app() -> FastAPI:
         settings.report_path.mkdir(parents=True, exist_ok=True)
         init_db()
         from app.services.auth_service import AuthService
+        from app.services.upload_migration_service import UploadMigrationService
 
         with database.session() as session:
             AuthService().ensure_default_admin(session)
+            UploadMigrationService().migrate_existing_uploads(session)
 
     app.mount(
         settings.public_files_prefix,
@@ -46,6 +48,8 @@ def create_app() -> FastAPI:
         events,
         favorites,
         jobs,
+        market,
+        messages,
         nails,
         ops_reports,
         posts,
@@ -59,6 +63,8 @@ def create_app() -> FastAPI:
     app.include_router(nails.router, prefix=settings.api_prefix)
     app.include_router(favorites.router, prefix=settings.api_prefix)
     app.include_router(posts.router, prefix=settings.api_prefix)
+    app.include_router(messages.router, prefix=settings.api_prefix)
+    app.include_router(market.router, prefix=settings.api_prefix)
     app.include_router(ai_recommend.router, prefix=settings.api_prefix)
     app.include_router(tryon.router, prefix=settings.api_prefix)
     app.include_router(events.router, prefix=settings.api_prefix)

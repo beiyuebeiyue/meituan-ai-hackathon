@@ -2,38 +2,40 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveAssetUrl } from "../api/client";
 import { NailStyle } from "../types/api";
-import { palette } from "../utils/theme";
+import { useThemeColors } from "../utils/theme";
 
 type NailCardProps = {
   item: NailStyle;
-  onToggleFavorite: (item: NailStyle) => void;
+  onToggleLike: (item: NailStyle) => void;
   onPress?: (item: NailStyle) => void;
 };
 
-export function NailCard({ item, onToggleFavorite, onPress }: NailCardProps) {
+export function NailCard({ item, onToggleLike, onPress }: NailCardProps) {
+  const colors = useThemeColors();
+
   return (
-    <Pressable style={styles.card} onPress={() => onPress?.(item)}>
-      <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={styles.image} />
+    <Pressable style={[styles.card, { backgroundColor: colors.surface }]} onPress={() => onPress?.(item)}>
+      <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={[styles.image, { backgroundColor: colors.accentSoft }]} />
       <View style={styles.body}>
         <View style={styles.header}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
             {item.title}
           </Text>
-          <Pressable onPress={() => onToggleFavorite(item)} hitSlop={8}>
+          <Pressable onPress={() => onToggleLike(item)} hitSlop={8}>
             <Ionicons
-              name={item.is_favorited ? "heart" : "heart-outline"}
+              name={item.is_liked ? "heart" : "heart-outline"}
               size={18}
-              color={item.is_favorited ? palette.accent : palette.subtext}
+              color={item.is_liked ? colors.accent : colors.subtext}
             />
           </Pressable>
         </View>
-        <Text style={styles.desc} numberOfLines={2}>
+        <Text style={[styles.desc, { color: colors.subtext }]} numberOfLines={2}>
           {item.description}
         </Text>
         <View style={styles.tagRow}>
           {item.tags.slice(0, 2).map((tag) => (
-            <View key={tag} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
+            <View key={tag} style={[styles.tag, { backgroundColor: colors.accentSoft }]}>
+              <Text style={[styles.tagText, { color: colors.accent }]}>{tag}</Text>
             </View>
           ))}
         </View>
@@ -47,7 +49,6 @@ const styles = StyleSheet.create({
     flex: 1,
     margin: 6,
     borderRadius: 22,
-    backgroundColor: palette.surface,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.08,
@@ -58,7 +59,6 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     aspectRatio: 0.86,
-    backgroundColor: palette.accentSoft,
   },
   body: {
     padding: 12,
@@ -74,10 +74,8 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: "700",
-    color: palette.text,
   },
   desc: {
-    color: palette.subtext,
     lineHeight: 18,
   },
   tagRow: {
@@ -89,10 +87,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "#fff0e7",
   },
   tagText: {
-    color: palette.accent,
     fontSize: 12,
     fontWeight: "600",
   },

@@ -1,1 +1,1 @@
-"""Pydantic schemas for NailTry AI."""
+"""Pydantic schemas for 焕甲."""

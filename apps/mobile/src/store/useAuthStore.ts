@@ -1,6 +1,8 @@
-import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
 import { User } from "../types/api";
+import { clearStoredValues, getStoredValue, setStoredValue } from "../utils/sessionStorage";
+
+const AUTH_STORAGE_KEYS = ["nailtry_token", "nailtry_user"] as const;
 
 type AuthState = {
   token: string | null;
@@ -16,21 +18,20 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   hydrated: false,
   setSession: async (token, user) => {
-    await SecureStore.setItemAsync("nailtry_token", token);
-    await SecureStore.setItemAsync("nailtry_user", JSON.stringify(user));
+    await setStoredValue("nailtry_token", token);
+    await setStoredValue("nailtry_user", JSON.stringify(user));
     set({ token, user, hydrated: true });
   },
   clearSession: async () => {
-    await SecureStore.deleteItemAsync("nailtry_token");
-    await SecureStore.deleteItemAsync("nailtry_user");
     set({ token: null, user: null, hydrated: true });
+    await clearStoredValues([...AUTH_STORAGE_KEYS]);
   },
   setUser: (user) => set({ user }),
 }));
 
 export async function bootstrapAuth() {
-  const token = await SecureStore.getItemAsync("nailtry_token");
-  const user = await SecureStore.getItemAsync("nailtry_user");
+  const token = await getStoredValue("nailtry_token");
+  const user = await getStoredValue("nailtry_user");
   useAuthStore.setState({
     token,
     user: user ? (JSON.parse(user) as User) : null,

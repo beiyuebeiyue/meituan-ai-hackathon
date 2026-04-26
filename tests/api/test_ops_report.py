@@ -55,7 +55,7 @@ def test_ops_report_generate_and_save(client, db_session, image_factory):
     assert payload["report_json"]["metrics"]["homepage_impressions"] == 300
     assert payload["report_json"]["metrics"]["homepage_clicks"] == 60
     assert payload["report_json"]["high_impression_low_ctr"][0]["title"] == "贴钻节日"
-    assert payload["markdown_content"].startswith("# NailTry AI 运营日报")
+    assert payload["markdown_content"].startswith("# 焕甲运营日报")
 
     saved = client.post("/api/v1/ops/reports/save", json=payload)
     assert saved.status_code == 200

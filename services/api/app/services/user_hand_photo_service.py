@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
-
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,15 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.user import User
 from app.models.user_hand_photo import UserHandPhoto
-from app.utils.files import public_url_for_path, relative_to_base, save_upload_file
-
-
-def _sha256_for_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as file_handle:
-        for chunk in iter(lambda: file_handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+from app.utils.files import delete_local_file, public_url_for_path, relative_to_base, save_user_upload_file, user_upload_dir
 
 
 class UserHandPhotoService:
@@ -41,8 +30,7 @@ class UserHandPhotoService:
         return hand_photo
 
     def save_uploaded(self, db: Session, user: User, upload: UploadFile) -> UserHandPhoto:
-        saved_path = save_upload_file(upload, self.settings.upload_path / "hands" / user.id, prefix="hand")
-        file_hash = _sha256_for_file(saved_path)
+        saved_path, file_hash = save_user_upload_file(upload, user_upload_dir(self.settings.upload_path, "hands", user.uid), user.uid)
         existing = db.scalar(
             select(UserHandPhoto).where(
                 UserHandPhoto.user_id == user.id,
@@ -63,3 +51,9 @@ class UserHandPhotoService:
         db.commit()
         db.refresh(hand_photo)
         return hand_photo
+
+    def delete_for_user(self, db: Session, user: User, hand_photo_id: str) -> None:
+        hand_photo = self.get_for_user(db, user, hand_photo_id)
+        delete_local_file(hand_photo.image_path)
+        db.delete(hand_photo)
+        db.commit()

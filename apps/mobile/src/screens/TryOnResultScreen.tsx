@@ -6,13 +6,14 @@ import { ActivityIndicator, Image, SafeAreaView, StyleSheet, Text, View } from "
 import { api, resolveAssetUrl } from "../api/client";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RootStackParamList } from "../navigation/RootNavigator";
-import { palette } from "../utils/theme";
+import { useThemeColors } from "../utils/theme";
 
 type ScreenRoute = RouteProp<RootStackParamList, "TryOnResult">;
 
 export function TryOnResultScreen() {
   const navigation = useNavigation();
   const route = useRoute<ScreenRoute>();
+  const colors = useThemeColors();
   const query = useQuery({
     queryKey: ["tryon-job", route.params.jobId],
     queryFn: () => api.getTryOnJob(route.params.jobId),
@@ -31,12 +32,12 @@ export function TryOnResultScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
-        <Text style={styles.title}>试戴结果</Text>
+        <Text style={[styles.title, { color: colors.text }]}>试戴结果</Text>
         {query.data?.status === "succeeded" && query.data.result_image_url ? (
           <>
-            <Image source={{ uri: resolveAssetUrl(query.data.result_image_url) }} style={styles.resultImage} />
+            <Image source={{ uri: resolveAssetUrl(query.data.result_image_url) }} style={[styles.resultImage, { backgroundColor: colors.accentSoft }]} />
             <PrimaryButton label="保存到相册" onPress={saveResult} />
             <PrimaryButton label="返回继续挑选" onPress={() => navigation.goBack()} variant="ghost" />
           </>
@@ -47,9 +48,9 @@ export function TryOnResultScreen() {
           </>
         ) : (
           <>
-            <View style={styles.loadingCard}>
-              <ActivityIndicator size="large" color={palette.accent} />
-              <Text style={styles.loadingText}>AI 正在处理中，通常需要几秒钟</Text>
+            <View style={[styles.loadingCard, { backgroundColor: colors.surface }]}>
+              <ActivityIndicator size="large" color={colors.accent} />
+              <Text style={[styles.loadingText, { color: colors.subtext }]}>AI 正在处理中，通常需要几秒钟</Text>
             </View>
           </>
         )}
@@ -59,18 +60,17 @@ export function TryOnResultScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.background },
+  container: { flex: 1 },
   content: { flex: 1, padding: 18, gap: 14 },
-  title: { fontSize: 28, fontWeight: "800", color: palette.text },
-  resultImage: { width: "100%", aspectRatio: 1, borderRadius: 26, backgroundColor: palette.accentSoft },
+  title: { fontSize: 28, fontWeight: "800" },
+  resultImage: { width: "100%", aspectRatio: 1, borderRadius: 26 },
   loadingCard: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 14,
     borderRadius: 26,
-    backgroundColor: palette.surface,
   },
-  loadingText: { color: palette.subtext },
+  loadingText: {},
   error: { color: "#c43333", lineHeight: 22 },
 });

@@ -1,6 +1,27 @@
 import { Platform } from "react-native";
 import { useAuthStore } from "../store/useAuthStore";
-import { AuthResponse, NailStyleListResponse, RecommendationResponse, TryOnJob, User, UserHandPhoto, UserPost } from "../types/api";
+import {
+  AuthResponse,
+  AuthorProfile,
+  BrowseHistoryItem,
+  DirectMessage,
+  DirectMessageThread,
+  MessageInboxResponse,
+  MessageInboxThread,
+  MyStyleCommentListResponse,
+  NailStyleListResponse,
+  NearbyShopSearchResponse,
+  RecommendationResponse,
+  StyleComment,
+  StyleDetail,
+  TryOnHistoryItem,
+  TryOnJob,
+  User,
+  UserHandPhoto,
+  UserPost,
+  UserPrivacy,
+  UserSummary,
+} from "../types/api";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
@@ -43,10 +64,25 @@ export const api = {
     }),
   logout: () => request<{ message: string }>("/auth/logout", { method: "POST" }),
   getMe: () => request<User>("/users/me"),
+  getMyPrivacy: () => request<UserPrivacy>("/users/me/privacy"),
+  updateMyPrivacy: (payload: Partial<UserPrivacy>) =>
+    request<UserPrivacy>("/users/me/privacy", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  updateMyLocation: (city: string) =>
+    request<User>("/users/me/location", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ city }),
+    }),
   getSavedHandPhotos: () => request<{ items: UserHandPhoto[] }>("/users/me/hand-photos"),
-  updateMe: async (payload: { username?: string; avatarUri?: string }) => {
+  updateMe: async (payload: { username?: string; birthday?: string; bio?: string; avatarUri?: string }) => {
     const form = new FormData();
-    if (payload.username) form.append("username", payload.username);
+    if (payload.username !== undefined) form.append("username", payload.username);
+    if (payload.birthday !== undefined) form.append("birthday", payload.birthday);
+    if (payload.bio !== undefined) form.append("bio", payload.bio);
     if (payload.avatarUri) {
       form.append("avatar_file", {
         uri: payload.avatarUri,
@@ -57,8 +93,28 @@ export const api = {
     return request<User>("/users/me", { method: "PUT", body: form });
   },
   getHot: () => request<NailStyleListResponse>("/nails/hot?page=1&page_size=20"),
+  getDiscover: () => request<NailStyleListResponse>("/nails/discover?page=1&page_size=20"),
+  searchStyles: (query: string) => request<NailStyleListResponse>(`/nails/search?query=${encodeURIComponent(query)}&page=1&page_size=20`),
+  getFollowingStyles: () => request<NailStyleListResponse>("/nails/following?page=1&page_size=20"),
   getLatest: () => request<NailStyleListResponse>("/nails/latest?page=1&page_size=20"),
-  getFavorites: () => request<{ items: NailStyleListResponse["items"] }>("/favorites/me"),
+  getStyle: (styleId: string) => request<StyleDetail>(`/nails/${styleId}`),
+  recordStyleView: (styleId: string) => request<{ message: string }>(`/nails/${styleId}/views`, { method: "POST" }),
+  getStyleComments: (styleId: string) => request<{ items: StyleComment[] }>(`/nails/${styleId}/comments`),
+  likeStyle: (styleId: string) => request<{ message: string }>(`/nails/${styleId}/likes`, { method: "POST" }),
+  unlikeStyle: (styleId: string) => request<{ message: string }>(`/nails/${styleId}/likes`, { method: "DELETE" }),
+  createStyleComment: (styleId: string, content: string) =>
+    request<StyleComment>(`/nails/${styleId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    }),
+  deleteStyleComment: (styleId: string, commentId: string) =>
+    request<{ message: string }>(`/nails/${styleId}/comments/${commentId}`, { method: "DELETE" }),
+  getLikedStyles: () => request<{ items: NailStyleListResponse["items"] }>("/nails/likes/me"),
+  followUser: (userId: string) => request<{ message: string }>(`/users/${userId}/follow`, { method: "POST" }),
+  unfollowUser: (userId: string) => request<{ message: string }>(`/users/${userId}/follow`, { method: "DELETE" }),
+  blockUser: (userId: string) => request<{ message: string }>(`/users/${userId}/block`, { method: "POST" }),
+  unblockUser: (userId: string) => request<{ message: string }>(`/users/${userId}/block`, { method: "DELETE" }),
   addFavorite: (styleId: string) =>
     request<{ message: string }>("/favorites", {
       method: "POST",
@@ -75,6 +131,62 @@ export const api = {
     return request<UserPost>("/posts", { method: "POST", body: form });
   },
   getMyPosts: () => request<{ items: UserPost[] }>("/posts/me"),
+  getAuthorProfile: (authorId: string) => request<AuthorProfile>(`/users/${authorId}/author-profile`),
+  getMyStyleComments: () => request<MyStyleCommentListResponse>("/users/me/style-comments"),
+  getUserStyleComments: (userId: string) => request<MyStyleCommentListResponse>(`/users/${userId}/style-comments`),
+  getUserLikedStyles: (userId: string) => request<NailStyleListResponse>(`/users/${userId}/liked-styles`),
+  getUserFollowing: (userId: string) => request<{ items: UserSummary[] }>(`/users/${userId}/following`),
+  getUserFollowers: (userId: string) => request<{ items: UserSummary[] }>(`/users/${userId}/followers`),
+  getBlockedUsers: () => request<{ items: UserSummary[] }>("/users/me/blocks"),
+  getNearbyShops: (params: {
+    keyword?: string | null;
+    city: string;
+    region?: string | null;
+    lat?: number | null;
+    lng?: number | null;
+    sort?: "default" | "distance";
+    view?: "list" | "map";
+  }) => {
+    const search = new URLSearchParams();
+    if (params.keyword) search.set("keyword", params.keyword);
+    search.set("city", params.city);
+    if (params.region) search.set("region", params.region);
+    if (params.lat !== undefined && params.lat !== null) search.set("lat", String(params.lat));
+    if (params.lng !== undefined && params.lng !== null) search.set("lng", String(params.lng));
+    if (params.sort) search.set("sort", params.sort);
+    if (params.view) search.set("view", params.view);
+    return request<NearbyShopSearchResponse>(`/market/shops/nearby?${search.toString()}`);
+  },
+  getMessageInbox: () => request<MessageInboxResponse>("/messages/inbox"),
+  getStrangerMessages: () => request<{ items: MessageInboxThread[] }>("/messages/strangers"),
+  getConversation: (userId: string) => request<DirectMessageThread>(`/messages/conversations/${userId}`),
+  sendMessage: (userId: string, content: string) =>
+    request<DirectMessage>(`/messages/conversations/${userId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    }),
+  updateMyPost: (postId: string, payload: { title?: string; description?: string; tags?: string[]; is_hidden?: boolean }) =>
+    request<UserPost>(`/posts/${postId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  deleteMyPost: (postId: string) => request<{ message: string }>(`/posts/${postId}`, { method: "DELETE" }),
+  getBrowseHistory: () => request<{ items: BrowseHistoryItem[] }>("/users/me/browse-history"),
+  recordBrowseHistory: async (styleId: string) => {
+    const form = new FormData();
+    form.append("style_id", styleId);
+    return request<{ message: string }>("/users/me/browse-history", { method: "POST", body: form });
+  },
+  deleteBrowseHistory: (historyId: string) => request<{ message: string }>(`/users/me/browse-history/${historyId}`, { method: "DELETE" }),
+  deleteBrowseHistoryBatch: (historyIds: string[]) =>
+    request<{ deleted_count: number }>("/users/me/browse-history/batch-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ history_ids: historyIds }),
+    }),
+  deleteSavedHandPhoto: (handPhotoId: string) => request<{ message: string }>(`/users/me/hand-photos/${handPhotoId}`, { method: "DELETE" }),
   recommend: (queryText: string) =>
     request<RecommendationResponse>("/ai/recommend", {
       method: "POST",
@@ -93,6 +205,8 @@ export const api = {
     return request<{ job_id: string; status: string }>("/tryon/jobs", { method: "POST", body: form });
   },
   getTryOnJob: (jobId: string) => request<TryOnJob>(`/tryon/jobs/${jobId}`),
+  getTryOnHistory: () => request<{ items: TryOnHistoryItem[] }>("/tryon/jobs"),
+  deleteTryOnJob: (jobId: string) => request<{ message: string }>(`/tryon/jobs/${jobId}`, { method: "DELETE" }),
   recordStyleEvents: (items: Array<{ style_id: string; event_type: string; source: string; count?: number }>) =>
     request<{ updated: number }>("/events/styles", {
       method: "POST",

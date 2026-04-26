@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "NailTry AI",
+    "name": "焕甲",
     "slug": "nailtry-ai",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -8,17 +8,27 @@
     "splash": {
       "backgroundColor": "#fff4ed"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nailtry.ai"
+      "bundleIdentifier": "com.nailtry.ai",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "焕甲需要使用你的位置来展示附近的美甲店。"
+      }
     },
     "android": {
-      "package": "com.nailtry.ai"
+      "package": "com.nailtry.ai",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "plugins": [
       "expo-secure-store",
-      "expo-media-library"
+      "expo-media-library",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {

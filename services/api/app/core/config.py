@@ -23,10 +23,19 @@ class Settings(BaseSettings):
 
     openai_api_key: str = ""
     openai_image_model: str = "gpt-image-2"
+    meituan_app_key: str = ""
+    meituan_app_secret: str = ""
+    meituan_api_base_url: str = ""
+    meituan_poi_enabled: bool = False
+    meituan_poi_appkey: str = ""
+    meituan_poi_appsecret: str = ""
+    meituan_poi_session: str = ""
+    meituan_poi_api_base_url: str = "https://poiopen.dianping.com/router/poisearch/search"
     default_admin_enabled: bool = True
     default_admin_phone: str = "13886722666"
-    default_admin_username: str = "admin"
+    default_admin_username: str = "momo酱"
     default_admin_password: str = "admin@123456"
+    default_admin_bio: str = "分享你心仪的美甲，记录每一次焕甲灵感。"
 
     seed_xlsx_path: str = "./命题三美甲评测数据（对外版）.xlsx"
     upload_dir: str = "./data/uploads"

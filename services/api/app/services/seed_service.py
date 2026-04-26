@@ -31,6 +31,20 @@ STYLE_PRESETS = [
     {"name": "贴钻晚宴", "tags": ["贴钻", "节日", "法式"], "length": "长", "scene": "派对"},
 ]
 
+TITLE_TEMPLATES = [
+    "这款{phrase}美甲真的太好看了",
+    "{phrase}这款美甲上手太绝了",
+    "最近超爱这款{phrase}美甲",
+    "这款{phrase}美甲谁做谁好看",
+]
+
+DESCRIPTION_TEMPLATES = [
+    "推荐大家入手这款美甲，{scene}和日常都很合适。",
+    "这款真的很显手白，{scene}做它特别出片。",
+    "如果最近想换美甲，可以试试这款，温柔又耐看。",
+    "这款上手很有氛围感，{scene}和拍照都不会出错。",
+]
+
 
 @dataclass
 class DownloadRecord:
@@ -136,8 +150,8 @@ class SeedService:
             dominant_colors = self._extract_dominant_colors(image_path)
             color_tags = self._color_tags(dominant_colors)
             tags = list(dict.fromkeys([*preset["tags"], *color_tags]))
-            style.title = f"{preset['name']} {index:02d}"
-            style.description = f"适合{preset['scene']}场景的{preset['name']}款式。"
+            style.title = self._build_natural_title(index, preset, tags, color_tags)
+            style.description = self._build_natural_description(index, preset, tags)
             style.tags_json = tags
             style.dominant_colors_json = dominant_colors
             style.style_metadata_json = {
@@ -210,10 +224,11 @@ class SeedService:
 
         local_path = relative_to_base(primary_record.saved_path)
         image_url = public_url_for_path(primary_record.saved_path)
+        preset = STYLE_PRESETS[(max(index, 1) - 1) % len(STYLE_PRESETS)]
         if style is None:
             style = NailStyle(
-                title=f"款式 {index:02d}",
-                description="来自 xlsx 种子导入的初始款式。",
+                title=self._build_natural_title(index or 1, preset, preset["tags"], []),
+                description=self._build_natural_description(index or 1, preset, preset["tags"]),
                 image_url=image_url,
                 local_image_path=local_path,
                 original_image_url=str(original_url) if original_url else None,
@@ -318,3 +333,26 @@ class SeedService:
             elif red > 180 and green > 140:
                 tags.append("暖调")
         return list(dict.fromkeys(tags)) or ["裸粉"]
+
+    @staticmethod
+    def _build_natural_title(index: int, preset: dict[str, object], tags: list[str], color_tags: list[str]) -> str:
+        preferred_tags = color_tags + [str(tag) for tag in tags]
+        keyword_pool = [tag for tag in preferred_tags if tag in {"裸粉", "奶白", "猫眼", "镜面", "法式", "裸透", "贴钻", "显白", "温柔"}]
+        if not keyword_pool:
+            keyword_pool = [str(preset["name"])]
+        phrase = "".join(list(dict.fromkeys(keyword_pool[:2]))) or str(preset["name"])
+        template = TITLE_TEMPLATES[(max(index, 1) - 1) % len(TITLE_TEMPLATES)]
+        return template.format(phrase=phrase)
+
+    @staticmethod
+    def _build_natural_description(index: int, preset: dict[str, object], tags: list[str]) -> str:
+        scene = str(preset["scene"])
+        template = DESCRIPTION_TEMPLATES[(max(index, 1) - 1) % len(DESCRIPTION_TEMPLATES)]
+        base = template.format(scene=scene)
+        if "显白" in tags:
+            return f"{base[:-1]}，而且特别显手白。"
+        if "温柔" in tags:
+            return f"{base[:-1]}，做出来会更有温柔感。"
+        if "亮片" in tags or "贴钻" in tags:
+            return f"{base[:-1]}，细节看起来会更精致。"
+        return base

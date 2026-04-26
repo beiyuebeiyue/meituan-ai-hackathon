@@ -24,5 +24,8 @@ class NailStyle(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_trending: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     favorites = relationship("UserFavorite", back_populates="style", cascade="all, delete-orphan")
+    likes = relationship("UserStyleLike", back_populates="style", cascade="all, delete-orphan")
+    views = relationship("UserStyleView", back_populates="style", cascade="all, delete-orphan")
+    comments = relationship("StyleComment", back_populates="style", cascade="all, delete-orphan")
     tryon_jobs = relationship("TryOnJob", back_populates="style", cascade="all, delete-orphan")
     daily_events = relationship("StyleEventDaily", back_populates="style", cascade="all, delete-orphan")

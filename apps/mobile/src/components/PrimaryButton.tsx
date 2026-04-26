@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from "react-native";
-import { palette } from "../utils/theme";
+import { useThemeColors } from "../utils/theme";
 
 type PrimaryButtonProps = {
   label: string;
@@ -11,11 +11,13 @@ type PrimaryButtonProps = {
 };
 
 export function PrimaryButton({ label, onPress, disabled, loading, variant = "filled", style }: PrimaryButtonProps) {
+  const colors = useThemeColors();
+
   return (
     <Pressable
       style={[
         styles.button,
-        variant === "ghost" ? styles.buttonGhost : styles.buttonFilled,
+        { backgroundColor: variant === "ghost" ? colors.accentSoft : colors.accent },
         (disabled || loading) && styles.buttonDisabled,
         style,
       ]}
@@ -23,9 +25,9 @@ export function PrimaryButton({ label, onPress, disabled, loading, variant = "fi
       disabled={disabled || loading}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "ghost" ? palette.accent : "white"} />
+        <ActivityIndicator color={variant === "ghost" ? colors.accent : "white"} />
       ) : (
-        <Text style={[styles.label, variant === "ghost" ? styles.labelGhost : styles.labelFilled]}>{label}</Text>
+        <Text style={[styles.label, { color: variant === "ghost" ? colors.accent : "white" }]}>{label}</Text>
       )}
     </Pressable>
   );
@@ -39,23 +41,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  buttonFilled: {
-    backgroundColor: palette.accent,
-  },
-  buttonGhost: {
-    backgroundColor: palette.accentSoft,
-  },
   buttonDisabled: {
     opacity: 0.6,
   },
   label: {
     fontSize: 16,
     fontWeight: "700",
-  },
-  labelFilled: {
-    color: "white",
-  },
-  labelGhost: {
-    color: palette.accent,
   },
 });

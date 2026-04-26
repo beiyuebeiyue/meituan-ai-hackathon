@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { PrimaryButton } from "./PrimaryButton";
-import { palette } from "../utils/theme";
+import { useThemeColors } from "../utils/theme";
 
 type RequireLoginProps = {
   onLogin: () => void;
@@ -8,10 +8,12 @@ type RequireLoginProps = {
 };
 
 export function RequireLogin({ onLogin, message = "登录后可继续操作" }: RequireLoginProps) {
+  const colors = useThemeColors();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>需要登录</Text>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={[styles.title, { color: colors.text }]}>需要登录</Text>
+      <Text style={[styles.message, { color: colors.subtext }]}>{message}</Text>
       <PrimaryButton label="去登录" onPress={onLogin} style={{ width: 160 }} />
     </View>
   );
@@ -28,10 +30,8 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "800",
-    color: palette.text,
   },
   message: {
-    color: palette.subtext,
     marginBottom: 12,
   },
 });

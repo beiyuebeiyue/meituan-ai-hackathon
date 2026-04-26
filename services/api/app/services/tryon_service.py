@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import HTTPException, UploadFile, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.models.tryon_job import TryOnJob
@@ -66,6 +68,15 @@ class TryOnService:
         if job is None or job.user_id != user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="试戴任务不存在")
         return job
+
+    def list_jobs(self, db: Session, user: User) -> list[TryOnJob]:
+        statement = (
+            select(TryOnJob)
+            .options(selectinload(TryOnJob.style))
+            .where(TryOnJob.user_id == user.id)
+            .order_by(TryOnJob.created_at.desc())
+        )
+        return list(db.scalars(statement).all())
 
     def process_job(self, db: Session, job_id: str) -> TryOnJob:
         job = db.get(TryOnJob, job_id)
