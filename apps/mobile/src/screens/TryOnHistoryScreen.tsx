@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
-import { Ionicons } from "@expo/vector-icons";
 import { Alert, FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
+import { OverlayContent } from "../components/OverlayContent";
 import { RequireLogin } from "../components/RequireLogin";
-import { SlideOverlayScreen } from "../components/SlideOverlayScreen";
+import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeColors } from "../utils/theme";
 
@@ -20,6 +20,7 @@ export function TryOnHistoryScreen() {
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
   const colors = useThemeColors();
+  const direction = useOverlayDirection("right");
   const query = useQuery({
     queryKey: ["tryon-history"],
     queryFn: api.getTryOnHistory,
@@ -37,24 +38,25 @@ export function TryOnHistoryScreen() {
   });
 
   return (
-    <SlideOverlayScreen direction="right" backgroundColor={colors.background} onDismiss={() => navigation.goBack()}>
+    <SlideOverlayScreen direction={direction} backgroundColor={colors.background} onDismiss={() => navigation.goBack()}>
       {(dismiss) => (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-          <View style={[styles.overlayHeader, { borderBottomColor: colors.border }]}>
-            <Pressable style={styles.backButton} onPress={dismiss}>
-              <Ionicons name="chevron-back" size={28} color={colors.text} />
-            </Pressable>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>AI 焕甲</Text>
-            <View style={styles.headerAction} />
-          </View>
+          <OverlayContent.Header title="AI 焕甲" onBack={dismiss} />
           {!token ? (
             <RequireLogin onLogin={() => navigation.navigate("Login")} message="登录后可查看 AI 焕甲记录" />
           ) : (
             <FlatList
+              style={{ backgroundColor: colors.surfaceAlt }}
               data={query.data?.items ?? []}
               keyExtractor={(item) => item.job_id}
               contentContainerStyle={styles.list}
-              ListEmptyComponent={<Text style={[styles.empty, { color: colors.subtext }]}>你还没有 AI 焕甲记录</Text>}
+              ListEmptyComponent={
+                <OverlayContent.Empty
+                  icon="sparkles-outline"
+                  title={query.isLoading ? "正在加载 AI 焕甲记录" : "还没有 AI 焕甲记录"}
+                  description={query.isLoading ? "请稍等，正在同步你的试戴记录。" : "在问问小嘉或作品详情发起焕甲后，会出现在这里。"}
+                />
+              }
               renderItem={({ item }) => {
                 const imageUrl = item.result_image_url || item.source_hand_image_url || item.style_image_url;
                 const deletingDisabled = item.status === "processing";
@@ -111,34 +113,7 @@ export function TryOnHistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  overlayHeader: {
-    minHeight: 54,
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  headerAction: {
-    width: 44,
-  },
-  list: { padding: 18, gap: 14, paddingBottom: 120 },
-  empty: {
-    paddingTop: 80,
-    textAlign: "center",
-    fontSize: 15,
-  },
+  list: { padding: 10, gap: 12, paddingBottom: 120 },
   card: {
     flexDirection: "row",
     gap: 14,

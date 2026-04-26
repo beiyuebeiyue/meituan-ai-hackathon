@@ -20,6 +20,7 @@ class TryOnJob(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     prompt_text: Mapped[str] = mapped_column(Text, default="", nullable=False)
     status: Mapped[str] = mapped_column(String(30), default="pending", nullable=False)
+    stage: Mapped[str] = mapped_column(String(30), default="pending", nullable=False)
     result_image_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
     result_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)

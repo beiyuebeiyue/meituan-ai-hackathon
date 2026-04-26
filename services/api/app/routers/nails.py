@@ -34,6 +34,7 @@ def build_style_payloads(db: Session, items: list, user: User | None) -> list[Na
     payloads: list[NailStyleDetailRead] = []
     for style in items:
         author = style_service.resolve_style_author_user(db, style)
+        post = style_service.get_post_for_style(db, style) if user and author and author.id == user.id else None
         payloads.append(
             serialize_style_detail(
                 style,
@@ -47,6 +48,8 @@ def build_style_payloads(db: Session, items: list, user: User | None) -> list[Na
                 author_avatar_url=author.avatar_url if author else None,
                 is_following_author=bool(user and author and author.id != user.id and author.id in following_ids),
                 is_authored_by_me=bool(user and author and author.id == user.id),
+                manage_post_id=post.id if post is not None else None,
+                is_hidden=post.is_hidden if post is not None else False,
             )
         )
     return payloads
@@ -120,6 +123,23 @@ def list_following(
 ) -> NailStyleListResponse:
     following_ids = follow_service.get_following_ids(db, user.id)
     items, total = style_service.list_following(db, user, following_ids, page, page_size)
+    return NailStyleListResponse(
+        page=page,
+        page_size=page_size,
+        total=total,
+        items=build_style_payloads(db, items, user),
+    )
+
+
+@router.get("/local", response_model=NailStyleListResponse)
+def list_local(
+    city: str = Query(default="深圳", min_length=1, max_length=80),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_current_user),
+) -> NailStyleListResponse:
+    items, total = style_service.list_local(db, city, page, page_size, viewer=user)
     return NailStyleListResponse(
         page=page,
         page_size=page_size,

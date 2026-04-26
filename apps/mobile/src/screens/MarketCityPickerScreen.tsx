@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useMemo, useState } from "react";
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { SlideOverlayScreen } from "../components/SlideOverlayScreen";
+import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
 import { useMarketStore } from "../store/useMarketStore";
 import { MARKET_CITIES, MARKET_CITY_INITIALS, RECOMMENDED_MARKET_CITIES } from "../utils/marketCities";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
@@ -11,6 +11,7 @@ export function MarketCityPickerScreen() {
   const navigation = useNavigation<any>();
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
+  const direction = useOverlayDirection("right");
   const setSelectedCity = useMarketStore((state) => state.setSelectedCity);
   const [query, setQuery] = useState("");
 
@@ -27,7 +28,7 @@ export function MarketCityPickerScreen() {
 
   return (
     <SlideOverlayScreen
-      direction="right"
+      direction={direction}
       backgroundColor={isDark ? "#17171b" : colors.background}
       onDismiss={() => navigation.goBack()}
     >

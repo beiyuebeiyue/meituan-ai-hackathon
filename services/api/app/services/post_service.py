@@ -39,10 +39,12 @@ class PostService:
         image_url: str,
         local_image_path: str,
         tags: list[str],
+        shop_id: str | None = None,
     ) -> UserPost:
         now = utcnow()
         post = UserPost(
             user_id=user.id,
+            shop_id=shop_id,
             title=title,
             description=description,
             image_url=image_url,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Float, JSON, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -11,6 +11,7 @@ class NailStyle(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "nail_styles"
 
     title: Mapped[str] = mapped_column(String(200), nullable=False)
+    shop_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("merchant_shops.id", ondelete="SET NULL"), nullable=True)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     image_url: Mapped[str] = mapped_column(String(512), nullable=False)
     local_image_path: Mapped[str] = mapped_column(String(512), nullable=False)
@@ -23,6 +24,7 @@ class NailStyle(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     popularity_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     is_trending: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    shop = relationship("MerchantShop", back_populates="styles")
     favorites = relationship("UserFavorite", back_populates="style", cascade="all, delete-orphan")
     likes = relationship("UserStyleLike", back_populates="style", cascade="all, delete-orphan")
     views = relationship("UserStyleView", back_populates="style", cascade="all, delete-orphan")

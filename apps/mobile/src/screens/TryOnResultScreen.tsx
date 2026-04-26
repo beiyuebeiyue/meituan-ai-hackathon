@@ -5,6 +5,7 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { ActivityIndicator, Image, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useThemeColors } from "../utils/theme";
 
@@ -12,6 +13,7 @@ type ScreenRoute = RouteProp<RootStackParamList, "TryOnResult">;
 
 export function TryOnResultScreen() {
   const navigation = useNavigation();
+  const dismissOverlay = useSlideOverlayDismiss();
   const route = useRoute<ScreenRoute>();
   const colors = useThemeColors();
   const query = useQuery({
@@ -32,19 +34,18 @@ export function TryOnResultScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.surfaceAlt }]}>
       <View style={styles.content}>
-        <Text style={[styles.title, { color: colors.text }]}>试戴结果</Text>
         {query.data?.status === "succeeded" && query.data.result_image_url ? (
           <>
             <Image source={{ uri: resolveAssetUrl(query.data.result_image_url) }} style={[styles.resultImage, { backgroundColor: colors.accentSoft }]} />
             <PrimaryButton label="保存到相册" onPress={saveResult} />
-            <PrimaryButton label="返回继续挑选" onPress={() => navigation.goBack()} variant="ghost" />
+            <PrimaryButton label="返回继续挑选" onPress={() => dismissOverlay?.() ?? navigation.goBack()} variant="ghost" />
           </>
         ) : query.data?.status === "failed" ? (
           <>
             <Text style={styles.error}>{query.data.error_message ?? "试戴失败，请稍后再试"}</Text>
-            <PrimaryButton label="返回重试" onPress={() => navigation.goBack()} />
+            <PrimaryButton label="返回重试" onPress={() => dismissOverlay?.() ?? navigation.goBack()} />
           </>
         ) : (
           <>
@@ -61,8 +62,7 @@ export function TryOnResultScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { flex: 1, padding: 18, gap: 14 },
-  title: { fontSize: 28, fontWeight: "800" },
+  content: { flex: 1, padding: 16, paddingBottom: 120, gap: 14 },
   resultImage: { width: "100%", aspectRatio: 1, borderRadius: 26 },
   loadingCard: {
     flex: 1,

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.models.user import User
+
 
 def _register_and_login(client, *, phone: str, username: str) -> tuple[dict[str, str], dict[str, object]]:
     client.post(
@@ -14,155 +16,125 @@ def _register_and_login(client, *, phone: str, username: str) -> tuple[dict[str,
     return {"Authorization": f"Bearer {payload['access_token']}"}, payload["user"]
 
 
-def test_direct_messages_require_reply_or_24h_gap_when_not_mutual_follow(client):
-    alice_headers, alice = _register_and_login(client, phone="13920000001", username="alice_msg")
-    bob_headers, bob = _register_and_login(client, phone="13920000002", username="bob_msg")
+def _promote_to_merchant(db_session, user_payload: dict[str, object]) -> None:
+    user = db_session.get(User, user_payload["id"])
+    assert user is not None
+    user.role = "merchant"
+    db_session.add(user)
+    db_session.commit()
+
+
+def test_consumer_and_merchant_can_message_without_social_limit(client, db_session):
+    consumer_headers, consumer = _register_and_login(client, phone="13920000001", username="consumer_msg")
+    merchant_headers, merchant = _register_and_login(client, phone="13920000002", username="merchant_msg")
+    _promote_to_merchant(db_session, merchant)
 
     first = client.post(
-        f"/api/v1/messages/conversations/{bob['id']}",
-        headers=alice_headers,
+        f"/api/v1/messages/conversations/{merchant['id']}",
+        headers=consumer_headers,
         json={"content": "你好，我想问问这款美甲。"},
     )
-    assert first.status_code == 200
-
     second = client.post(
-        f"/api/v1/messages/conversations/{bob['id']}",
-        headers=alice_headers,
+        f"/api/v1/messages/conversations/{merchant['id']}",
+        headers=consumer_headers,
         json={"content": "我再补充一句。"},
-    )
-    assert second.status_code == 429
-    assert "24小时内只能发送1条消息" in second.text
-
-    reply = client.post(
-        f"/api/v1/messages/conversations/{alice['id']}",
-        headers=bob_headers,
-        json={"content": "可以呀，你继续说。"},
-    )
-    assert reply.status_code == 200
-
-    third = client.post(
-        f"/api/v1/messages/conversations/{bob['id']}",
-        headers=alice_headers,
-        json={"content": "那我想试试裸粉法式。"},
-    )
-    assert third.status_code == 200
-
-
-def test_mutual_follow_can_send_unlimited_messages(client):
-    alice_headers, alice = _register_and_login(client, phone="13920000003", username="alice_follow")
-    bob_headers, bob = _register_and_login(client, phone="13920000004", username="bob_follow")
-
-    assert client.post(f"/api/v1/users/{bob['id']}/follow", headers=alice_headers).status_code == 200
-    assert client.post(f"/api/v1/users/{alice['id']}/follow", headers=bob_headers).status_code == 200
-
-    first = client.post(
-        f"/api/v1/messages/conversations/{bob['id']}",
-        headers=alice_headers,
-        json={"content": "互关之后第一条"},
-    )
-    second = client.post(
-        f"/api/v1/messages/conversations/{bob['id']}",
-        headers=alice_headers,
-        json={"content": "互关之后第二条"},
     )
     assert first.status_code == 200
     assert second.status_code == 200
 
+    merchant_inbox_response = client.get("/api/v1/messages/inbox", headers=merchant_headers)
+    assert merchant_inbox_response.status_code == 200
+    merchant_inbox = merchant_inbox_response.json()
+    assert merchant_inbox["stranger_bucket"] is None
+    assert merchant_inbox["badge"]["has_stranger_unread"] is False
+    assert merchant_inbox["badge"]["main_unread_count"] == 2
+    assert len(merchant_inbox["items"]) == 1
+    assert merchant_inbox["items"][0]["target"]["id"] == consumer["id"]
+    assert merchant_inbox["items"][0]["target"]["role"] == "consumer"
+    assert merchant_inbox["items"][0]["is_stranger_source"] is False
 
-def test_stranger_messages_stay_in_bucket_until_viewer_replies(client):
-    alice_headers, alice = _register_and_login(client, phone="13920000007", username="alice_inbox")
-    bob_headers, bob = _register_and_login(client, phone="13920000008", username="bob_inbox")
+    thread_response = client.get(f"/api/v1/messages/conversations/{consumer['id']}", headers=merchant_headers)
+    assert thread_response.status_code == 200
+    thread_payload = thread_response.json()
+    assert thread_payload["target"]["role"] == "consumer"
+    assert thread_payload["can_send"] is True
+    assert all(item["read_at"] is not None for item in thread_payload["items"] if item["sender_user_id"] == consumer["id"])
+
+    reply = client.post(
+        f"/api/v1/messages/conversations/{consumer['id']}",
+        headers=merchant_headers,
+        json={"content": "可以，欢迎预约。"},
+    )
+    assert reply.status_code == 200
+
+    consumer_inbox_response = client.get("/api/v1/messages/inbox", headers=consumer_headers)
+    assert consumer_inbox_response.status_code == 200
+    consumer_inbox = consumer_inbox_response.json()
+    assert consumer_inbox["stranger_bucket"] is None
+    assert consumer_inbox["badge"]["has_stranger_unread"] is False
+    assert consumer_inbox["badge"]["main_unread_count"] == 1
+    assert consumer_inbox["items"][0]["target"]["id"] == merchant["id"]
+    assert consumer_inbox["items"][0]["target"]["role"] == "merchant"
+
+
+def test_same_role_direct_messages_are_forbidden(client, db_session):
+    alice_headers, alice = _register_and_login(client, phone="13920000003", username="consumer_a")
+    _, bob = _register_and_login(client, phone="13920000004", username="consumer_b")
+    merchant_a_headers, merchant_a = _register_and_login(client, phone="13920000005", username="merchant_a")
+    _, merchant_b = _register_and_login(client, phone="13920000006", username="merchant_b")
+    _promote_to_merchant(db_session, merchant_a)
+    _promote_to_merchant(db_session, merchant_b)
+
+    consumer_response = client.post(
+        f"/api/v1/messages/conversations/{bob['id']}",
+        headers=alice_headers,
+        json={"content": "普通用户之间不能聊"},
+    )
+    assert consumer_response.status_code == 403
+    assert "当前仅支持用户与商家沟通" in consumer_response.text
+
+    merchant_response = client.post(
+        f"/api/v1/messages/conversations/{merchant_b['id']}",
+        headers=merchant_a_headers,
+        json={"content": "商家之间也不能聊"},
+    )
+    assert merchant_response.status_code == 403
+    assert "当前仅支持用户与商家沟通" in merchant_response.text
+
+    thread_response = client.get(f"/api/v1/messages/conversations/{bob['id']}", headers=alice_headers)
+    assert thread_response.status_code == 403
+
+
+def test_stranger_messages_endpoint_is_empty_for_business_messages(client, db_session):
+    consumer_headers, consumer = _register_and_login(client, phone="13920000007", username="consumer_inbox")
+    merchant_headers, merchant = _register_and_login(client, phone="13920000008", username="merchant_inbox")
+    _promote_to_merchant(db_session, merchant)
 
     incoming = client.post(
-        f"/api/v1/messages/conversations/{alice['id']}",
-        headers=bob_headers,
-        json={"content": "你好，我是陌生人消息。"},
+        f"/api/v1/messages/conversations/{consumer['id']}",
+        headers=merchant_headers,
+        json={"content": "你好，这里是商家消息。"},
     )
     assert incoming.status_code == 200
 
-    inbox_response = client.get("/api/v1/messages/inbox", headers=alice_headers)
-    assert inbox_response.status_code == 200
-    inbox_payload = inbox_response.json()
-    assert inbox_payload["stranger_bucket"]["thread_count"] == 1
-    assert inbox_payload["stranger_bucket"]["unread_count"] == 1
-    assert inbox_payload["badge"]["has_stranger_unread"] is True
-    assert inbox_payload["items"] == []
-
-    stranger_response = client.get("/api/v1/messages/strangers", headers=alice_headers)
-    assert stranger_response.status_code == 200
-    stranger_payload = stranger_response.json()
-    assert len(stranger_payload["items"]) == 1
-    assert stranger_payload["items"][0]["target"]["id"] == bob["id"]
-    assert stranger_payload["items"][0]["unread_count"] == 1
-    assert stranger_payload["items"][0]["is_stranger_source"] is True
-
-    thread_response = client.get(f"/api/v1/messages/conversations/{bob['id']}", headers=alice_headers)
-    assert thread_response.status_code == 200
-    thread_payload = thread_response.json()
-    assert all(item["read_at"] is not None for item in thread_payload["items"] if item["sender_user_id"] == bob["id"])
-
-    read_inbox_response = client.get("/api/v1/messages/inbox", headers=alice_headers)
-    assert read_inbox_response.status_code == 200
-    read_inbox_payload = read_inbox_response.json()
-    assert read_inbox_payload["badge"]["has_stranger_unread"] is False
-    assert read_inbox_payload["stranger_bucket"]["thread_count"] == 1
-    assert read_inbox_payload["stranger_bucket"]["unread_count"] == 0
-
-    reply = client.post(
-        f"/api/v1/messages/conversations/{bob['id']}",
-        headers=alice_headers,
-        json={"content": "我回复过你了。"},
-    )
-    assert reply.status_code == 200
-
-    promoted_inbox_response = client.get("/api/v1/messages/inbox", headers=alice_headers)
-    assert promoted_inbox_response.status_code == 200
-    promoted_payload = promoted_inbox_response.json()
-    assert promoted_payload["stranger_bucket"] is None
-    assert len(promoted_payload["items"]) == 1
-    assert promoted_payload["items"][0]["target"]["id"] == bob["id"]
-    assert promoted_payload["items"][0]["is_stranger_source"] is False
-
-
-def test_mutual_follow_messages_go_directly_to_main_inbox(client):
-    alice_headers, alice = _register_and_login(client, phone="13920000009", username="alice_main")
-    bob_headers, bob = _register_and_login(client, phone="13920000010", username="bob_main")
-
-    assert client.post(f"/api/v1/users/{bob['id']}/follow", headers=alice_headers).status_code == 200
-    assert client.post(f"/api/v1/users/{alice['id']}/follow", headers=bob_headers).status_code == 200
-
-    first = client.post(
-        f"/api/v1/messages/conversations/{alice['id']}",
-        headers=bob_headers,
-        json={"content": "互关后第一条。"},
-    )
-    second = client.post(
-        f"/api/v1/messages/conversations/{alice['id']}",
-        headers=bob_headers,
-        json={"content": "互关后第二条。"},
-    )
-    assert first.status_code == 200
-    assert second.status_code == 200
-
-    inbox_response = client.get("/api/v1/messages/inbox", headers=alice_headers)
+    inbox_response = client.get("/api/v1/messages/inbox", headers=consumer_headers)
     assert inbox_response.status_code == 200
     inbox_payload = inbox_response.json()
     assert inbox_payload["stranger_bucket"] is None
     assert inbox_payload["badge"]["has_stranger_unread"] is False
-    assert inbox_payload["badge"]["main_unread_count"] == 2
     assert len(inbox_payload["items"]) == 1
-    assert inbox_payload["items"][0]["target"]["id"] == bob["id"]
-    assert inbox_payload["items"][0]["unread_count"] == 2
-    assert inbox_payload["items"][0]["is_mutual_follow"] is True
+    assert inbox_payload["items"][0]["target"]["id"] == merchant["id"]
+    assert inbox_payload["items"][0]["is_stranger_source"] is False
 
-    stranger_response = client.get("/api/v1/messages/strangers", headers=alice_headers)
+    stranger_response = client.get("/api/v1/messages/strangers", headers=consumer_headers)
     assert stranger_response.status_code == 200
     assert stranger_response.json()["items"] == []
 
 
-def test_blocked_user_cannot_message_or_view_blocker_posts(client, image_factory):
+def test_blocked_user_cannot_message_or_view_blocker_posts(client, db_session, image_factory):
     author_headers, author = _register_and_login(client, phone="13920000005", username="author_block")
     viewer_headers, viewer = _register_and_login(client, phone="13920000006", username="viewer_block")
+    _promote_to_merchant(db_session, author)
 
     with image_factory("blocked-style.png").open("rb") as image_file:
         create_response = client.post(

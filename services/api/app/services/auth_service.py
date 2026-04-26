@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import shutil
+
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -8,14 +10,49 @@ from app.core.config import get_settings
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest
+from app.utils.files import public_url_for_path
 
 INT32_MAX = 2_147_483_647
+DEMO_CONSUMER_PHONE = "13886722665"
+DEMO_CONSUMER_USERNAME = "momo酱"
+DEFAULT_ADMIN_AVATAR_FILENAME = "p0.png"
 
 
 class AuthService:
     @staticmethod
     def _internal_email_for_phone(phone: str) -> str:
         return f"user_{phone}@nailtry.local"
+
+    def _ensure_default_admin_avatar(self) -> str:
+        settings = get_settings()
+        target_path = settings.upload_path / "avatars" / "0" / DEFAULT_ADMIN_AVATAR_FILENAME
+        if not target_path.exists():
+            source_candidates = [
+                settings.base_dir / "data" / "uploads" / "avatars" / "0" / DEFAULT_ADMIN_AVATAR_FILENAME,
+                settings.base_dir / "apps" / "mobile" / "assets" / "profile" / DEFAULT_ADMIN_AVATAR_FILENAME,
+            ]
+            for source_path in source_candidates:
+                if not source_path.exists():
+                    continue
+                if source_path.resolve() == target_path.resolve():
+                    break
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source_path, target_path)
+                break
+        return public_url_for_path(target_path)
+
+    def _apply_uid2_display_name(self, db: Session) -> bool:
+        uid2_user = db.scalar(select(User).where(User.uid == 2))
+        if uid2_user is None or uid2_user.username == DEMO_CONSUMER_USERNAME:
+            return False
+        conflict = db.scalar(
+            select(User).where(User.username == DEMO_CONSUMER_USERNAME, User.id != uid2_user.id)
+        )
+        if conflict is not None:
+            return False
+        uid2_user.username = DEMO_CONSUMER_USERNAME
+        db.add(uid2_user)
+        return True
 
     def _next_uid(self, db: Session) -> int:
         current_max = db.scalar(select(func.max(User.uid)))
@@ -35,8 +72,8 @@ class AuthService:
             (
                 item
                 for item in users
-                if item.phone == settings.default_admin_phone
-                or item.username == settings.default_admin_username
+                if item.uid == 0
+                or item.phone == settings.default_admin_phone
                 or item.email == internal_email
             ),
             None,
@@ -48,6 +85,9 @@ class AuthService:
 
         if admin_user is not None and admin_user.uid != 0:
             admin_user.uid = 0
+            changed = True
+        if admin_user is not None and admin_user.role != "merchant":
+            admin_user.role = "merchant"
             changed = True
 
         for user in users:
@@ -63,6 +103,9 @@ class AuthService:
             user.uid = next_uid
             used_positive_uids.add(next_uid)
             next_uid += 1
+            changed = True
+
+        if self._apply_uid2_display_name(db):
             changed = True
 
         if changed:
@@ -83,14 +126,61 @@ class AuthService:
             phone=phone,
             username=payload.username.strip(),
             password_hash=get_password_hash(payload.password),
+            role="consumer",
         )
         db.add(user)
         db.commit()
         db.refresh(user)
         return user, create_access_token(user.id)
 
+    def ensure_demo_consumer(self, db: Session) -> User:
+        settings = get_settings()
+        internal_email = self._internal_email_for_phone(DEMO_CONSUMER_PHONE)
+        user = db.scalar(
+            select(User).where(
+                or_(
+                    User.phone == DEMO_CONSUMER_PHONE,
+                    User.email == internal_email,
+                )
+            )
+        )
+        if user is None:
+            user = User(
+                uid=self._next_uid(db),
+                email=internal_email,
+                phone=DEMO_CONSUMER_PHONE,
+                username=DEMO_CONSUMER_USERNAME,
+                password_hash=get_password_hash(settings.default_admin_password),
+                role="consumer",
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            return user
+
+        user.email = internal_email
+        user.phone = DEMO_CONSUMER_PHONE
+        user.username = DEMO_CONSUMER_USERNAME
+        user.password_hash = get_password_hash(settings.default_admin_password)
+        user.role = "consumer"
+        if not isinstance(user.uid, int) or user.uid == 0:
+            user.uid = self._next_uid(db)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+
     def login(self, db: Session, payload: LoginRequest) -> tuple[User, str]:
         phone = payload.phone.strip()
+        settings = get_settings()
+        if (
+            payload.requested_role == "consumer"
+            and phone == DEMO_CONSUMER_PHONE
+            and payload.password == settings.default_admin_password
+        ):
+            user = self.ensure_demo_consumer(db)
+            return user, create_access_token(user.id)
+
         user = db.scalar(select(User).where(User.phone == phone))
         if user is None or not verify_password(payload.password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="手机号或密码错误")
@@ -99,6 +189,11 @@ class AuthService:
             db.add(user)
             db.commit()
             db.refresh(user)
+        if payload.requested_role is not None and user.role != payload.requested_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="当前账号身份与登录入口不匹配",
+            )
         return user, create_access_token(user.id)
 
     def ensure_default_admin(self, db: Session) -> User | None:
@@ -107,9 +202,11 @@ class AuthService:
             return None
 
         internal_email = self._internal_email_for_phone(settings.default_admin_phone)
+        avatar_url = self._ensure_default_admin_avatar()
         existing = db.scalar(
             select(User).where(
                 or_(
+                    User.uid == 0,
                     User.phone == settings.default_admin_phone,
                     User.username == settings.default_admin_username,
                     User.email == internal_email,
@@ -122,8 +219,10 @@ class AuthService:
                 email=internal_email,
                 phone=settings.default_admin_phone,
                 username=settings.default_admin_username,
+                avatar_url=avatar_url,
                 bio=settings.default_admin_bio,
                 password_hash=get_password_hash(settings.default_admin_password),
+                role="merchant",
             )
             db.add(existing)
             db.commit()
@@ -135,8 +234,11 @@ class AuthService:
         existing.email = internal_email
         existing.phone = settings.default_admin_phone
         existing.username = settings.default_admin_username
-        existing.bio = settings.default_admin_bio
+        existing.avatar_url = avatar_url
+        if existing.bio is None:
+            existing.bio = settings.default_admin_bio
         existing.password_hash = get_password_hash(settings.default_admin_password)
+        existing.role = "merchant"
         db.add(existing)
         db.commit()
         db.refresh(existing)

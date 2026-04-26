@@ -5,12 +5,14 @@ import { FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react
 import { api } from "../api/client";
 import { MessageThreadRow } from "../components/MessageThreadRow";
 import { RequireLogin } from "../components/RequireLogin";
+import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { MessageInboxThread } from "../types/api";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeColors } from "../utils/theme";
 
 export function StrangerMessagesScreen() {
   const navigation = useNavigation<any>();
+  const dismissOverlay = useSlideOverlayDismiss();
   const token = useAuthStore((state) => state.token);
   const colors = useThemeColors();
 
@@ -41,7 +43,7 @@ export function StrangerMessagesScreen() {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View style={styles.headerRow}>
-            <Pressable style={styles.headerAction} onPress={() => navigation.goBack()}>
+            <Pressable style={styles.headerAction} onPress={() => dismissOverlay?.() ?? navigation.goBack()}>
               <Ionicons name="chevron-back" size={28} color={colors.text} />
             </Pressable>
             <Text style={[styles.title, { color: colors.text }]}>陌生人消息</Text>

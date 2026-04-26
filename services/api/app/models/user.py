@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Integer, String, Text
+from sqlalchemy import Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -19,10 +19,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     birthday: Mapped[str | None] = mapped_column(String(20), nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     location_city: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    show_following_public: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    show_followers_public: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    show_comments_public: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    show_likes_public: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    role: Mapped[str] = mapped_column(String(20), default="consumer", nullable=False)
 
     browse_histories = relationship("UserBrowseHistory", back_populates="user", cascade="all, delete-orphan")
     favorites = relationship("UserFavorite", back_populates="user", cascade="all, delete-orphan")
@@ -65,6 +62,9 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
     )
     posts = relationship("UserPost", back_populates="user", cascade="all, delete-orphan")
+    merchant_shops = relationship("MerchantShop", back_populates="merchant", cascade="all, delete-orphan")
+    merchant_bookings = relationship("Booking", foreign_keys="Booking.merchant_user_id", back_populates="merchant")
+    bookings = relationship("Booking", foreign_keys="Booking.user_id", back_populates="user", cascade="all, delete-orphan")
     hand_photos = relationship("UserHandPhoto", back_populates="user", cascade="all, delete-orphan")
     style_comments = relationship("StyleComment", back_populates="user", cascade="all, delete-orphan")
     tryon_jobs = relationship("TryOnJob", back_populates="user", cascade="all, delete-orphan")

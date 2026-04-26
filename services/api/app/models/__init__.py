@@ -1,5 +1,8 @@
+from app.models.booking import Booking
 from app.models.direct_message import DirectMessage
+from app.models.image_processing_artifact import ImageProcessingArtifact
 from app.models.job_log import JobLog
+from app.models.merchant_shop import MerchantShop
 from app.models.nail_style import NailStyle
 from app.models.ops_report import OpsReport
 from app.models.style_comment import StyleComment
@@ -17,8 +20,11 @@ from app.models.user_style_like import UserStyleLike
 from app.models.user_style_view import UserStyleView
 
 __all__ = [
+    "Booking",
     "DirectMessage",
+    "ImageProcessingArtifact",
     "JobLog",
+    "MerchantShop",
     "NailStyle",
     "OpsReport",
     "StyleComment",

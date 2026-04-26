@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import or_, select, update
@@ -14,10 +13,7 @@ from app.services.block_service import BlockService
 from app.services.follow_service import FollowService
 
 
-def _normalize_datetime(value):
-    if value.tzinfo is None:
-        return value
-    return value.astimezone().replace(tzinfo=None)
+ALLOWED_MESSAGE_ROLE_PAIRS = {("consumer", "merchant"), ("merchant", "consumer")}
 
 
 @dataclass
@@ -48,7 +44,15 @@ class MessageService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
         if target.id == current_user.id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能给自己发私信")
+        self.ensure_business_counterpart(current_user, target)
         return target
+
+    def ensure_business_counterpart(self, current_user: User, target: User) -> None:
+        if (current_user.role, target.role) not in ALLOWED_MESSAGE_ROLE_PAIRS:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="当前仅支持用户与商家沟通")
+
+    def can_show_thread(self, current_user: User, target: User) -> bool:
+        return (current_user.role, target.role) in ALLOWED_MESSAGE_ROLE_PAIRS
 
     def mark_conversation_as_read(self, db: Session, current_user: User, target_user_id: str) -> None:
         result = db.execute(
@@ -84,6 +88,7 @@ class MessageService:
         return target, items, state
 
     def get_send_state(self, db: Session, current_user: User, target: User) -> dict[str, object]:
+        self.ensure_business_counterpart(current_user, target)
         blocked_by_target, viewer_has_blocked_target = self.block_service.get_relationship(db, current_user.id, target.id)
         follows_target = self.follow_service.is_following(db, current_user.id, target.id)
         target_follows_viewer = self.follow_service.is_following(db, target.id, current_user.id)
@@ -107,89 +112,30 @@ class MessageService:
                 "viewer_follows_target": follows_target,
                 "notice": "你已拉黑对方，解除后才能继续私信",
             }
-        if is_mutual_follow:
-            return {
-                "can_send": True,
-                "blocked_by_target": False,
-                "viewer_has_blocked_target": False,
-                "is_mutual_follow": True,
-                "viewer_follows_target": True,
-                "notice": None,
-            }
-
-        notice = "对方关注或回复你之前，24小时内只能发送1条消息"
-        latest_outbound = db.scalar(
-            select(DirectMessage)
-            .where(
-                DirectMessage.sender_user_id == current_user.id,
-                DirectMessage.recipient_user_id == target.id,
-            )
-            .order_by(DirectMessage.created_at.desc())
-            .limit(1)
-        )
-        if latest_outbound is None:
-            return {
-                "can_send": True,
-                "blocked_by_target": False,
-                "viewer_has_blocked_target": False,
-                "is_mutual_follow": False,
-                "viewer_follows_target": follows_target,
-                "notice": notice,
-            }
-
-        has_reply = db.scalar(
-            select(DirectMessage.id)
-            .where(
-                DirectMessage.sender_user_id == target.id,
-                DirectMessage.recipient_user_id == current_user.id,
-                DirectMessage.created_at > latest_outbound.created_at,
-            )
-            .limit(1)
-        )
-        if has_reply is not None or _normalize_datetime(latest_outbound.created_at) <= _normalize_datetime(utcnow() - timedelta(hours=24)):
-            return {
-                "can_send": True,
-                "blocked_by_target": False,
-                "viewer_has_blocked_target": False,
-                "is_mutual_follow": False,
-                "viewer_follows_target": follows_target,
-                "notice": notice,
-            }
 
         return {
-            "can_send": False,
+            "can_send": True,
             "blocked_by_target": False,
             "viewer_has_blocked_target": False,
-            "is_mutual_follow": False,
+            "is_mutual_follow": is_mutual_follow,
             "viewer_follows_target": follows_target,
-            "notice": notice,
+            "notice": None,
         }
 
     def list_inbox(self, db: Session, current_user: User) -> dict[str, object]:
         summaries = self._build_thread_summaries(db, current_user)
-        stranger_items = [item for item in summaries if item.is_stranger_source]
-        main_items = [item for item in summaries if not item.is_stranger_source]
-
-        stranger_bucket = None
-        if stranger_items:
-            stranger_bucket = {
-                "unread_count": sum(item.unread_count for item in stranger_items),
-                "thread_count": len(stranger_items),
-                "latest_message_preview": stranger_items[0].last_message.content,
-                "latest_message_at": stranger_items[0].last_message.created_at,
-            }
 
         return {
-            "stranger_bucket": stranger_bucket,
-            "items": main_items,
+            "stranger_bucket": None,
+            "items": summaries,
             "badge": {
-                "has_stranger_unread": any(item.unread_count > 0 for item in stranger_items),
-                "main_unread_count": sum(item.unread_count for item in main_items),
+                "has_stranger_unread": False,
+                "main_unread_count": sum(item.unread_count for item in summaries),
             },
         }
 
     def list_stranger_messages(self, db: Session, current_user: User) -> list[MessageThreadSummary]:
-        return [item for item in self._build_thread_summaries(db, current_user) if item.is_stranger_source]
+        return []
 
     def send_message(self, db: Session, current_user: User, target_user_id: str, content: str) -> DirectMessage:
         target = self.get_target(db, current_user, target_user_id)
@@ -263,12 +209,13 @@ class MessageService:
             target = user_map.get(target_id)
             if target is None:
                 continue
+            if not self.can_show_thread(current_user, target):
+                continue
 
             aggregate = aggregates[target_id]
             state = self.get_send_state(db, current_user, target)
             has_outbound = bool(aggregate["has_outbound"])
             has_inbound = bool(aggregate["has_inbound"])
-            is_stranger_source = has_inbound and not has_outbound and not bool(state["is_mutual_follow"])
 
             items.append(
                 MessageThreadSummary(
@@ -283,7 +230,7 @@ class MessageService:
                     blocked_by_target=bool(state["blocked_by_target"]),
                     viewer_has_blocked_target=bool(state["viewer_has_blocked_target"]),
                     notice=state["notice"],
-                    is_stranger_source=is_stranger_source,
+                    is_stranger_source=False,
                 )
             )
         return items

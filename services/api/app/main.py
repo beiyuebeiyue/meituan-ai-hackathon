@@ -25,14 +25,17 @@ def create_app() -> FastAPI:
     def on_startup() -> None:
         settings.upload_path.mkdir(parents=True, exist_ok=True)
         settings.tryon_result_path.mkdir(parents=True, exist_ok=True)
+        settings.tryon_artifact_path.mkdir(parents=True, exist_ok=True)
         settings.seed_path.mkdir(parents=True, exist_ok=True)
         settings.report_path.mkdir(parents=True, exist_ok=True)
         init_db()
         from app.services.auth_service import AuthService
+        from app.services.merchant_service import MerchantShopService
         from app.services.upload_migration_service import UploadMigrationService
 
         with database.session() as session:
-            AuthService().ensure_default_admin(session)
+            admin_user = AuthService().ensure_default_admin(session)
+            MerchantShopService().ensure_default_admin_shop(session, admin_user)
             UploadMigrationService().migrate_existing_uploads(session)
 
     app.mount(
@@ -45,10 +48,12 @@ def create_app() -> FastAPI:
         admin,
         ai_recommend,
         auth,
+        bookings,
         events,
         favorites,
         jobs,
         market,
+        merchant,
         messages,
         nails,
         ops_reports,
@@ -63,6 +68,8 @@ def create_app() -> FastAPI:
     app.include_router(nails.router, prefix=settings.api_prefix)
     app.include_router(favorites.router, prefix=settings.api_prefix)
     app.include_router(posts.router, prefix=settings.api_prefix)
+    app.include_router(merchant.router, prefix=settings.api_prefix)
+    app.include_router(bookings.router, prefix=settings.api_prefix)
     app.include_router(messages.router, prefix=settings.api_prefix)
     app.include_router(market.router, prefix=settings.api_prefix)
     app.include_router(ai_recommend.router, prefix=settings.api_prefix)

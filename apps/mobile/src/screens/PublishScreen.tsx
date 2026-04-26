@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useState } from "react";
 import { Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -14,25 +14,38 @@ export function PublishScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
   const colors = useThemeColors();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
 
+  const shopsQuery = useQuery({
+    queryKey: ["merchant-shops"],
+    queryFn: api.getMyMerchantShops,
+    enabled: Boolean(token && user?.role === "merchant"),
+  });
+  const defaultShop = shopsQuery.data?.items[0] ?? null;
+
   const mutation = useMutation({
-    mutationFn: () => api.createPost({ title, description, tags, imageUri: imageUri! }),
+    mutationFn: () => api.createPost({ title, description, tags, imageUri: imageUri!, shopId: defaultShop?.id }),
     onSuccess: () => {
       setTitle("");
       setDescription("");
       setTags("");
       setImageUri(null);
       void queryClient.invalidateQueries({ queryKey: ["browse"] });
+      void queryClient.invalidateQueries({ queryKey: ["author-profile"] });
     },
   });
 
   if (!token) {
     return <RequireLogin onLogin={() => navigation.navigate("Login" as never)} message="登录后才能发布内容" />;
+  }
+
+  if (user?.role !== "merchant") {
+    return <RequireLogin onLogin={() => navigation.navigate("Login" as never)} message="只有商家账号可以发布美甲作品" />;
   }
 
   const pickImage = async () => {
@@ -46,6 +59,12 @@ export function PublishScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={[styles.title, { color: colors.text }]}>发布你的美甲内容</Text>
+        <View style={[styles.shopHint, { backgroundColor: colors.surface }]}>
+          <Ionicons name="storefront-outline" size={18} color={colors.accent} />
+          <Text style={[styles.shopHintText, { color: colors.subtext }]} numberOfLines={1}>
+            {defaultShop ? `将发布到：${defaultShop.name} · ${defaultShop.city}` : "正在准备默认门店..."}
+          </Text>
+        </View>
         <Pressable
           style={[
             styles.uploadCard,
@@ -99,7 +118,7 @@ export function PublishScreen() {
           label="提交发布"
           onPress={() => mutation.mutate()}
           loading={mutation.isPending}
-          disabled={!title || !imageUri}
+          disabled={!title || !imageUri || !defaultShop}
         />
       </ScrollView>
     </SafeAreaView>
@@ -110,10 +129,19 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { padding: 18, gap: 14, paddingBottom: 120 },
   title: { fontSize: 24, fontWeight: "800" },
+  shopHint: {
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  shopHintText: { flex: 1, fontSize: 13, fontWeight: "700" },
   uploadCard: {
     width: "100%",
-    aspectRatio: 1,
-    borderRadius: 24,
+    height: 178,
+    borderRadius: 22,
     borderWidth: 1.5,
     borderStyle: "dashed",
     overflow: "hidden",
@@ -126,18 +154,18 @@ const styles = StyleSheet.create({
   uploadPlaceholder: {
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 24,
+    gap: 8,
+    paddingHorizontal: 20,
   },
   uploadIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
   uploadTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "700",
   },
   uploadHint: {

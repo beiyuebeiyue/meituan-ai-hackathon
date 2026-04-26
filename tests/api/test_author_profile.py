@@ -22,8 +22,32 @@ def _register_and_login(client, *, phone: str, username: str) -> tuple[dict[str,
     return {"Authorization": f"Bearer {payload['access_token']}"}, payload["user"]
 
 
-def test_author_profile_edit_and_hide_posts(client, image_factory):
+def _promote_to_merchant(db_session, user_payload: dict[str, object]) -> None:
+    user = db_session.get(User, user_payload["id"])
+    assert user is not None
+    user.role = "merchant"
+    db_session.add(user)
+    db_session.commit()
+
+
+def test_consumer_cannot_create_post(client, image_factory):
+    headers, _user = _register_and_login(client, phone="13910000031", username="consumer31")
+
+    with image_factory("consumer-post.png").open("rb") as image_file:
+        create_response = client.post(
+            "/api/v1/posts",
+            headers=headers,
+            files={"image": ("post.png", image_file.read(), "image/png")},
+            data={"title": "普通用户发布", "description": "应该被拒绝", "tags": "裸粉"},
+        )
+
+    assert create_response.status_code == 403
+    assert "仅商家账号" in create_response.text
+
+
+def test_author_profile_edit_and_hide_posts(client, db_session, image_factory):
     headers, user = _register_and_login(client, phone="13910000001", username="author01")
+    _promote_to_merchant(db_session, user)
 
     with image_factory("author-post.png").open("rb") as image_file:
         create_response = client.post(
@@ -43,6 +67,16 @@ def test_author_profile_edit_and_hide_posts(client, image_factory):
     assert public_payload["published_count"] == 1
     assert public_payload["is_mine"] is False
     assert public_payload["posts"][0]["title"] == "原始标题"
+    style_id = public_payload["posts"][0]["id"]
+
+    owner_detail = client.get(f"/api/v1/nails/{style_id}", headers=headers)
+    assert owner_detail.status_code == 200
+    assert owner_detail.json()["manage_post_id"] == created_post["id"]
+    assert owner_detail.json()["is_hidden"] is False
+
+    public_detail = client.get(f"/api/v1/nails/{style_id}")
+    assert public_detail.status_code == 200
+    assert public_detail.json()["manage_post_id"] is None
 
     sleep(1.1)
     update_response = client.patch(
@@ -62,6 +96,10 @@ def test_author_profile_edit_and_hide_posts(client, image_factory):
     )
     assert hide_response.status_code == 200
     assert hide_response.json()["is_hidden"] is True
+
+    hidden_owner_detail = client.get(f"/api/v1/nails/{style_id}", headers=headers)
+    assert hidden_owner_detail.status_code == 200
+    assert hidden_owner_detail.json()["is_hidden"] is True
 
     author_private = client.get(f"/api/v1/users/{user['id']}/author-profile", headers=headers)
     assert author_private.status_code == 200
@@ -113,9 +151,10 @@ def test_admin_author_profile_includes_seed_styles(client, db_session, image_fac
     assert payload["posts"][0]["manage_post_id"] is None
 
 
-def test_author_profile_view_counts_only_visible_to_author(client, image_factory):
+def test_author_profile_view_counts_visible_to_author(client, db_session, image_factory):
     author_headers, author = _register_and_login(client, phone="13910000021", username="author21")
     viewer_headers, _viewer = _register_and_login(client, phone="13910000022", username="viewer22")
+    _promote_to_merchant(db_session, author)
 
     with image_factory("view-count-post.png").open("rb") as image_file:
         create_response = client.post(
@@ -141,8 +180,8 @@ def test_author_profile_view_counts_only_visible_to_author(client, image_factory
     assert author_profile_response.status_code == 200
     author_post = author_profile_response.json()["posts"][0]
     assert author_profile_response.json()["is_mine"] is True
-    assert author_post["view_count"] == 2
-    assert author_post["unique_viewer_count"] == 1
+    assert author_post["view_count"] == 3
+    assert author_post["unique_viewer_count"] == 2
 
     viewer_profile_response = client.get(f"/api/v1/users/{author['id']}/author-profile", headers=viewer_headers)
     assert viewer_profile_response.status_code == 200
@@ -163,6 +202,29 @@ def test_profile_bio_cannot_exceed_128_characters(client):
     assert response.json()["detail"] == "个人简介不能超过128个字符"
 
 
+def test_profile_bio_can_be_cleared(client):
+    headers, user = _register_and_login(client, phone="13910000027", username="bio-clear-user")
+    set_response = client.put(
+        "/api/v1/users/me",
+        headers=headers,
+        data={"bio": "先写一段简介"},
+    )
+    assert set_response.status_code == 200
+    assert set_response.json()["bio"] == "先写一段简介"
+
+    clear_response = client.put(
+        "/api/v1/users/me",
+        headers=headers,
+        data={"clear_bio": "true"},
+    )
+    assert clear_response.status_code == 200
+    assert clear_response.json()["bio"] == ""
+
+    profile_response = client.get(f"/api/v1/users/{user['id']}/author-profile", headers=headers)
+    assert profile_response.status_code == 200
+    assert profile_response.json()["bio"] == ""
+
+
 def test_author_profile_uses_user_location_city(client):
     headers, user = _register_and_login(client, phone="13910000024", username="location-user")
 
@@ -179,7 +241,7 @@ def test_author_profile_uses_user_location_city(client):
     assert profile_response.json()["city"] == "上海"
 
 
-def test_follow_lists_respect_privacy_settings(client):
+def test_follow_lists_are_private_except_owner(client):
     author_headers, author = _register_and_login(client, phone="13910000025", username="privacy-author")
     viewer_headers, viewer = _register_and_login(client, phone="13910000026", username="privacy-viewer")
 
@@ -188,15 +250,13 @@ def test_follow_lists_respect_privacy_settings(client):
 
     following_response = client.get(f"/api/v1/users/{author['id']}/following", headers=viewer_headers)
     followers_response = client.get(f"/api/v1/users/{author['id']}/followers", headers=viewer_headers)
-    assert following_response.status_code == 200
-    assert following_response.json()["items"][0]["id"] == viewer["id"]
-    assert followers_response.status_code == 200
-    assert followers_response.json()["items"][0]["id"] == viewer["id"]
+    assert following_response.status_code == 403
+    assert followers_response.status_code == 403
 
     privacy_response = client.patch(
         "/api/v1/users/me/privacy",
         headers=author_headers,
-        json={"show_following_public": False, "show_followers_public": False},
+        json={"show_following_public": True, "show_followers_public": True},
     )
     assert privacy_response.status_code == 200
     assert privacy_response.json()["show_following_public"] is False
@@ -206,10 +266,24 @@ def test_follow_lists_respect_privacy_settings(client):
     assert private_profile.status_code == 200
     assert private_profile.json()["can_view_following"] is False
     assert private_profile.json()["can_view_followers"] is False
-    assert client.get(f"/api/v1/users/{author['id']}/following", headers=viewer_headers).status_code == 403
-    assert client.get(f"/api/v1/users/{author['id']}/followers", headers=viewer_headers).status_code == 403
-    assert client.get(f"/api/v1/users/{author['id']}/following", headers=author_headers).status_code == 200
-    assert client.get(f"/api/v1/users/{author['id']}/followers", headers=author_headers).status_code == 200
+    owner_following = client.get(f"/api/v1/users/{author['id']}/following", headers=author_headers)
+    owner_followers = client.get(f"/api/v1/users/{author['id']}/followers", headers=author_headers)
+    assert owner_following.status_code == 200
+    assert owner_following.json()["items"][0]["id"] == viewer["id"]
+    assert owner_followers.status_code == 200
+    assert owner_followers.json()["items"][0]["id"] == viewer["id"]
+
+
+def test_merchant_cannot_follow_another_merchant(client, db_session):
+    first_headers, first = _register_and_login(client, phone="13910000030", username="merchant-a")
+    _second_headers, second = _register_and_login(client, phone="13910000032", username="merchant-b")
+    _promote_to_merchant(db_session, first)
+    _promote_to_merchant(db_session, second)
+
+    response = client.post(f"/api/v1/users/{second['id']}/follow", headers=first_headers)
+
+    assert response.status_code == 403
+    assert "商家端不能关注用户" in response.text
 
 
 def test_comment_like_privacy_and_block_list(client, db_session, image_factory):
@@ -238,23 +312,25 @@ def test_comment_like_privacy_and_block_list(client, db_session, image_factory):
 
     comments_response = client.get(f"/api/v1/users/{author['id']}/style-comments", headers=viewer_headers)
     likes_response = client.get(f"/api/v1/users/{author['id']}/liked-styles", headers=viewer_headers)
-    assert comments_response.status_code == 200
-    assert comments_response.json()["items"][0]["comment_content"] == "公开评论"
-    assert likes_response.status_code == 200
-    assert likes_response.json()["items"][0]["id"] == style.id
+    assert comments_response.status_code == 403
+    assert likes_response.status_code == 403
 
     privacy_response = client.patch(
         "/api/v1/users/me/privacy",
         headers=author_headers,
-        json={"show_comments_public": False, "show_likes_public": False},
+        json={"show_comments_public": True, "show_likes_public": True},
     )
     assert privacy_response.status_code == 200
     assert privacy_response.json()["show_comments_public"] is False
     assert privacy_response.json()["show_likes_public"] is False
     assert client.get(f"/api/v1/users/{author['id']}/style-comments", headers=viewer_headers).status_code == 403
     assert client.get(f"/api/v1/users/{author['id']}/liked-styles", headers=viewer_headers).status_code == 403
-    assert client.get(f"/api/v1/users/{author['id']}/style-comments", headers=author_headers).status_code == 200
-    assert client.get(f"/api/v1/users/{author['id']}/liked-styles", headers=author_headers).status_code == 200
+    own_comments_response = client.get(f"/api/v1/users/{author['id']}/style-comments", headers=author_headers)
+    own_likes_response = client.get(f"/api/v1/users/{author['id']}/liked-styles", headers=author_headers)
+    assert own_comments_response.status_code == 200
+    assert own_comments_response.json()["items"][0]["comment_content"] == "公开评论"
+    assert own_likes_response.status_code == 200
+    assert own_likes_response.json()["items"][0]["id"] == style.id
 
     assert client.post(f"/api/v1/users/{viewer['id']}/block", headers=author_headers).status_code == 200
     blocked_response = client.get("/api/v1/users/me/blocks", headers=author_headers)

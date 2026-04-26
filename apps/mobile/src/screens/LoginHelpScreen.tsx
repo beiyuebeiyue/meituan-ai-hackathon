@@ -1,6 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { OverlayContent } from "../components/OverlayContent";
+import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 const primaryIssues = [
@@ -35,6 +37,7 @@ const faqIssues = [
 
 export function LoginHelpScreen() {
   const navigation = useNavigation();
+  const dismissOverlay = useSlideOverlayDismiss();
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
 
@@ -43,16 +46,10 @@ export function LoginHelpScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.surfaceAlt }]}>
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color={colors.text} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>遇到问题</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <OverlayContent.Header title="遇到问题" onBack={() => dismissOverlay?.() ?? navigation.goBack()} />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <OverlayContent.Scroll contentStyle={styles.content}>
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
           {primaryIssues.map((item, index) => (
             <Pressable
@@ -99,7 +96,7 @@ export function LoginHelpScreen() {
         <Text style={[styles.footerText, { color: colors.subtext }]}>
           问题还没有解决？点击 <Text style={[styles.footerLink, { color: isDark ? "#7ab5ff" : "#4a93df" }]}>联系在线客服小美</Text>
         </Text>
-      </ScrollView>
+      </OverlayContent.Scroll>
     </SafeAreaView>
   );
 }
@@ -107,28 +104,6 @@ export function LoginHelpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    height: 68,
-    borderBottomWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 8,
-  },
-  backButton: {
-    width: 48,
-    height: 48,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  headerSpacer: {
-    width: 48,
-    height: 48,
   },
   content: {
     padding: 16,

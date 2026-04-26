@@ -10,9 +10,10 @@ type BrowseFeedCardProps = {
   item: NailStyle;
   onPress: (item: NailStyle) => void;
   onToggleLike: (item: NailStyle) => void;
+  showLike?: boolean;
 };
 
-export function BrowseFeedCard({ item, onPress, onToggleLike }: BrowseFeedCardProps) {
+export function BrowseFeedCard({ item, onPress, onToggleLike, showLike = true }: BrowseFeedCardProps) {
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
   const avatarSource = item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar;
@@ -31,14 +32,16 @@ export function BrowseFeedCard({ item, onPress, onToggleLike }: BrowseFeedCardPr
               {item.author_name}
             </Text>
           </View>
-          <Pressable style={styles.likeWrap} onPress={() => onToggleLike(item)} hitSlop={8}>
-            <Ionicons
-              name={item.is_liked ? "heart" : "heart-outline"}
-              size={17}
-              color={item.is_liked ? "#ff7a8a" : "#d0d0d5"}
-            />
-            <Text style={[styles.likeText, { color: isDark ? "#d0d0d5" : colors.subtext }]}>{item.like_count}</Text>
-          </Pressable>
+          {showLike ? (
+            <Pressable style={styles.likeWrap} onPress={() => onToggleLike(item)} hitSlop={8}>
+              <Ionicons
+                name={item.is_liked ? "heart" : "heart-outline"}
+                size={17}
+                color={item.is_liked ? "#ff7a8a" : "#d0d0d5"}
+              />
+              <Text style={[styles.likeText, { color: isDark ? "#d0d0d5" : colors.subtext }]}>{item.like_count}</Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     </Pressable>

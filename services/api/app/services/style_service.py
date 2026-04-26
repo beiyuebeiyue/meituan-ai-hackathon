@@ -58,6 +58,20 @@ class StyleService:
         offset = (page - 1) * page_size
         return matched[offset : offset + page_size], total
 
+    def list_local(self, db: Session, city: str, page: int, page_size: int, viewer: User | None = None) -> tuple[list[NailStyle], int]:
+        normalized_city = city.strip().replace("市", "") or "深圳"
+        ordered_styles = list(db.scalars(select(NailStyle).order_by(NailStyle.created_at.desc())))
+        matched = []
+        for style in ordered_styles:
+            if not self.is_style_visible(db, style, viewer):
+                continue
+            shop_city = style.shop.city if style.shop is not None else None
+            if shop_city and normalized_city in shop_city.replace("市", ""):
+                matched.append(style)
+        total = len(matched)
+        offset = (page - 1) * page_size
+        return matched[offset : offset + page_size], total
+
     def search_styles(self, db: Session, query_text: str, page: int, page_size: int, viewer: User | None = None) -> tuple[list[NailStyle], int]:
         normalized_query = query_text.strip().lower().replace("＃", "#")
         tokens = [token for token in re.split(r"[\s#]+", normalized_query) if token]
@@ -174,6 +188,8 @@ class StyleService:
         }
 
     def resolve_style_author_user(self, db: Session, style: NailStyle) -> User | None:
+        if style.shop is not None and style.shop.merchant is not None:
+            return style.shop.merchant
         author_id = style.style_metadata_json.get("author_user_id") if isinstance(style.style_metadata_json, dict) else None
         if isinstance(author_id, str):
             author = db.get(User, author_id)
@@ -227,11 +243,13 @@ class StyleService:
             style.tags_json = post.tags_json or []
             style.image_url = post.image_url
             style.local_image_path = post.local_image_path
+            style.shop_id = post.shop_id
             db.add(style)
 
     def create_style_from_post(self, db: Session, user: User, post: UserPost) -> NailStyle:
         style = NailStyle(
             title=post.title,
+            shop_id=post.shop_id,
             description=post.description,
             image_url=post.image_url,
             local_image_path=post.local_image_path,

@@ -1,12 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBarButtonProps, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { ComponentType } from "react";
+import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { OverlayContent } from "../components/OverlayContent";
+import { SlideDirection, SlideOverlayScreen } from "../components/SlideOverlayScreen";
 import { AskAIScreen } from "../screens/AskAIScreen";
 import { AuthorProfileScreen } from "../screens/AuthorProfileScreen";
 import { BrowseHistoryScreen } from "../screens/BrowseHistoryScreen";
 import { BrowseSearchScreen } from "../screens/BrowseSearchScreen";
 import { BrowseScreen } from "../screens/BrowseScreen";
+import { ConsumerLikesScreen } from "../screens/ConsumerLikesScreen";
+import { ConsumerOrdersScreen } from "../screens/ConsumerOrdersScreen";
 import { DirectMessageScreen } from "../screens/DirectMessageScreen";
 import { HandPhotoManagementScreen } from "../screens/HandPhotoManagementScreen";
 import { FollowListScreen } from "../screens/FollowListScreen";
@@ -14,9 +19,14 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { LoginHelpScreen } from "../screens/LoginHelpScreen";
 import { MarketCityPickerScreen } from "../screens/MarketCityPickerScreen";
 import { MarketScreen } from "../screens/MarketScreen";
+import { MerchantBookingsScreen } from "../screens/MerchantBookingsScreen";
+import { MerchantMarketDataScreen } from "../screens/MerchantMarketDataScreen";
+import { MerchantOrdersScreen } from "../screens/MerchantOrdersScreen";
+import { MerchantShopScreen } from "../screens/MerchantShopScreen";
 import { MessagesInboxScreen } from "../screens/MessagesInboxScreen";
 import { MyPostsScreen } from "../screens/MyPostsScreen";
 import { ProfileEditScreen } from "../screens/ProfileEditScreen";
+import { ProfileInfoScreen } from "../screens/ProfileInfoScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { ProfileSettingsScreen } from "../screens/ProfileSettingsScreen";
 import { PrivacySettingsScreen } from "../screens/PrivacySettingsScreen";
@@ -27,38 +37,107 @@ import { StrangerMessagesScreen } from "../screens/StrangerMessagesScreen";
 import { TryOnHistoryScreen } from "../screens/TryOnHistoryScreen";
 import { TryOnResultScreen } from "../screens/TryOnResultScreen";
 import { useThemeColors } from "../utils/theme";
+import { useAuthStore } from "../store/useAuthStore";
+
+export type OverlayEntryParams = { entryEdge?: SlideDirection };
 
 export type RootStackParamList = {
   MainTabs: undefined;
-  Login: undefined;
-  LoginHelp: undefined;
-  BrowseHistory: undefined;
-  BrowseSearch: undefined;
-  MessagesInbox: undefined;
-  StrangerMessages: undefined;
-  TryOnHistory: undefined;
-  HandPhotoManagement: undefined;
-  MarketCityPicker: undefined;
-  ProfileSettings: undefined;
-  PrivacySettings: undefined;
-  BlockedUsers: undefined;
-  FollowList: { authorId: string; kind: "following" | "followers"; title: string };
-  ProfileEdit: undefined;
-  MyPosts: undefined;
-  AuthorProfile: { authorId: string };
-  DirectMessage: { userId: string };
-  StylePreview: { styleId: string };
-  TryOnResult: { jobId: string };
+  Login: OverlayEntryParams | undefined;
+  LoginHelp: OverlayEntryParams | undefined;
+  BrowseHistory: OverlayEntryParams | undefined;
+  BrowseSearch: (OverlayEntryParams & { initialQuery?: string }) | undefined;
+  ConsumerLikes: OverlayEntryParams | undefined;
+  ConsumerOrders: OverlayEntryParams | undefined;
+  MessagesInbox: OverlayEntryParams | undefined;
+  StrangerMessages: OverlayEntryParams | undefined;
+  TryOnHistory: OverlayEntryParams | undefined;
+  HandPhotoManagement: OverlayEntryParams | undefined;
+  MarketCityPicker: OverlayEntryParams | undefined;
+  MerchantMarketData: OverlayEntryParams | undefined;
+  MerchantOrders: OverlayEntryParams | undefined;
+  MerchantShop: OverlayEntryParams | undefined;
+  ProfileSettings: OverlayEntryParams | undefined;
+  PrivacySettings: OverlayEntryParams | undefined;
+  ProfileInfo: OverlayEntryParams | undefined;
+  BlockedUsers: OverlayEntryParams | undefined;
+  FollowList: { authorId: string; kind: "following" | "followers"; title: string } & OverlayEntryParams;
+  ProfileEdit: OverlayEntryParams | undefined;
+  MyPosts: OverlayEntryParams | undefined;
+  AuthorProfile: { authorId: string; initialTab?: "posts" | "comments" | "liked" } & OverlayEntryParams;
+  DirectMessage: { userId: string } & OverlayEntryParams;
+  StylePreview: { styleId: string } & OverlayEntryParams;
+  TryOnResult: { jobId: string } & OverlayEntryParams;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
+const overlayOptions = {
+  headerShown: false,
+  presentation: "containedTransparentModal" as const,
+  animation: "none" as const,
+  gestureEnabled: false,
+  contentStyle: { backgroundColor: "transparent" },
+};
+
+function createOverlayComponent(
+  Component: ComponentType<any>,
+  options: { defaultEdge?: SlideDirection; title?: string; showHeader?: boolean } = {},
+) {
+  function OverlayComponent(props: any) {
+    const colors = useThemeColors();
+    const direction = (props.route?.params?.entryEdge ?? options.defaultEdge ?? "right") as SlideDirection;
+
+    return (
+      <SlideOverlayScreen backgroundColor={colors.background} direction={direction} onDismiss={() => props.navigation.goBack()}>
+        {(dismiss) =>
+          options.showHeader ? (
+            <SafeAreaView style={[styles.overlayContainer, { backgroundColor: colors.background }]}>
+              <OverlayContent.Header title={options.title ?? ""} onBack={dismiss} />
+              <View style={styles.overlayBody}>
+                <Component {...props} />
+              </View>
+            </SafeAreaView>
+          ) : (
+            <Component {...props} />
+          )
+        }
+      </SlideOverlayScreen>
+    );
+  }
+  OverlayComponent.displayName = `Overlay(${Component.displayName ?? Component.name ?? "Screen"})`;
+  return OverlayComponent;
+}
+
+const LoginOverlayScreen = createOverlayComponent(LoginScreen);
+const LoginHelpOverlayScreen = createOverlayComponent(LoginHelpScreen);
+const ConsumerLikesOverlayScreen = createOverlayComponent(ConsumerLikesScreen, { showHeader: true, title: "喜爱" });
+const ConsumerOrdersOverlayScreen = createOverlayComponent(ConsumerOrdersScreen, { showHeader: true, title: "我的订单" });
+const StrangerMessagesOverlayScreen = createOverlayComponent(StrangerMessagesScreen);
+const ProfileSettingsOverlayScreen = createOverlayComponent(ProfileSettingsScreen, { showHeader: true, title: "设置" });
+const ProfileInfoOverlayScreen = createOverlayComponent(ProfileInfoScreen, { showHeader: true, title: "个人信息" });
+const MerchantMarketDataOverlayScreen = createOverlayComponent(MerchantMarketDataScreen, { showHeader: true, title: "市场数据" });
+const MerchantOrdersOverlayScreen = createOverlayComponent(MerchantOrdersScreen, { showHeader: true, title: "订单管理" });
+const MerchantShopOverlayScreen = createOverlayComponent(MerchantShopScreen, { showHeader: true, title: "店铺资料" });
+const PrivacySettingsOverlayScreen = createOverlayComponent(PrivacySettingsScreen, { showHeader: true, title: "隐私设置" });
+const BlockedUsersOverlayScreen = createOverlayComponent(BlockedUsersScreen, { showHeader: true, title: "黑名单" });
+const FollowListOverlayScreen = createOverlayComponent(FollowListScreen);
+const ProfileEditOverlayScreen = createOverlayComponent(ProfileEditScreen, { showHeader: true, title: "编辑商户信息" });
+const MyPostsOverlayScreen = createOverlayComponent(MyPostsScreen, { showHeader: true, title: "我的发布" });
+const AuthorProfileOverlayScreen = createOverlayComponent(AuthorProfileScreen);
+const DirectMessageOverlayScreen = createOverlayComponent(DirectMessageScreen);
+const TryOnResultOverlayScreen = createOverlayComponent(TryOnResultScreen, { showHeader: true, title: "试戴结果" });
+
 function MainTabs() {
   const colors = useThemeColors();
+  const user = useAuthStore((state) => state.user);
+  const isMerchant = user?.role === "merchant";
+  const tabKey = isMerchant ? "merchant-tabs" : "consumer-tabs";
 
   return (
     <Tab.Navigator
+      key={tabKey}
       screenOptions={{
         headerShown: false,
         tabBarStyle: [styles.tabBar, { backgroundColor: colors.navBackground }],
@@ -66,51 +145,114 @@ function MainTabs() {
         tabBarInactiveTintColor: colors.navInactive,
       }}
     >
-      <Tab.Screen
-        name="Browse"
-        component={BrowseScreen}
-        options={{
-          title: "浏览",
-          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="Market"
-        component={MarketScreen}
-        options={{
-          title: "市场",
-          tabBarIcon: ({ color, size }) => <Ionicons name="storefront-outline" size={size} color={color} />,
-        }}
-      />
-      <Tab.Screen
-        name="AskAI"
-        component={AskAIScreen}
-        options={{
-          title: "问问小嘉",
-          tabBarButton: (props: BottomTabBarButtonProps) => (
-            <Pressable
-              onPress={props.onPress}
-              accessibilityState={props.accessibilityState}
-              accessibilityLabel={props.accessibilityLabel}
-              testID={props.testID}
-              style={styles.askButton}
-            >
-              <View style={[styles.askButtonInner, { backgroundColor: colors.accent, shadowColor: colors.accent }]}>
-                <Ionicons name="sparkles" size={24} color="white" />
-              </View>
-              <Text style={[styles.askLabel, { color: colors.accent }]}>问问小嘉</Text>
-            </Pressable>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Publish"
-        component={PublishScreen}
-        options={{
-          title: "发布",
-          tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} />,
-        }}
-      />
+      {isMerchant ? (
+        <Tab.Screen
+          name="Browse"
+          component={BrowseScreen}
+          options={{
+            title: "浏览",
+            tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
+          }}
+        />
+      ) : (
+        <>
+          <Tab.Screen
+            name="Browse"
+            component={BrowseScreen}
+            options={{
+              title: "浏览",
+              tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
+            }}
+          />
+          <Tab.Screen
+            name="Market"
+            component={MarketScreen}
+            options={{
+              title: "市场",
+              tabBarIcon: ({ color, size }) => <Ionicons name="storefront-outline" size={size} color={color} />,
+            }}
+          />
+        </>
+      )}
+      {isMerchant ? (
+        <Tab.Screen
+          name="MerchantBookings"
+          component={MerchantBookingsScreen}
+          options={{
+            title: "预约",
+            tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
+          }}
+        />
+      ) : null}
+      {!isMerchant ? (
+        <Tab.Screen
+          name="AskAI"
+          component={AskAIScreen}
+          options={{
+            title: "问问小嘉",
+            tabBarButton: (props: BottomTabBarButtonProps) => (
+              <Pressable
+                onPress={props.onPress}
+                accessibilityState={props.accessibilityState}
+                accessibilityLabel={props.accessibilityLabel}
+                testID={props.testID}
+                style={styles.askButton}
+              >
+                <View style={[styles.askButtonInner, { backgroundColor: colors.accent, shadowColor: colors.accent }]}>
+                  <Ionicons name="sparkles" size={24} color="white" />
+                </View>
+                <Text style={[styles.askLabel, { color: colors.accent }]}>问问小嘉</Text>
+              </Pressable>
+            ),
+          }}
+        />
+      ) : (
+        <Tab.Screen
+          name="Publish"
+          component={PublishScreen}
+          options={{
+            title: "发布",
+            tabBarButton: (props: BottomTabBarButtonProps) => (
+              <Pressable
+                onPress={props.onPress}
+                accessibilityState={props.accessibilityState}
+                accessibilityLabel={props.accessibilityLabel}
+                testID={props.testID}
+                style={styles.askButton}
+              >
+                <View style={[styles.askButtonInner, { backgroundColor: colors.accent, shadowColor: colors.accent }]}>
+                  <Ionicons name="add" size={30} color="white" />
+                </View>
+                <Text style={[styles.askLabel, { color: colors.accent }]}>发布</Text>
+              </Pressable>
+            ),
+          }}
+        />
+      )}
+      {isMerchant ? (
+        null
+      ) : (
+        <Tab.Screen
+          name="MessagesTab"
+          options={{
+            title: "消息",
+            tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />,
+          }}
+        >
+          {() => <MessagesInboxScreen asTab />}
+        </Tab.Screen>
+      )}
+      {isMerchant ? (
+        <Tab.Screen
+          name="MessagesTab"
+          options={{
+            title: "消息",
+            tabBarIcon: ({ color, size }) => <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />,
+          }}
+        >
+          {() => <MessagesInboxScreen asTab />}
+        </Tab.Screen>
+      ) : null}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -138,100 +280,42 @@ export function RootNavigator() {
       }}
     >
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-      <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="LoginHelp" component={LoginHelpScreen} options={{ headerShown: false }} />
-      <Stack.Screen
-        name="BrowseHistory"
-        component={BrowseHistoryScreen}
-        options={{
-          headerShown: false,
-          presentation: "containedTransparentModal",
-          animation: "none",
-          gestureEnabled: false,
-          contentStyle: { backgroundColor: "transparent" },
-        }}
-      />
-      <Stack.Screen
-        name="BrowseSearch"
-        component={BrowseSearchScreen}
-        options={{
-          headerShown: false,
-          presentation: "containedTransparentModal",
-          animation: "none",
-          gestureEnabled: false,
-          contentStyle: { backgroundColor: "transparent" },
-        }}
-      />
-      <Stack.Screen
-        name="MessagesInbox"
-        component={MessagesInboxScreen}
-        options={{
-          headerShown: false,
-          presentation: "containedTransparentModal",
-          animation: "none",
-          gestureEnabled: false,
-          contentStyle: { backgroundColor: "transparent" },
-        }}
-      />
-      <Stack.Screen name="StrangerMessages" component={StrangerMessagesScreen} options={{ headerShown: false }} />
-      <Stack.Screen
-        name="TryOnHistory"
-        component={TryOnHistoryScreen}
-        options={{
-          headerShown: false,
-          presentation: "containedTransparentModal",
-          animation: "none",
-          gestureEnabled: false,
-          contentStyle: { backgroundColor: "transparent" },
-        }}
-      />
-      <Stack.Screen
-        name="HandPhotoManagement"
-        component={HandPhotoManagementScreen}
-        options={{
-          headerShown: false,
-          presentation: "containedTransparentModal",
-          animation: "none",
-          gestureEnabled: false,
-          contentStyle: { backgroundColor: "transparent" },
-        }}
-      />
-      <Stack.Screen
-        name="MarketCityPicker"
-        component={MarketCityPickerScreen}
-        options={{
-          headerShown: false,
-          presentation: "containedTransparentModal",
-          animation: "none",
-          gestureEnabled: false,
-          contentStyle: { backgroundColor: "transparent" },
-        }}
-      />
-      <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} options={{ title: "设置" }} />
-      <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} options={{ title: "隐私设置" }} />
-      <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} options={{ title: "黑名单" }} />
-      <Stack.Screen name="FollowList" component={FollowListScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} options={{ title: "编辑主页" }} />
-      <Stack.Screen name="MyPosts" component={MyPostsScreen} options={{ title: "我的发布" }} />
-      <Stack.Screen name="AuthorProfile" component={AuthorProfileScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="DirectMessage" component={DirectMessageScreen} options={{ headerShown: false }} />
-      <Stack.Screen
-        name="StylePreview"
-        component={StylePreviewScreen}
-        options={{
-          headerShown: false,
-          presentation: "containedTransparentModal",
-          animation: "none",
-          gestureEnabled: false,
-          contentStyle: { backgroundColor: "transparent" },
-        }}
-      />
-      <Stack.Screen name="TryOnResult" component={TryOnResultScreen} options={{ title: "试戴结果" }} />
+      <Stack.Screen name="Login" component={LoginOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="LoginHelp" component={LoginHelpOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="BrowseHistory" component={BrowseHistoryScreen} options={overlayOptions} />
+      <Stack.Screen name="BrowseSearch" component={BrowseSearchScreen} options={overlayOptions} />
+      <Stack.Screen name="ConsumerLikes" component={ConsumerLikesOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="ConsumerOrders" component={ConsumerOrdersOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="MessagesInbox" component={MessagesInboxScreen} options={overlayOptions} />
+      <Stack.Screen name="StrangerMessages" component={StrangerMessagesOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="TryOnHistory" component={TryOnHistoryScreen} options={overlayOptions} />
+      <Stack.Screen name="HandPhotoManagement" component={HandPhotoManagementScreen} options={overlayOptions} />
+      <Stack.Screen name="MarketCityPicker" component={MarketCityPickerScreen} options={overlayOptions} />
+      <Stack.Screen name="MerchantMarketData" component={MerchantMarketDataOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="MerchantOrders" component={MerchantOrdersOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="MerchantShop" component={MerchantShopOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="ProfileSettings" component={ProfileSettingsOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="ProfileInfo" component={ProfileInfoOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="PrivacySettings" component={PrivacySettingsOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="BlockedUsers" component={BlockedUsersOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="FollowList" component={FollowListOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="ProfileEdit" component={ProfileEditOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="MyPosts" component={MyPostsOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="AuthorProfile" component={AuthorProfileOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="DirectMessage" component={DirectMessageOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="StylePreview" component={StylePreviewScreen} options={overlayOptions} />
+      <Stack.Screen name="TryOnResult" component={TryOnResultOverlayScreen} options={overlayOptions} />
     </Stack.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
+  overlayContainer: {
+    flex: 1,
+  },
+  overlayBody: {
+    flex: 1,
+  },
   tabBar: {
     height: 88,
     paddingBottom: 12,

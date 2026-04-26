@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Alert,
-  Dimensions,
   Easing,
   FlatList,
   Image,
@@ -23,7 +22,10 @@ import {
   View,
 } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
+import { MerchantDrawerActionKey, MerchantSideDrawer } from "../components/MerchantSideDrawer";
 import { PrimaryButton } from "../components/PrimaryButton";
+import { ShareSheet } from "../components/ShareSheet";
+import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { AuthorPost, MyStyleCommentItem, NailStyle } from "../types/api";
 import { formatRelativeRegionTime } from "../utils/postTime";
@@ -95,17 +97,7 @@ const selfShortcutActions = [
   { key: "tryon-history", icon: "sparkles-outline", title: "AI焕甲", subtitle: "查看试戴记录" },
 ] as const;
 
-const drawerGroups = [
-  [
-    { key: "browse-history", icon: "time-outline", label: "浏览记录" },
-    { key: "hand-photos", icon: "hand-left-outline", label: "手图管理" },
-    { key: "tryon-history", icon: "sparkles-outline", label: "AI焕甲" },
-  ],
-  [{ key: "support", icon: "headset-outline", label: "帮助与客服" }],
-] as const;
-
 type SelfShortcutKey = (typeof selfShortcutActions)[number]["key"];
-type DrawerActionKey = SelfShortcutKey | "settings" | "support";
 type ProfileContentTab = "posts" | "comments" | "liked";
 
 type AuthorProfileScreenProps = {
@@ -148,10 +140,10 @@ function StatBlock({
 
 export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorProfileScreenProps) {
   const navigation = useNavigation<any>();
+  const dismissOverlay = useSlideOverlayDismiss();
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const colors = useThemeColors();
-  const drawerWidth = Math.min(Dimensions.get("window").width * 0.82, 360);
   const token = useAuthStore((state) => state.token);
   const hydrated = useAuthStore((state) => state.hydrated);
   const currentUser = useAuthStore((state) => state.user);
@@ -164,11 +156,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const [editingTitle, setEditingTitle] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
   const [editingTags, setEditingTags] = useState("");
-  const [isBioExpanded, setIsBioExpanded] = useState(false);
-  const [isBioOverflowing, setIsBioOverflowing] = useState(false);
   const [activeContentTab, setActiveContentTab] = useState<ProfileContentTab>("posts");
+  const [shareVisible, setShareVisible] = useState(false);
   const refreshSpin = useRef(new Animated.Value(0)).current;
-  const drawerProgress = useRef(new Animated.Value(0)).current;
 
   const resolvedAuthorId = authorId ?? route.params?.authorId;
 
@@ -179,7 +169,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   });
 
   const canQueryComments = Boolean(query.data && (query.data.is_mine || query.data.can_view_comments));
-  const canQueryLikedStyles = Boolean(query.data && (query.data.is_mine || query.data.can_view_likes));
+  const canQueryLikedStyles = Boolean(query.data && currentUser?.role !== "merchant" && (query.data.is_mine || query.data.can_view_likes));
   const commentsQuery = useQuery({
     queryKey: ["user-style-comments", resolvedAuthorId, authScope],
     queryFn: () => api.getUserStyleComments(resolvedAuthorId),
@@ -190,15 +180,30 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     queryFn: () => api.getUserLikedStyles(resolvedAuthorId),
     enabled: hydrated && Boolean(resolvedAuthorId) && canQueryLikedStyles,
   });
+  const merchantShopQuery = useQuery({
+    queryKey: ["merchant-shops"],
+    queryFn: api.getMyMerchantShops,
+    enabled: Boolean(token && asProfileTab && currentUser?.role === "merchant"),
+  });
 
   useEffect(() => {
+    const initialTab = route.params?.initialTab;
+    if (initialTab === "posts" || initialTab === "comments" || initialTab === "liked") {
+      setActiveContentTab(initialTab);
+      return;
+    }
+    setActiveContentTab("posts");
+  }, [resolvedAuthorId, route.params?.initialTab]);
+
+  useEffect(() => {
+    if (!query.data) return;
     if (activeContentTab === "comments" && !canQueryComments) {
       setActiveContentTab("posts");
     }
     if (activeContentTab === "liked" && !canQueryLikedStyles) {
       setActiveContentTab("posts");
     }
-  }, [activeContentTab, canQueryComments, canQueryLikedStyles]);
+  }, [activeContentTab, canQueryComments, canQueryLikedStyles, query.data]);
 
   useEffect(() => {
     if (!isPullRefreshing) {
@@ -217,11 +222,6 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     loop.start();
     return () => loop.stop();
   }, [isPullRefreshing, refreshSpin]);
-
-  useEffect(() => {
-    setIsBioExpanded(false);
-    setIsBioOverflowing(false);
-  }, [resolvedAuthorId, query.data?.bio]);
 
   const followMutation = useMutation({
     mutationFn: async () => {
@@ -379,17 +379,23 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     }
   };
 
-  const handleDrawerActionPress = (key: DrawerActionKey) => {
-    closeDrawer();
+  const handleMerchantDrawerAction = (key: MerchantDrawerActionKey) => {
+    if (key === "market-data") {
+      navigation.navigate("MerchantMarketData", { entryEdge: "left" });
+      return;
+    }
+    if (key === "booking-management") {
+      navigation.navigate("MerchantBookings");
+      return;
+    }
+    if (key === "order-management") {
+      navigation.navigate("MerchantOrders", { entryEdge: "left" });
+      return;
+    }
     if (key === "settings") {
-      navigation.navigate("ProfileSettings");
+      navigation.navigate("ProfileSettings", { entryEdge: "left" });
       return;
     }
-    if (key === "support") {
-      Alert.alert("帮助与客服", "在线客服功能演示中，后续会接入真实客服。");
-      return;
-    }
-    handleSelfShortcutPress(key);
   };
 
   const handleRefresh = async () => {
@@ -404,27 +410,10 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
 
   const openDrawer = () => {
     setDrawerMounted(true);
-    drawerProgress.setValue(0);
-    Animated.timing(drawerProgress, {
-      toValue: 1,
-      duration: 240,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
   };
 
   const closeDrawer = () => {
-    if (!drawerMounted) return;
-    Animated.timing(drawerProgress, {
-      toValue: 0,
-      duration: 180,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) {
-        setDrawerMounted(false);
-      }
-    });
+    setDrawerMounted(false);
   };
 
   if (!query.data) {
@@ -440,11 +429,15 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const author = query.data;
   const dmDisabled = author.has_blocked_viewer || author.viewer_has_blocked_author;
   const shouldCompactSelfProfile = Boolean(asProfileTab && author.is_mine);
+  const isMerchantViewer = currentUser?.role === "merchant";
+  const isMerchantSelfProfile = Boolean(asProfileTab && author.is_mine && currentUser?.role === "merchant");
+  const visibleSelfShortcutActions = isMerchantSelfProfile ? [] : selfShortcutActions;
+  const merchantShop = isMerchantSelfProfile ? merchantShopQuery.data?.items[0] ?? null : null;
   const bioText = author.bio?.trim() ?? "";
   const canShowComments = author.is_mine || author.can_view_comments;
-  const canShowLikes = author.is_mine || author.can_view_likes;
-  const commentsLockedForOthers = Boolean(author.is_mine && currentUser?.show_comments_public === false);
-  const likesLockedForOthers = Boolean(author.is_mine && currentUser?.show_likes_public === false);
+  const canShowLikes = !isMerchantViewer && (author.is_mine || author.can_view_likes);
+  const commentsLockedForOthers = Boolean(author.is_mine && !isMerchantSelfProfile);
+  const likesLockedForOthers = Boolean(author.is_mine && currentUser?.role !== "merchant");
   const profileTabs = [
     { key: "posts" as const, label: "作品", count: author.posts.length },
     ...(canShowComments
@@ -484,6 +477,16 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
       title: kind === "following" ? "关注" : "粉丝",
     });
   };
+  const selfStats = isMerchantSelfProfile
+    ? [
+        { key: "follower", value: author.follower_count, label: "粉丝", onPress: () => openFollowList("followers") },
+        { key: "liked", value: author.total_like_count, label: "获赞", onPress: undefined },
+      ]
+    : [
+        { key: "following", value: author.following_count, label: "关注", onPress: () => openFollowList("following") },
+        { key: "follower", value: author.follower_count, label: "粉丝", onPress: () => openFollowList("followers") },
+        { key: "liked", value: author.total_like_count, label: "获赞", onPress: undefined },
+      ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -517,7 +520,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                   <View style={styles.topRightActions}>
                     <Pressable
                       style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton, { backgroundColor: colors.surfaceAlt }]}
-                      onPress={() => Alert.alert("分享主页", "分享主页功能后续补充。")}
+                      onPress={() => setShareVisible(true)}
                     >
                       <Ionicons name="arrow-redo-outline" size={22} color={colors.text} />
                     </Pressable>
@@ -525,7 +528,10 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                 </>
               ) : (
                 <>
-                  <Pressable style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton]} onPress={() => navigation.goBack()}>
+                  <Pressable
+                    style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton]}
+                    onPress={() => dismissOverlay?.() ?? navigation.goBack()}
+                  >
                     <Ionicons name="chevron-back" size={28} color={colors.text} />
                   </Pressable>
                   <Pressable
@@ -563,7 +569,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
               <View style={[styles.heroText, shouldCompactSelfProfile && styles.compactHeroText]}>
                 <Text style={[styles.authorName, shouldCompactSelfProfile && styles.compactAuthorName, { color: colors.text }]}>{author.username}</Text>
                 <Text style={[styles.authorMeta, shouldCompactSelfProfile && styles.compactAuthorMeta, { color: colors.subtext }]}>
-                  焕甲号：{author.uid}
+                  {isMerchantSelfProfile ? "商家焕甲号" : "焕甲号"}：{author.uid}
                 </Text>
                 <Text style={[styles.authorMeta, shouldCompactSelfProfile && styles.compactAuthorMeta, { color: colors.subtext }]}>
                   IP：{author.city}
@@ -574,11 +580,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
             {author.is_mine ? (
               <View style={[styles.selfSummaryRow, shouldCompactSelfProfile && styles.compactSelfSummaryRow]}>
                 <View style={[styles.compactStatsRow, shouldCompactSelfProfile && styles.tightCompactStatsRow]}>
-                  {[
-                    { key: "following", value: author.following_count, label: "关注", onPress: () => openFollowList("following") },
-                    { key: "follower", value: author.follower_count, label: "粉丝", onPress: () => openFollowList("followers") },
-                    { key: "liked", value: author.total_like_count, label: "获赞", onPress: undefined },
-                  ].map((item) => (
+                  {selfStats.map((item) => (
                     <Pressable
                       key={item.key}
                       style={[styles.compactStatItem, shouldCompactSelfProfile && styles.tightCompactStatItem]}
@@ -604,7 +606,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                     style={[styles.compactEditButton, shouldCompactSelfProfile && styles.tightCompactEditButton, { backgroundColor: colors.accent }]}
                     onPress={() => navigation.navigate("ProfileEdit")}
                   >
-                    <Text style={[styles.compactEditButtonText, shouldCompactSelfProfile && styles.tightCompactEditButtonText]}>编辑资料</Text>
+                    <Text style={[styles.compactEditButtonText, shouldCompactSelfProfile && styles.tightCompactEditButtonText]}>
+                      {isMerchantSelfProfile ? "编辑商户信息" : "编辑资料"}
+                    </Text>
                   </Pressable>
                   <Pressable
                     style={[styles.settingsIconButton, shouldCompactSelfProfile && styles.tightSettingsIconButton, { backgroundColor: colors.accentSoft }]}
@@ -624,24 +628,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
 
             {bioText ? (
               <View style={[styles.bioWrap, shouldCompactSelfProfile && styles.compactBioWrap]}>
-                <Text
-                  style={[styles.bio, shouldCompactSelfProfile && styles.compactBio, { color: colors.text }]}
-                  numberOfLines={shouldCompactSelfProfile && !isBioExpanded ? 3 : undefined}
-                  onTextLayout={(event) => {
-                    if (!shouldCompactSelfProfile || isBioExpanded) return;
-                    const nextOverflowing = event.nativeEvent.lines.length > 3;
-                    if (nextOverflowing !== isBioOverflowing) {
-                      setIsBioOverflowing(nextOverflowing);
-                    }
-                  }}
-                >
+                <Text style={[styles.bio, shouldCompactSelfProfile && styles.compactBio, { color: colors.text }]}>
                   {bioText}
                 </Text>
-                {shouldCompactSelfProfile && isBioOverflowing ? (
-                  <Pressable style={styles.bioToggle} onPress={() => setIsBioExpanded((value) => !value)}>
-                    <Text style={[styles.bioToggleText, { color: colors.subtext }]}>{isBioExpanded ? "收起" : "展开"}</Text>
-                  </Pressable>
-                ) : null}
               </View>
             ) : null}
 
@@ -660,20 +649,22 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
             {!author.is_mine ? (
               <View style={styles.profileActions}>
                 <>
-                  <PrimaryButton
-                    label={author.is_following ? "已关注" : "关注"}
-                    onPress={() => {
-                      if (!currentUser) {
-                        navigation.navigate("Login");
-                        return;
-                      }
-                      if (author.has_blocked_viewer || author.viewer_has_blocked_author) return;
-                      followMutation.mutate();
-                    }}
-                    loading={followMutation.isPending}
-                    disabled={author.has_blocked_viewer || author.viewer_has_blocked_author}
-                    style={{ flex: 1 }}
-                  />
+                  {!isMerchantViewer ? (
+                    <PrimaryButton
+                      label={author.is_following ? "已关注" : "关注"}
+                      onPress={() => {
+                        if (!currentUser) {
+                          navigation.navigate("Login");
+                          return;
+                        }
+                        if (author.has_blocked_viewer || author.viewer_has_blocked_author) return;
+                        followMutation.mutate();
+                      }}
+                      loading={followMutation.isPending}
+                      disabled={author.has_blocked_viewer || author.viewer_has_blocked_author}
+                      style={{ flex: 1 }}
+                    />
+                  ) : null}
                   <PrimaryButton
                     label={author.has_blocked_viewer ? "无法私信" : author.viewer_has_blocked_author ? "已拉黑" : "发私信"}
                     onPress={() => {
@@ -692,10 +683,10 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
               </View>
             ) : null}
 
-            {author.is_mine ? (
+            {author.is_mine && visibleSelfShortcutActions.length ? (
               <View style={[styles.shortcutsWrap, shouldCompactSelfProfile && styles.compactShortcutsWrap]}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shortcutsRow}>
-                  {selfShortcutActions.map((item) => (
+                  {visibleSelfShortcutActions.map((item) => (
                     <Pressable
                       key={item.key}
                       style={[styles.shortcutCard, shouldCompactSelfProfile && styles.compactShortcutCard, { backgroundColor: colors.surfaceAlt }]}
@@ -792,25 +783,27 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                     <Text style={[styles.likedAuthor, { color: colors.subtext }]} numberOfLines={1}>
                       {item.author_name}
                     </Text>
-                    <Pressable
-                      style={styles.likedHeart}
-                      hitSlop={8}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        if (!currentUser) {
-                          navigation.navigate("Login");
-                          return;
-                        }
-                        toggleLikeMutation.mutate({ styleId: item.id, isLiked: item.is_liked });
-                      }}
-                    >
-                      <Ionicons
-                        name={item.is_liked ? "heart" : "heart-outline"}
-                        size={18}
-                        color={item.is_liked ? FEED_HEART_ACTIVE_COLOR : FEED_HEART_INACTIVE_COLOR}
-                      />
-                      <Text style={[styles.likedCount, { color: colors.subtext }]}>{item.like_count}</Text>
-                    </Pressable>
+                    {!isMerchantViewer ? (
+                      <Pressable
+                        style={styles.likedHeart}
+                        hitSlop={8}
+                        onPress={(event) => {
+                          event.stopPropagation();
+                          if (!currentUser) {
+                            navigation.navigate("Login");
+                            return;
+                          }
+                          toggleLikeMutation.mutate({ styleId: item.id, isLiked: item.is_liked });
+                        }}
+                      >
+                        <Ionicons
+                          name={item.is_liked ? "heart" : "heart-outline"}
+                          size={18}
+                          color={item.is_liked ? FEED_HEART_ACTIVE_COLOR : FEED_HEART_INACTIVE_COLOR}
+                        />
+                        <Text style={[styles.likedCount, { color: colors.subtext }]}>{item.like_count}</Text>
+                      </Pressable>
+                    ) : null}
                   </View>
                 </View>
               </Pressable>
@@ -849,25 +842,27 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                   <Text style={[styles.likedAuthor, { color: colors.subtext }]} numberOfLines={1}>
                     {author.username}
                   </Text>
-                  <Pressable
-                    style={styles.likedHeart}
-                    hitSlop={8}
-                    onPress={(event) => {
-                      event.stopPropagation();
-                      if (!currentUser) {
-                        navigation.navigate("Login");
-                        return;
-                      }
-                      toggleLikeMutation.mutate({ styleId: item.id, isLiked: item.is_liked });
-                    }}
-                  >
-                    <Ionicons
-                      name={item.is_liked ? "heart" : "heart-outline"}
-                      size={18}
-                      color={item.is_liked ? FEED_HEART_ACTIVE_COLOR : FEED_HEART_INACTIVE_COLOR}
-                    />
-                    <Text style={[styles.likedCount, { color: colors.subtext }]}>{item.like_count}</Text>
-                  </Pressable>
+                  {!isMerchantViewer ? (
+                    <Pressable
+                      style={styles.likedHeart}
+                      hitSlop={8}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        if (!currentUser) {
+                          navigation.navigate("Login");
+                          return;
+                        }
+                        toggleLikeMutation.mutate({ styleId: item.id, isLiked: item.is_liked });
+                      }}
+                    >
+                      <Ionicons
+                        name={item.is_liked ? "heart" : "heart-outline"}
+                        size={18}
+                        color={item.is_liked ? FEED_HEART_ACTIVE_COLOR : FEED_HEART_INACTIVE_COLOR}
+                      />
+                      <Text style={[styles.likedCount, { color: colors.subtext }]}>{item.like_count}</Text>
+                    </Pressable>
+                  ) : null}
                 </View>
                 {author.is_mine && managePostId ? (
                   <View style={styles.postActions}>
@@ -974,85 +969,14 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
         </KeyboardAvoidingView>
       </Modal>
 
-      {asProfileTab && author.is_mine ? (
-        <Modal visible={drawerMounted} transparent animationType="none" onRequestClose={closeDrawer}>
-          <View style={styles.drawerRoot}>
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.drawerOverlay,
-                {
-                  opacity: drawerProgress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 1],
-                  }),
-                },
-              ]}
-            />
-            <Pressable style={styles.drawerOverlayPressable} onPress={closeDrawer} />
-            <Animated.View
-              style={[
-                styles.drawerPanel,
-                {
-                  width: drawerWidth,
-                  backgroundColor: colors.navBackground,
-                  transform: [
-                    {
-                      translateX: drawerProgress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-drawerWidth, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <SafeAreaView style={styles.drawerSafe}>
-                <ScrollView contentContainerStyle={styles.drawerContent} showsVerticalScrollIndicator={false}>
-                  {drawerGroups.map((group, index) => (
-                    <View key={`group-${index}`} style={[styles.drawerGroup, { backgroundColor: colors.surface }]}>
-                      {group.map((item) => (
-                        <Pressable
-                          key={item.key}
-                          style={styles.drawerItem}
-                          onPress={() => handleDrawerActionPress(item.key as DrawerActionKey)}
-                        >
-                          <Ionicons name={item.icon} size={24} color={colors.text} style={styles.drawerItemIcon} />
-                          <Text style={[styles.drawerItemText, { color: colors.text }]}>{item.label}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ))}
-                </ScrollView>
-
-                <View style={styles.drawerBottomRow}>
-                  <Pressable
-                    style={[styles.drawerBottomButton, { backgroundColor: colors.surface }]}
-                    onPress={() => Alert.alert("扫一扫", "扫一扫功能后续补充。")}
-                  >
-                    <Ionicons name="scan-outline" size={24} color={colors.text} />
-                    <Text style={[styles.drawerBottomLabel, { color: colors.text }]}>扫一扫</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.drawerBottomButton, { backgroundColor: colors.surface }]}
-                    onPress={() => handleDrawerActionPress("support")}
-                  >
-                    <Ionicons name="headset-outline" size={24} color={colors.text} />
-                    <Text style={[styles.drawerBottomLabel, { color: colors.text }]}>帮助与客服</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.drawerBottomButton, { backgroundColor: colors.surface }]}
-                    onPress={() => handleDrawerActionPress("settings")}
-                  >
-                    <Ionicons name="settings-outline" size={24} color={colors.text} />
-                    <Text style={[styles.drawerBottomLabel, { color: colors.text }]}>设置</Text>
-                  </Pressable>
-                </View>
-              </SafeAreaView>
-            </Animated.View>
-          </View>
-        </Modal>
+      {isMerchantSelfProfile ? (
+        <MerchantSideDrawer
+          visible={drawerMounted}
+          onClose={closeDrawer}
+          onAction={handleMerchantDrawerAction}
+        />
       ) : null}
+      <ShareSheet visible={shareVisible} onClose={() => setShareVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -1258,14 +1182,6 @@ const styles = StyleSheet.create({
   compactBio: {
     fontSize: 15,
     lineHeight: 22,
-  },
-  bioToggle: {
-    marginTop: 4,
-    alignSelf: "flex-start",
-  },
-  bioToggleText: {
-    fontSize: 13,
-    fontWeight: "600",
   },
   profileActions: {
     flexDirection: "row",
@@ -1591,71 +1507,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     marginTop: 6,
-  },
-  drawerRoot: {
-    flex: 1,
-    justifyContent: "flex-start",
-  },
-  drawerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(6, 7, 11, 0.55)",
-  },
-  drawerOverlayPressable: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  drawerPanel: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    paddingRight: 14,
-  },
-  drawerSafe: {
-    flex: 1,
-  },
-  drawerContent: {
-    paddingHorizontal: 16,
-    paddingTop: 72,
-    paddingBottom: 24,
-    gap: 14,
-  },
-  drawerGroup: {
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  drawerItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    paddingVertical: 18,
-  },
-  drawerItemIcon: {
-    width: 26,
-    textAlign: "center",
-  },
-  drawerItemText: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  drawerBottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 18,
-    gap: 12,
-  },
-  drawerBottomButton: {
-    flex: 1,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-  },
-  drawerBottomLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
   },
 });

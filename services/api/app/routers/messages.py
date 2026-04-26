@@ -27,6 +27,7 @@ def _serialize_target(target: User) -> DirectMessageTargetRead:
         id=target.id,
         uid=target.uid,
         username=target.username,
+        role=target.role,
         avatar_url=target.avatar_url,
     )
 

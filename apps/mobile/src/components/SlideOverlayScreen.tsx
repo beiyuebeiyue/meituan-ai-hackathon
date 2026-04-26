@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef } from "react";
+import { useRoute } from "@react-navigation/native";
 import { Animated, BackHandler, Easing, StyleSheet, useWindowDimensions } from "react-native";
 
-type SlideDirection = "left" | "right";
+export type SlideDirection = "left" | "right";
 
 type SlideOverlayScreenProps = {
   backgroundColor: string;
@@ -9,6 +10,17 @@ type SlideOverlayScreenProps = {
   onDismiss: () => void;
   children: (dismiss: () => void) => React.ReactNode;
 };
+
+const SlideOverlayDismissContext = createContext<(() => void) | null>(null);
+
+export function useSlideOverlayDismiss() {
+  return useContext(SlideOverlayDismissContext);
+}
+
+export function useOverlayDirection(defaultDirection: SlideDirection = "right") {
+  const route = useRoute();
+  return ((route.params as { entryEdge?: SlideDirection } | undefined)?.entryEdge ?? defaultDirection) as SlideDirection;
+}
 
 export function SlideOverlayScreen({ backgroundColor, direction, onDismiss, children }: SlideOverlayScreenProps) {
   const { width } = useWindowDimensions();
@@ -61,7 +73,7 @@ export function SlideOverlayScreen({ backgroundColor, direction, onDismiss, chil
         },
       ]}
     >
-      {children(dismiss)}
+      <SlideOverlayDismissContext.Provider value={dismiss}>{children(dismiss)}</SlideOverlayDismissContext.Provider>
     </Animated.View>
   );
 }

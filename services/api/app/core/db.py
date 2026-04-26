@@ -89,29 +89,36 @@ def sync_runtime_schema() -> None:
             connection.execute(text("ALTER TABLE users ADD COLUMN bio TEXT"))
         if "location_city" not in user_columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN location_city VARCHAR(80)"))
-        for column_name in (
-            "show_following_public",
-            "show_followers_public",
-            "show_comments_public",
-            "show_likes_public",
-        ):
-            if column_name not in user_columns:
-                connection.execute(text(f"ALTER TABLE users ADD COLUMN {column_name} BOOLEAN DEFAULT TRUE"))
-            connection.execute(text(f"UPDATE users SET {column_name} = TRUE WHERE {column_name} IS NULL"))
+        if "role" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'consumer'"))
+        connection.execute(text("UPDATE users SET role = 'consumer' WHERE role IS NULL OR role = ''"))
         connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_uid ON users (uid)"))
         connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_phone ON users (phone)"))
         connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_username ON users (username)"))
 
         if "user_posts" in table_names:
             post_columns = {column["name"] for column in inspector.get_columns("user_posts")}
+            if "shop_id" not in post_columns:
+                connection.execute(text("ALTER TABLE user_posts ADD COLUMN shop_id VARCHAR(36)"))
             if "is_hidden" not in post_columns:
                 connection.execute(text("ALTER TABLE user_posts ADD COLUMN is_hidden BOOLEAN DEFAULT FALSE"))
             connection.execute(text("UPDATE user_posts SET is_hidden = FALSE WHERE is_hidden IS NULL"))
+
+        if "nail_styles" in table_names:
+            style_columns = {column["name"] for column in inspector.get_columns("nail_styles")}
+            if "shop_id" not in style_columns:
+                connection.execute(text("ALTER TABLE nail_styles ADD COLUMN shop_id VARCHAR(36)"))
 
         if "direct_messages" in table_names:
             message_columns = {column["name"] for column in inspector.get_columns("direct_messages")}
             if "read_at" not in message_columns:
                 connection.execute(text("ALTER TABLE direct_messages ADD COLUMN read_at TIMESTAMP"))
+
+        if "tryon_jobs" in table_names:
+            tryon_columns = {column["name"] for column in inspector.get_columns("tryon_jobs")}
+            if "stage" not in tryon_columns:
+                connection.execute(text("ALTER TABLE tryon_jobs ADD COLUMN stage VARCHAR(30) DEFAULT 'pending'"))
+            connection.execute(text("UPDATE tryon_jobs SET stage = status WHERE stage IS NULL OR stage = ''"))
 
 
 def get_db() -> Generator[Session, None, None]:

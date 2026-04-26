@@ -1,35 +1,78 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as Location from "expo-location";
 import { ActivityIndicator, FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { api } from "../api/client";
 import { BrowseFeedCard } from "../components/BrowseFeedCard";
+import { ConsumerDrawerActionKey, ConsumerSideDrawer, MerchantDrawerActionKey, MerchantSideDrawer } from "../components/MerchantSideDrawer";
 import { RequireLogin } from "../components/RequireLogin";
 import { NailStyle } from "../types/api";
 import { useAuthStore } from "../store/useAuthStore";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
+import { DEFAULT_MARKET_CITY, findMarketCity } from "../utils/marketCities";
 
 export function BrowseScreen() {
   const navigation = useNavigation<any>();
-  const [tab, setTab] = useState<"following" | "discover">("discover");
+  const [tab, setTab] = useState<"local" | "following" | "discover">("discover");
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const [merchantDrawerVisible, setMerchantDrawerVisible] = useState(false);
+  const [consumerDrawerVisible, setConsumerDrawerVisible] = useState(false);
+  const [localCity, setLocalCity] = useState(DEFAULT_MARKET_CITY);
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
   const hydrated = useAuthStore((state) => state.hydrated);
   const hasToken = Boolean(token);
+  const isMerchant = user?.role === "merchant";
   const authScope = !hydrated ? "booting" : hasToken ? "authed" : "anon";
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
-  const inboxQuery = useQuery({
-    queryKey: ["message-inbox"],
-    queryFn: () => api.getMessageInbox(),
-    enabled: hydrated && hasToken,
-  });
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== "granted") return;
+        const position = await Location.getCurrentPositionAsync({});
+        const geocoded = await Location.reverseGeocodeAsync({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        if (cancelled) return;
+        const matched = findMarketCity(geocoded[0]?.city ?? geocoded[0]?.subregion ?? geocoded[0]?.region ?? "");
+        if (matched) setLocalCity(matched.name);
+      } catch {
+        // 定位失败时默认深圳，保证同城 feed 可演示。
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isMerchant && tab === "following") {
+      setTab("discover");
+    }
+  }, [isMerchant, tab]);
+
+  const topTabs = isMerchant
+    ? ([
+        { key: "discover", label: "发现" },
+        { key: "local", label: "同城" },
+      ] as const)
+    : ([
+        { key: "following", label: "关注" },
+        { key: "discover", label: "发现" },
+        { key: "local", label: "同城" },
+      ] as const);
+
   const query = useQuery({
-    queryKey: ["browse", tab, authScope],
-    queryFn: () => (tab === "following" ? api.getFollowingStyles() : api.getDiscover()),
-    enabled: hydrated && (tab === "discover" || hasToken),
+    queryKey: ["browse", tab, authScope, localCity],
+    queryFn: () => (tab === "following" ? api.getFollowingStyles() : tab === "local" ? api.getLocalStyles(localCity) : api.getDiscover()),
+    enabled: hydrated && (tab === "discover" || tab === "local" || hasToken),
   });
 
   const likeMutation = useMutation({
@@ -48,20 +91,13 @@ export function BrowseScreen() {
   });
 
   const onToggleLike = (item: NailStyle) => {
+    if (isMerchant) return;
     if (!hasToken) return;
     likeMutation.mutate(item);
   };
 
   const feedItems = tab === "following" && !hasToken ? [] : query.data?.items ?? [];
-  const canRefresh = hydrated && (tab === "discover" || hasToken);
-  const messageBadge =
-    inboxQuery.data?.badge.has_stranger_unread
-      ? "dot"
-      : inboxQuery.data?.badge.main_unread_count
-        ? inboxQuery.data.badge.main_unread_count > 99
-          ? "99+"
-          : String(inboxQuery.data.badge.main_unread_count)
-        : null;
+  const canRefresh = hydrated && (tab === "discover" || tab === "local" || hasToken);
   const handleRefresh = async () => {
     if (!canRefresh) return;
     setIsPullRefreshing(true);
@@ -72,23 +108,68 @@ export function BrowseScreen() {
     }
   };
 
+  const handleMerchantDrawerAction = (key: MerchantDrawerActionKey) => {
+    if (key === "market-data") {
+      navigation.navigate("MerchantMarketData", { entryEdge: "left" });
+      return;
+    }
+    if (key === "booking-management") {
+      navigation.navigate("MerchantBookings", { entryEdge: "left" });
+      return;
+    }
+    if (key === "order-management") {
+      navigation.navigate("MerchantOrders", { entryEdge: "left" });
+      return;
+    }
+    if (key === "settings") {
+      navigation.navigate("ProfileSettings", { entryEdge: "left" });
+      return;
+    }
+  };
+
+  const handleConsumerDrawerAction = (key: ConsumerDrawerActionKey) => {
+    if (key === "orders") {
+      navigation.navigate("ConsumerOrders", { entryEdge: "left" });
+      return;
+    }
+    if (key === "browse-history") {
+      navigation.navigate("BrowseHistory", { entryEdge: "left" });
+      return;
+    }
+    if (key === "likes") {
+      navigation.navigate("ConsumerLikes", { entryEdge: "left" });
+      return;
+    }
+    if (key === "tryon-history") {
+      navigation.navigate("TryOnHistory", { entryEdge: "left" });
+      return;
+    }
+    if (key === "hand-photos") {
+      navigation.navigate("HandPhotoManagement", { entryEdge: "left" });
+      return;
+    }
+    if (key === "settings") {
+      navigation.navigate("ProfileSettings", { entryEdge: "left" });
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? "#17171b" : colors.background }]}>
       <View style={[styles.topBar, { backgroundColor: isDark ? "#17171b" : colors.background, borderBottomColor: colors.border }]}>
-        <Pressable style={styles.iconButton} onPress={() => (hasToken ? navigation.navigate("MessagesInbox") : navigation.navigate("Login"))}>
-          <Ionicons name="chatbubble-ellipses-outline" size={26} color={colors.text} />
-          {messageBadge === "dot" ? <View style={[styles.dotBadge, { backgroundColor: colors.accent }]} /> : null}
-          {messageBadge && messageBadge !== "dot" ? (
-            <View style={[styles.countBadge, { backgroundColor: colors.accent }]}>
-              <Text style={styles.countBadgeText}>{messageBadge}</Text>
-            </View>
-          ) : null}
+        <Pressable
+          style={styles.iconButton}
+          onPress={() => {
+            if (isMerchant) {
+              setMerchantDrawerVisible(true);
+              return;
+            }
+            setConsumerDrawerVisible(true);
+          }}
+        >
+          <Ionicons name="menu-outline" size={28} color={colors.text} />
         </Pressable>
         <View style={styles.topTabs}>
-          {([
-            { key: "following", label: "关注" },
-            { key: "discover", label: "发现" },
-          ] as const).map((item) => (
+          {topTabs.map((item) => (
             <Pressable key={item.key} onPress={() => setTab(item.key)} style={styles.topTabButton}>
               <Text
                 style={[
@@ -127,6 +208,7 @@ export function BrowseScreen() {
             <BrowseFeedCard
               item={item}
               onToggleLike={onToggleLike}
+              showLike={!isMerchant}
               onPress={(selected) => navigation.navigate("StylePreview", { styleId: selected.id })}
             />
           )}
@@ -135,6 +217,11 @@ export function BrowseScreen() {
             <View style={styles.emptyState}>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>你的关注页还是空的</Text>
               <Text style={[styles.emptyText, { color: colors.subtext }]}>去任意美甲详情页关注作者后，这里会优先显示对方发布的新图片。</Text>
+            </View>
+          ) : tab === "local" ? (
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>同城还没有商家作品</Text>
+              <Text style={[styles.emptyText, { color: colors.subtext }]}>当前城市：{localCity}。商家发布后会优先出现在这里。</Text>
             </View>
           ) : null
         }
@@ -150,6 +237,20 @@ export function BrowseScreen() {
           </View>
         </View>
       ) : null}
+
+      {isMerchant ? (
+        <MerchantSideDrawer
+          visible={merchantDrawerVisible}
+          onClose={() => setMerchantDrawerVisible(false)}
+          onAction={handleMerchantDrawerAction}
+        />
+      ) : (
+        <ConsumerSideDrawer
+          visible={consumerDrawerVisible}
+          onClose={() => setConsumerDrawerVisible(false)}
+          onAction={handleConsumerDrawerAction}
+        />
+      )}
     </SafeAreaView>
   );
 }

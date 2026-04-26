@@ -22,6 +22,12 @@ class NailStyleRead(BaseModel):
     author_avatar_url: str | None = None
     is_following_author: bool = False
     is_authored_by_me: bool = False
+    shop_id: str | None = None
+    shop_name: str | None = None
+    shop_city: str | None = None
+    shop_address: str | None = None
+    manage_post_id: str | None = None
+    is_hidden: bool = False
     created_at: datetime
 
 

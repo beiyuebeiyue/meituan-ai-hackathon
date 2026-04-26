@@ -37,6 +37,7 @@ def public_url_for_path(path: Path) -> str:
     candidates = [
         (settings.upload_path, "uploads"),
         (settings.tryon_result_path, "tryon_results"),
+        (settings.tryon_artifact_path, "tryon_artifacts"),
         (settings.seed_path, "seed"),
         (settings.report_path, "reports"),
         (settings.base_dir / "data", ""),
@@ -77,6 +78,7 @@ def path_from_public_url(url: str | None) -> Path | None:
     candidates = [
         (Path("uploads"), settings.upload_path),
         (Path("tryon_results"), settings.tryon_result_path),
+        (Path("tryon_artifacts"), settings.tryon_artifact_path),
         (Path("seed"), settings.seed_path),
         (Path("reports"), settings.report_path),
     ]

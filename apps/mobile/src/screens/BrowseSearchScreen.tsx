@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { api } from "../api/client";
 import { BrowseFeedCard } from "../components/BrowseFeedCard";
-import { SlideOverlayScreen } from "../components/SlideOverlayScreen";
+import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useSearchHistoryStore } from "../store/useSearchHistoryStore";
 import { NailStyle } from "../types/api";
@@ -63,6 +63,7 @@ function clampHistoryToRows(items: string[], availableWidth: number, maxRows: nu
 
 export function BrowseSearchScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
   const hydrated = useAuthStore((state) => state.hydrated);
@@ -70,9 +71,11 @@ export function BrowseSearchScreen() {
   const authScope = !hydrated ? "booting" : hasToken ? "authed" : "anon";
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
+  const direction = useOverlayDirection("right");
   const inputRef = useRef<TextInput>(null);
   const [draftQuery, setDraftQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
+  const appliedInitialQueryRef = useRef(false);
   const historyItems = useSearchHistoryStore((state) => state.items);
   const historyHydrated = useSearchHistoryStore((state) => state.hydrated);
   const loadHistory = useSearchHistoryStore((state) => state.load);
@@ -90,6 +93,15 @@ export function BrowseSearchScreen() {
     const timer = setTimeout(() => inputRef.current?.focus(), 120);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const initialQuery = typeof route.params?.initialQuery === "string" ? route.params.initialQuery.trim() : "";
+    if (appliedInitialQueryRef.current || !initialQuery) return;
+    appliedInitialQueryRef.current = true;
+    setDraftQuery(initialQuery);
+    setSubmittedQuery(initialQuery);
+    void addHistoryItem(initialQuery);
+  }, [addHistoryItem, route.params?.initialQuery]);
 
   const query = useQuery({
     queryKey: ["browse-search", submittedQuery, authScope],
@@ -144,7 +156,7 @@ export function BrowseSearchScreen() {
 
   return (
     <SlideOverlayScreen
-      direction="right"
+      direction={direction}
       backgroundColor={isDark ? "#17171b" : colors.background}
       onDismiss={() => navigation.goBack()}
     >

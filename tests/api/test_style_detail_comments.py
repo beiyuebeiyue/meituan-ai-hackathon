@@ -67,7 +67,7 @@ def test_style_detail_supports_like_favorite_and_comments(client, db_session, im
     comments = comments_response.json()["items"]
     assert len(comments) == 1
     assert comments[0]["content"] == "这个颜色太适合春天了"
-    assert comments[0]["author_name"] == "momo酱"
+    assert comments[0]["author_name"] == "keke"
     assert comments[0]["is_mine"] is True
 
     delete_response = client.delete(f"/api/v1/nails/{style.id}/comments/{comment_id}", headers=headers)
@@ -122,7 +122,7 @@ def test_following_feed_supports_followed_author_and_blocks_self_follow(client, 
     assert following_feed.status_code == 200
     following_items = following_feed.json()["items"]
     assert len(following_items) >= 1
-    assert following_items[0]["author_name"] == "momo酱"
+    assert following_items[0]["author_name"] == "keke"
 
     admin_following_feed = client.get("/api/v1/nails/following?page=1&page_size=20", headers=admin_headers)
     assert admin_following_feed.status_code == 200

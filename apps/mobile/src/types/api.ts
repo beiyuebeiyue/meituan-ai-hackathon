@@ -8,6 +8,7 @@ export type User = {
   birthday?: string | null;
   bio?: string | null;
   location_city?: string | null;
+  role: "consumer" | "merchant";
   show_following_public: boolean;
   show_followers_public: boolean;
   show_comments_public: boolean;
@@ -69,6 +70,12 @@ export type NailStyle = {
   author_avatar_url?: string | null;
   is_following_author: boolean;
   is_authored_by_me: boolean;
+  shop_id?: string | null;
+  shop_name?: string | null;
+  shop_city?: string | null;
+  shop_address?: string | null;
+  manage_post_id?: string | null;
+  is_hidden?: boolean;
   created_at: string;
 };
 
@@ -203,6 +210,42 @@ export type NearbyShopSearchResponse = {
   message?: string | null;
 };
 
+export type MerchantShop = {
+  id: string;
+  merchant_user_id: string;
+  name: string;
+  city: string;
+  address: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  contact_phone?: string | null;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BookingStatus = "pending" | "accepted" | "rejected" | "completed" | "cancelled";
+
+export type Booking = {
+  id: string;
+  style_id: string;
+  style_title: string;
+  style_image_url: string;
+  shop_id: string;
+  shop_name: string;
+  shop_city: string;
+  merchant_user_id: string;
+  merchant_name: string;
+  user_id: string;
+  user_name: string;
+  appointment_time: string;
+  contact_phone: string;
+  status: BookingStatus;
+  note?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type MyStyleCommentItem = {
   comment_id: string;
   style_id: string;
@@ -223,6 +266,7 @@ export type DirectMessageTarget = {
   id: string;
   uid: number;
   username: string;
+  role: "consumer" | "merchant";
   avatar_url?: string | null;
 };
 

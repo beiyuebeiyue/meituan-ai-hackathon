@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
+import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useThemeColors } from "../utils/theme";
 
@@ -30,11 +31,11 @@ function formatMessageTime(value: string) {
 
 export function DirectMessageScreen() {
   const navigation = useNavigation<any>();
+  const dismissOverlay = useSlideOverlayDismiss();
   const route = useRoute<ScreenRoute>();
   const queryClient = useQueryClient();
   const colors = useThemeColors();
   const [message, setMessage] = useState("");
-  const [showFollowPrompt, setShowFollowPrompt] = useState(true);
 
   const query = useQuery({
     queryKey: ["conversation", route.params.userId],
@@ -42,27 +43,10 @@ export function DirectMessageScreen() {
   });
 
   useEffect(() => {
-    setShowFollowPrompt(true);
-  }, [route.params.userId]);
-
-  useEffect(() => {
     if (!query.dataUpdatedAt) return;
     void queryClient.invalidateQueries({ queryKey: ["message-inbox"] });
     void queryClient.invalidateQueries({ queryKey: ["stranger-messages"] });
   }, [query.dataUpdatedAt, queryClient]);
-
-  const followMutation = useMutation({
-    mutationFn: () => api.followUser(route.params.userId),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["conversation", route.params.userId] }),
-        queryClient.invalidateQueries({ queryKey: ["author-profile", route.params.userId] }),
-        queryClient.invalidateQueries({ queryKey: ["message-inbox"] }),
-        queryClient.invalidateQueries({ queryKey: ["stranger-messages"] }),
-      ]);
-    },
-    onError: (error: Error) => Alert.alert("关注失败", error.message),
-  });
 
   const sendMutation = useMutation({
     mutationFn: () => api.sendMessage(route.params.userId, message),
@@ -88,13 +72,6 @@ export function DirectMessageScreen() {
 
   const thread = query.data;
   const canSend = Boolean(thread?.can_send && !sendMutation.isPending && message.trim());
-  const shouldShowFollowPrompt = Boolean(
-    thread &&
-      showFollowPrompt &&
-      !thread.is_mutual_follow &&
-      !thread.blocked_by_target &&
-      !thread.viewer_has_blocked_target
-  );
 
   const bubbleBorderColor = useMemo(() => colors.border, [colors.border]);
 
@@ -102,10 +79,18 @@ export function DirectMessageScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <Pressable style={styles.headerAction} onPress={() => navigation.goBack()}>
+          <Pressable style={styles.headerAction} onPress={() => dismissOverlay?.() ?? navigation.goBack()}>
             <Ionicons name="chevron-back" size={28} color={colors.text} />
           </Pressable>
-          <Pressable style={styles.headerCenter} onPress={() => thread && navigation.navigate("AuthorProfile", { authorId: thread.target.id })}>
+          <Pressable
+            style={styles.headerCenter}
+            disabled={!thread || thread.target.role !== "merchant"}
+            onPress={() => {
+              if (thread?.target.role === "merchant") {
+                navigation.navigate("AuthorProfile", { authorId: thread.target.id });
+              }
+            }}
+          >
             <Image
               source={thread?.target.avatar_url ? { uri: resolveAssetUrl(thread.target.avatar_url) } : defaultAvatar}
               style={[styles.headerAvatar, { backgroundColor: colors.surfaceAlt }]}
@@ -119,38 +104,6 @@ export function DirectMessageScreen() {
             <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
           </Pressable>
         </View>
-
-        {shouldShowFollowPrompt ? (
-          <View style={[styles.followPrompt, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.followPromptText, { color: colors.text }]}>
-              {thread?.viewer_follows_target ? "已关注对方，等对方回关后就能更顺畅地聊天" : "加个关注，方便以后常聊"}
-            </Text>
-            <View style={styles.followPromptActions}>
-              <Pressable
-                style={[
-                  styles.followPromptButton,
-                  {
-                    backgroundColor: thread?.viewer_follows_target ? colors.surfaceAlt : colors.accent,
-                  },
-                ]}
-                disabled={Boolean(thread?.viewer_follows_target || followMutation.isPending)}
-                onPress={() => followMutation.mutate()}
-              >
-                <Text
-                  style={[
-                    styles.followPromptButtonText,
-                    { color: thread?.viewer_follows_target ? colors.subtext : "#ffffff" },
-                  ]}
-                >
-                  {thread?.viewer_follows_target ? "已关注" : "关注"}
-                </Text>
-              </Pressable>
-              <Pressable style={styles.promptClose} onPress={() => setShowFollowPrompt(false)}>
-                <Ionicons name="close" size={20} color={colors.subtext} />
-              </Pressable>
-            </View>
-          </View>
-        ) : null}
 
         {thread?.notice ? <Text style={[styles.notice, { color: colors.subtext }]}>{thread.notice}</Text> : null}
 
@@ -256,44 +209,6 @@ const styles = StyleSheet.create({
   headerName: {
     fontSize: 18,
     fontWeight: "700",
-  },
-  followPrompt: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 22,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  followPromptText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  followPromptActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  followPromptButton: {
-    minWidth: 76,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: "center",
-  },
-  followPromptButtonText: {
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  promptClose: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "center",
   },
   notice: {
     textAlign: "center",

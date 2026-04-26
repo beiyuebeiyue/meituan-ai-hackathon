@@ -4,10 +4,12 @@ import { useNavigation } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import { Image, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
 import { api } from "../api/client";
+import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
-const DEMO_PHONE = "13886722666";
+const DEMO_CONSUMER_PHONE = "13886722665";
+const DEMO_MERCHANT_PHONE = "13886722666";
 const DEMO_PASSWORD = "admin@123456";
 const DEMO_SMS_CODE = "666666";
 const partnerLogins = [
@@ -31,20 +33,22 @@ function extractErrorMessage(error: unknown): string {
 
 export function LoginScreen() {
   const navigation = useNavigation();
+  const dismissOverlay = useSlideOverlayDismiss();
   const setSession = useAuthStore((state) => state.setSession);
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
-  const [loginMethod, setLoginMethod] = useState<"sms" | "password">("sms");
-  const [phone, setPhone] = useState(DEMO_PHONE);
+  const [loginRole, setLoginRole] = useState<"consumer" | "merchant">("consumer");
+  const [loginMethod, setLoginMethod] = useState<"sms" | "password">("password");
+  const [phone, setPhone] = useState(DEMO_CONSUMER_PHONE);
   const [password, setPassword] = useState(DEMO_PASSWORD);
   const [smsCode, setSmsCode] = useState("");
-  const [agreed, setAgreed] = useState(false);
+  const [agreed, setAgreed] = useState(true);
   const [smsRequested, setSmsRequested] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async (payload: { loginMethod: "sms" | "password"; phone: string; password: string; smsCode: string }) => {
+    mutationFn: async (payload: { loginMethod: "sms" | "password"; loginRole: "consumer" | "merchant"; phone: string; password: string; smsCode: string }) => {
       const normalizedPhone = payload.phone.replace(/\D/g, "").slice(0, 11);
       if (normalizedPhone.length !== 11) {
         throw new Error("请输入正确的 11 位手机号");
@@ -54,9 +58,13 @@ export function LoginScreen() {
       }
 
       if (payload.loginMethod === "password") {
-        return api.login({ phone: normalizedPhone, password: payload.password });
+        return api.login({ phone: normalizedPhone, password: payload.password, requested_role: payload.loginRole });
       }
 
+      const expectedDemoPhone = payload.loginRole === "merchant" ? DEMO_MERCHANT_PHONE : DEMO_CONSUMER_PHONE;
+      if (payload.loginRole === "merchant" && normalizedPhone !== expectedDemoPhone) {
+        throw new Error("商家演示请使用默认账号登录");
+      }
       if (!smsRequested) {
         throw new Error("请先获取短信验证码");
       }
@@ -64,8 +72,8 @@ export function LoginScreen() {
         throw new Error(`验证码错误，请输入演示验证码 ${DEMO_SMS_CODE}`);
       }
 
-      if (normalizedPhone === DEMO_PHONE) {
-        return api.login({ phone: normalizedPhone, password: DEMO_PASSWORD });
+      if (normalizedPhone === expectedDemoPhone) {
+        return api.login({ phone: normalizedPhone, password: DEMO_PASSWORD, requested_role: payload.loginRole });
       }
 
       try {
@@ -86,7 +94,7 @@ export function LoginScreen() {
       setFeedback(null);
       await setSession(response.access_token, response.user);
       if (navigation.canGoBack()) {
-        navigation.goBack();
+        dismissOverlay?.() ?? navigation.goBack();
       }
     },
     onError: (error) => {
@@ -126,14 +134,16 @@ export function LoginScreen() {
 
   const handleQuickLogin = (provider: (typeof partnerLogins)[number]["key"]) => {
     const providerLabel = { meituan: "美团", wechat: "微信", alipay: "支付宝" }[provider];
+    const demoPhone = loginRole === "merchant" ? DEMO_MERCHANT_PHONE : DEMO_CONSUMER_PHONE;
     setAgreed(true);
     setLoginMethod("password");
-    setPhone(DEMO_PHONE);
+    setPhone(demoPhone);
     setPassword(DEMO_PASSWORD);
     setFeedback(`已模拟 ${providerLabel} 授权登录`);
     mutation.mutate({
       loginMethod: "password",
-      phone: DEMO_PHONE,
+      loginRole,
+      phone: demoPhone,
       password: DEMO_PASSWORD,
       smsCode,
     });
@@ -151,8 +161,8 @@ export function LoginScreen() {
   const helperText =
     feedback ??
     (loginMethod === "sms"
-      ? "演示环境下，默认手机号可直接获取验证码登录"
-      : "请输入手机号和密码登录");
+      ? `${loginRole === "merchant" ? "商家" : "用户"}演示入口，默认手机号可直接获取验证码登录`
+      : `${loginRole === "merchant" ? "商家" : "用户"}演示账号和密码相同，可直接登录`);
   const primaryBackground = actionDisabled ? (isDark ? colors.border : "#fff2a9") : isDark ? colors.accent : "#ffec88";
   const primaryLabelColor = actionDisabled ? (isDark ? "#8f8983" : "#c8bb78") : isDark ? "#ffffff" : "#6b5f2c";
 
@@ -164,7 +174,7 @@ export function LoginScreen() {
             style={[styles.closeButton, { backgroundColor: colors.input }]}
             onPress={() => {
               if (navigation.canGoBack()) {
-                navigation.goBack();
+                dismissOverlay?.() ?? navigation.goBack();
               }
             }}
           >
@@ -177,6 +187,34 @@ export function LoginScreen() {
 
         <View style={styles.heroBlock}>
           <Text style={[styles.title, { color: colors.text }]}>欢迎登录</Text>
+        </View>
+
+        <View style={[styles.roleTabs, { backgroundColor: colors.input }]}>
+          {[
+            { key: "consumer" as const, label: "我是用户" },
+            { key: "merchant" as const, label: "我是商家" },
+          ].map((item) => {
+            const selected = loginRole === item.key;
+            return (
+              <Pressable
+                key={item.key}
+                style={[styles.roleTab, selected && { backgroundColor: colors.surface }]}
+                onPress={() => {
+                  setLoginRole(item.key);
+                  setFeedback(null);
+                  setPhone(item.key === "merchant" ? DEMO_MERCHANT_PHONE : DEMO_CONSUMER_PHONE);
+                  setPassword(DEMO_PASSWORD);
+                  setSmsRequested(false);
+                  setSmsCode("");
+                  setLoginMethod("password");
+                }}
+              >
+                <Text style={[styles.roleTabText, { color: selected ? colors.text : colors.subtext }]}>
+                  {item.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <View style={styles.formBlock}>
@@ -253,7 +291,7 @@ export function LoginScreen() {
                 requestCode();
                 return;
               }
-              mutation.mutate({ loginMethod, phone, password, smsCode });
+              mutation.mutate({ loginMethod, loginRole, phone, password, smsCode });
             }}
           >
             <Text style={[styles.primaryButtonLabel, { color: primaryLabelColor }]}>{actionLabel}</Text>
@@ -322,8 +360,25 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   formBlock: {
-    marginTop: 92,
+    marginTop: 24,
     gap: 18,
+  },
+  roleTabs: {
+    marginTop: 28,
+    borderRadius: 999,
+    padding: 5,
+    flexDirection: "row",
+  },
+  roleTab: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  roleTabText: {
+    fontSize: 16,
+    fontWeight: "800",
   },
   inputShell: {
     flexDirection: "row",

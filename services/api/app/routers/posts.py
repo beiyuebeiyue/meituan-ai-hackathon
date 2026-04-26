@@ -9,6 +9,7 @@ from app.routers.helpers import serialize_post
 from app.schemas.events import StyleEventInput
 from app.schemas.posts import UserPostListResponse, UserPostRead, UserPostUpdateRequest
 from app.services.event_service import EventService
+from app.services.merchant_service import MerchantShopService, require_merchant
 from app.services.post_service import PostService
 from app.services.style_service import StyleService
 from app.utils.files import public_url_for_path, relative_to_base, save_user_upload_file, user_upload_dir
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/posts", tags=["posts"])
 style_service = StyleService()
 event_service = EventService()
 post_service = PostService()
+shop_service = MerchantShopService()
 
 
 @router.post("", response_model=UserPostRead)
@@ -25,10 +27,13 @@ def create_post(
     title: str = Form(...),
     description: str = Form(default=""),
     tags: str = Form(default=""),
+    shop_id: str | None = Form(default=None),
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> UserPostRead:
+    require_merchant(user)
+    shop = shop_service.get_owned_shop(db, user, shop_id) if shop_id else shop_service.get_default_shop(db, user)
     settings = get_settings()
     saved_path, _ = save_user_upload_file(image, user_upload_dir(settings.upload_path, "posts", user.uid), user.uid)
     tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
@@ -40,6 +45,7 @@ def create_post(
         image_url=public_url_for_path(saved_path),
         local_image_path=relative_to_base(saved_path),
         tags=tag_list,
+        shop_id=shop.id,
     )
     style = style_service.create_style_from_post(db, user, post)
     event_service.record_style_events(

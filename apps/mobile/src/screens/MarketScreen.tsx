@@ -230,7 +230,7 @@ export function MarketScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.topBar}>
-        <Pressable style={styles.cityButton} onPress={() => navigation.navigate("MarketCityPicker")}>
+        <Pressable style={styles.cityButton} onPress={() => navigation.navigate("MarketCityPicker", { entryEdge: "left" })}>
           <Ionicons name="location-outline" size={17} color={colors.text} />
           <Text style={[styles.cityText, { color: colors.text }]} numberOfLines={1}>
             {selectedCity}

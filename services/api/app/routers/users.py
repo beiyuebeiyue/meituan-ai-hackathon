@@ -26,6 +26,7 @@ from app.schemas.users import (
     UserPrivacyUpdateRequest,
     UserRead,
     UserSummaryRead,
+    serialize_user_read,
 )
 from app.services.browse_history_service import BrowseHistoryService
 from app.services.block_service import BlockService
@@ -46,14 +47,12 @@ style_service = StyleService()
 style_comment_service = StyleCommentService()
 
 
-def can_view_private_section(author: User, viewer: User | None, field_name: str) -> bool:
-    if viewer is not None and viewer.id == author.id:
-        return True
-    return bool(getattr(author, field_name))
+def can_view_private_section(author: User, viewer: User | None) -> bool:
+    return bool(viewer is not None and viewer.id == author.id)
 
 
-def ensure_section_visible(author: User, viewer: User | None, field_name: str, detail: str) -> None:
-    if not can_view_private_section(author, viewer, field_name):
+def ensure_section_visible(author: User, viewer: User | None, detail: str) -> None:
+    if not can_view_private_section(author, viewer):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
 
@@ -96,7 +95,7 @@ def build_style_payloads_for_viewer(db: Session, items: list, viewer: User | Non
 
 @router.get("/me", response_model=UserRead)
 def get_me(user: User = Depends(get_current_user)) -> UserRead:
-    return UserRead.model_validate(user)
+    return serialize_user_read(user)
 
 
 @router.get("/me/hand-photos", response_model=UserHandPhotoListResponse)
@@ -167,6 +166,7 @@ def update_me(
     username: str | None = Form(default=None),
     birthday: str | None = Form(default=None),
     bio: str | None = Form(default=None),
+    clear_bio: bool = Form(default=False),
     avatar_file: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -176,18 +176,20 @@ def update_me(
         user.username = username
     if birthday is not None:
         user.birthday = birthday
-    if bio is not None:
+    if clear_bio:
+        user.bio = ""
+    elif bio is not None:
         normalized_bio = bio.strip()
         if len(normalized_bio) > 128:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="个人简介不能超过128个字符")
-        user.bio = normalized_bio or None
+        user.bio = normalized_bio
     if avatar_file:
         saved_path, _ = save_user_upload_file(avatar_file, user_upload_dir(settings.upload_path, "avatars", user.uid), user.uid)
         user.avatar_url = public_url_for_path(saved_path)
     db.add(user)
     db.commit()
     db.refresh(user)
-    return UserRead.model_validate(user)
+    return serialize_user_read(user)
 
 
 @router.patch("/me/location", response_model=UserRead)
@@ -205,37 +207,24 @@ def update_my_location(
     db.add(user)
     db.commit()
     db.refresh(user)
-    return UserRead.model_validate(user)
+    return serialize_user_read(user)
 
 
 @router.get("/me/privacy", response_model=UserPrivacyRead)
 def get_my_privacy(user: User = Depends(get_current_user)) -> UserPrivacyRead:
     return UserPrivacyRead(
-        show_following_public=user.show_following_public,
-        show_followers_public=user.show_followers_public,
-        show_comments_public=user.show_comments_public,
-        show_likes_public=user.show_likes_public,
+        show_following_public=False,
+        show_followers_public=False,
+        show_comments_public=False,
+        show_likes_public=False,
     )
 
 
 @router.patch("/me/privacy", response_model=UserPrivacyRead)
 def update_my_privacy(
-    payload: UserPrivacyUpdateRequest,
-    db: Session = Depends(get_db),
+    _payload: UserPrivacyUpdateRequest,
     user: User = Depends(get_current_user),
 ) -> UserPrivacyRead:
-    for field_name in (
-        "show_following_public",
-        "show_followers_public",
-        "show_comments_public",
-        "show_likes_public",
-    ):
-        value = getattr(payload, field_name)
-        if value is not None:
-            setattr(user, field_name, value)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
     return get_my_privacy(user)
 
 
@@ -284,7 +273,7 @@ def get_author_following(
     author = db.get(User, author_id)
     if author is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="作者不存在")
-    ensure_section_visible(author, user, "show_following_public", "该用户已设置关注列表不可见")
+    ensure_section_visible(author, user, "该用户已设置关注列表不可见")
     items = [serialize_user_summary(db, item, user) for item in follow_service.list_following(db, author.id)]
     return UserListResponse(items=items)
 
@@ -298,7 +287,7 @@ def get_author_followers(
     author = db.get(User, author_id)
     if author is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="作者不存在")
-    ensure_section_visible(author, user, "show_followers_public", "该用户已设置粉丝列表不可见")
+    ensure_section_visible(author, user, "该用户已设置粉丝列表不可见")
     items = [serialize_user_summary(db, item, user) for item in follow_service.list_followers(db, author.id)]
     return UserListResponse(items=items)
 
@@ -312,7 +301,7 @@ def get_author_style_comments(
     author = db.get(User, author_id)
     if author is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="作者不存在")
-    ensure_section_visible(author, user, "show_comments_public", "该用户已设置评论不可见")
+    ensure_section_visible(author, user, "该用户已设置评论不可见")
     items = []
     for comment in style_comment_service.list_for_user(db, author):
         style = comment.style
@@ -344,7 +333,7 @@ def get_author_liked_styles(
     author = db.get(User, author_id)
     if author is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="作者不存在")
-    ensure_section_visible(author, user, "show_likes_public", "该用户已设置点赞不可见")
+    ensure_section_visible(author, user, "该用户已设置点赞不可见")
     like_rows = list(
         db.scalars(
             select(UserStyleLike)
@@ -409,10 +398,10 @@ def get_author_profile(
         total_like_count=total_like_count,
         is_following=bool(user and user.id != author.id and follow_service.is_following(db, user.id, author.id)),
         is_mine=is_mine,
-        can_view_following=can_view_private_section(author, user, "show_following_public"),
-        can_view_followers=can_view_private_section(author, user, "show_followers_public"),
-        can_view_comments=can_view_private_section(author, user, "show_comments_public"),
-        can_view_likes=can_view_private_section(author, user, "show_likes_public"),
+        can_view_following=can_view_private_section(author, user),
+        can_view_followers=can_view_private_section(author, user),
+        can_view_comments=can_view_private_section(author, user),
+        can_view_likes=can_view_private_section(author, user),
         has_blocked_viewer=has_blocked_viewer,
         viewer_has_blocked_author=viewer_has_blocked_author,
         posts=authored_posts,

@@ -20,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { api, resolveAssetUrl } from "../api/client";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RequireLogin } from "../components/RequireLogin";
+import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeColors } from "../utils/theme";
 
@@ -46,6 +47,7 @@ function parseBirthdayValue(value?: string | null): Date | null {
 
 export function ProfileEditScreen() {
   const navigation = useNavigation<any>();
+  const dismissOverlay = useSlideOverlayDismiss();
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
@@ -65,6 +67,7 @@ export function ProfileEditScreen() {
   });
 
   const currentUser = meQuery.data ?? user;
+  const isMerchant = currentUser?.role === "merchant";
   const currentUsernameValue = currentUser?.username?.trim() ?? "";
   const parsedCurrentBirthday = parseBirthdayValue(currentUser?.birthday);
   const effectiveBirthdayValue = parsedCurrentBirthday ? formatBirthdayDate(parsedCurrentBirthday) : "";
@@ -84,17 +87,17 @@ export function ProfileEditScreen() {
     if (!currentUser) return false;
     return (
       username.trim() !== currentUsernameValue ||
-      birthday.trim() !== effectiveBirthdayValue ||
+      (!isMerchant && birthday.trim() !== effectiveBirthdayValue) ||
       bio.trim() !== effectiveBioValue ||
       Boolean(avatarUri)
     );
-  }, [avatarUri, bio, birthday, currentUser, currentUsernameValue, effectiveBirthdayValue, effectiveBioValue, username]);
+  }, [avatarUri, bio, birthday, currentUser, currentUsernameValue, effectiveBirthdayValue, effectiveBioValue, isMerchant, username]);
 
   const saveMutation = useMutation({
     mutationFn: () => {
       const payload: { username?: string; birthday?: string; bio?: string; avatarUri?: string } = {};
       if (username.trim() !== currentUsernameValue) payload.username = username.trim();
-      if (birthday.trim() !== effectiveBirthdayValue) payload.birthday = birthday.trim();
+      if (!isMerchant && birthday.trim() !== effectiveBirthdayValue) payload.birthday = birthday.trim();
       if (bio.trim() !== effectiveBioValue) payload.bio = bio.trim();
       if (avatarUri) payload.avatarUri = avatarUri;
       return api.updateMe(payload);
@@ -104,7 +107,7 @@ export function ProfileEditScreen() {
       void queryClient.invalidateQueries({ queryKey: ["me"] });
       void queryClient.invalidateQueries({ queryKey: ["profile-author", updatedUser.id] });
       void queryClient.invalidateQueries({ queryKey: ["author-profile", updatedUser.id] });
-      navigation.goBack();
+      dismissOverlay?.() ?? navigation.goBack();
     },
   });
 
@@ -151,9 +154,11 @@ export function ProfileEditScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.previewEyebrow, { color: colors.accent }]}>焕甲主页</Text>
-            <Text style={[styles.previewTitle, { color: colors.text }]}>编辑你的主页形象</Text>
-            <Text style={[styles.previewSubtitle, { color: colors.subtext }]}>头像、昵称和简介会展示在作者页顶部。</Text>
+            <Text style={[styles.previewEyebrow, { color: colors.accent }]}>{isMerchant ? "商户信息" : "焕甲主页"}</Text>
+            <Text style={[styles.previewTitle, { color: colors.text }]}>{isMerchant ? "编辑商户信息" : "编辑你的主页形象"}</Text>
+            <Text style={[styles.previewSubtitle, { color: colors.subtext }]}>
+              {isMerchant ? "头像、商户名和简介会展示在店铺作品与消息中。" : "头像、昵称和简介会展示在作者页顶部。"}
+            </Text>
 
             <View style={[styles.previewHero, { backgroundColor: colors.accentSoft }]}>
               <Image source={currentAvatar} style={styles.previewAvatar} />
@@ -202,19 +207,21 @@ export function ProfileEditScreen() {
               />
             </View>
 
-            <View style={styles.field}>
-              <Text style={[styles.rowLabel, { color: colors.text }]}>生日</Text>
-              <Pressable
-                style={[styles.input, styles.dateField, { backgroundColor: colors.input, borderColor: colors.border }]}
-                onPress={openBirthdayPicker}
-              >
-                <Text style={[styles.dateFieldText, { color: birthday ? colors.text : colors.subtext }]}>
-                  {birthday || "请选择生日"}
-                </Text>
-                <Ionicons name="calendar-outline" size={18} color={colors.subtext} />
-              </Pressable>
-              <Text style={[styles.dateHint, { color: colors.subtext }]}>日期格式：dd-mm-yyyy</Text>
-            </View>
+            {!isMerchant ? (
+              <View style={styles.field}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>生日</Text>
+                <Pressable
+                  style={[styles.input, styles.dateField, { backgroundColor: colors.input, borderColor: colors.border }]}
+                  onPress={openBirthdayPicker}
+                >
+                  <Text style={[styles.dateFieldText, { color: birthday ? colors.text : colors.subtext }]}>
+                    {birthday || "请选择生日"}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={18} color={colors.subtext} />
+                </Pressable>
+                <Text style={[styles.dateHint, { color: colors.subtext }]}>日期格式：dd-mm-yyyy</Text>
+              </View>
+            ) : null}
 
             <View style={styles.field}>
               <Text style={[styles.rowLabel, { color: colors.text }]}>简介</Text>
@@ -226,7 +233,7 @@ export function ProfileEditScreen() {
                 ]}
                 value={bio}
                 onChangeText={setBio}
-                placeholder="写一句介绍自己和喜欢的美甲风格"
+                placeholder="请输入简介..."
                 placeholderTextColor={colors.subtext}
                 multiline
                 maxLength={128}
@@ -235,21 +242,8 @@ export function ProfileEditScreen() {
             </View>
           </View>
 
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>公开展示</Text>
-            <View style={styles.readOnlyRow}>
-              <Text style={[styles.readOnlyLabel, { color: colors.subtext }]}>焕甲号</Text>
-              <Text style={[styles.readOnlyValue, { color: colors.text }]}>{currentUser?.uid ?? 0}</Text>
-            </View>
-            <View style={styles.readOnlyRow}>
-              <Text style={[styles.readOnlyLabel, { color: colors.subtext }]}>手机号</Text>
-              <Text style={[styles.readOnlyValue, { color: colors.text }]}>{currentUser?.phone ?? "未设置"}</Text>
-            </View>
-            <Text style={[styles.footerTip, { color: colors.subtext }]}>保存后，作者主页和私信页会同步显示最新头像与昵称。</Text>
-          </View>
-
           <PrimaryButton
-            label={saveMutation.isPending ? "保存中..." : "保存主页"}
+            label={saveMutation.isPending ? "保存中..." : isMerchant ? "保存商户信息" : "保存主页"}
             onPress={() => saveMutation.mutate()}
             loading={saveMutation.isPending}
             disabled={!username.trim() || !isDirty}
@@ -258,7 +252,7 @@ export function ProfileEditScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {Platform.OS === "android" && birthdayPickerVisible ? (
+      {!isMerchant && Platform.OS === "android" && birthdayPickerVisible ? (
         <DateTimePicker
           value={birthdayDraft}
           mode="date"
@@ -268,7 +262,7 @@ export function ProfileEditScreen() {
         />
       ) : null}
 
-      {Platform.OS === "ios" ? (
+      {!isMerchant && Platform.OS === "ios" ? (
         <Modal visible={birthdayPickerVisible} transparent animationType="fade" onRequestClose={() => setBirthdayPickerVisible(false)}>
           <View style={styles.pickerOverlay}>
             <Pressable style={styles.pickerBackdrop} onPress={() => setBirthdayPickerVisible(false)} />

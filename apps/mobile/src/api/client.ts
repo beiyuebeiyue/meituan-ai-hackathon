@@ -3,11 +3,13 @@ import { useAuthStore } from "../store/useAuthStore";
 import {
   AuthResponse,
   AuthorProfile,
+  Booking,
   BrowseHistoryItem,
   DirectMessage,
   DirectMessageThread,
   MessageInboxResponse,
   MessageInboxThread,
+  MerchantShop,
   MyStyleCommentListResponse,
   NailStyleListResponse,
   NearbyShopSearchResponse,
@@ -56,7 +58,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
-  login: (payload: { phone: string; password: string }) =>
+  login: (payload: { phone: string; password: string; requested_role?: "consumer" | "merchant" }) =>
     request<AuthResponse>("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -82,7 +84,13 @@ export const api = {
     const form = new FormData();
     if (payload.username !== undefined) form.append("username", payload.username);
     if (payload.birthday !== undefined) form.append("birthday", payload.birthday);
-    if (payload.bio !== undefined) form.append("bio", payload.bio);
+    if (payload.bio !== undefined) {
+      if (payload.bio.trim()) {
+        form.append("bio", payload.bio);
+      } else {
+        form.append("clear_bio", "true");
+      }
+    }
     if (payload.avatarUri) {
       form.append("avatar_file", {
         uri: payload.avatarUri,
@@ -97,6 +105,7 @@ export const api = {
   searchStyles: (query: string) => request<NailStyleListResponse>(`/nails/search?query=${encodeURIComponent(query)}&page=1&page_size=20`),
   getFollowingStyles: () => request<NailStyleListResponse>("/nails/following?page=1&page_size=20"),
   getLatest: () => request<NailStyleListResponse>("/nails/latest?page=1&page_size=20"),
+  getLocalStyles: (city: string) => request<NailStyleListResponse>(`/nails/local?city=${encodeURIComponent(city)}&page=1&page_size=20`),
   getStyle: (styleId: string) => request<StyleDetail>(`/nails/${styleId}`),
   recordStyleView: (styleId: string) => request<{ message: string }>(`/nails/${styleId}/views`, { method: "POST" }),
   getStyleComments: (styleId: string) => request<{ items: StyleComment[] }>(`/nails/${styleId}/comments`),
@@ -122,14 +131,42 @@ export const api = {
       body: JSON.stringify({ style_id: styleId }),
     }),
   removeFavorite: (styleId: string) => request<{ message: string }>(`/favorites/${styleId}`, { method: "DELETE" }),
-  createPost: async (payload: { title: string; description: string; tags: string; imageUri: string }) => {
+  createPost: async (payload: { title: string; description: string; tags: string; imageUri: string; shopId?: string | null }) => {
     const form = new FormData();
     form.append("title", payload.title);
     form.append("description", payload.description);
     form.append("tags", payload.tags);
+    if (payload.shopId) form.append("shop_id", payload.shopId);
     form.append("image", { uri: payload.imageUri, name: "post.jpg", type: "image/jpeg" } as never);
     return request<UserPost>("/posts", { method: "POST", body: form });
   },
+  getMyMerchantShops: () => request<{ items: MerchantShop[] }>("/merchant/shops/me"),
+  createMerchantShop: (payload: Partial<MerchantShop> & { name: string; city: string }) =>
+    request<MerchantShop>("/merchant/shops", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  updateMerchantShop: (shopId: string, payload: Partial<MerchantShop>) =>
+    request<MerchantShop>(`/merchant/shops/${shopId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  createBooking: (payload: { style_id: string; shop_id?: string | null; appointment_time: string; contact_phone: string; note?: string | null }) =>
+    request<Booking>("/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  getMyBookings: () => request<{ items: Booking[] }>("/bookings/me"),
+  getMerchantBookings: () => request<{ items: Booking[] }>("/bookings/merchant"),
+  updateMerchantBookingStatus: (bookingId: string, status: Booking["status"]) =>
+    request<Booking>(`/bookings/merchant/${bookingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    }),
   getMyPosts: () => request<{ items: UserPost[] }>("/posts/me"),
   getAuthorProfile: (authorId: string) => request<AuthorProfile>(`/users/${authorId}/author-profile`),
   getMyStyleComments: () => request<MyStyleCommentListResponse>("/users/me/style-comments"),

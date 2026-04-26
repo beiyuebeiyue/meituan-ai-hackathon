@@ -29,7 +29,7 @@ export function MyPostsScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.surfaceAlt }]}>
       <FlatList
         data={query.data?.items ?? []}
         keyExtractor={(item) => item.id}
@@ -69,7 +69,7 @@ export function MyPostsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { padding: 18, gap: 16 },
+  list: { padding: 16, gap: 14, paddingBottom: 120 },
   empty: {
     paddingTop: 80,
     textAlign: "center",

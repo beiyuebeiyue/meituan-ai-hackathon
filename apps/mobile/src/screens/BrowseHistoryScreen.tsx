@@ -5,8 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
+import { OverlayContent } from "../components/OverlayContent";
 import { RequireLogin } from "../components/RequireLogin";
-import { SlideOverlayScreen } from "../components/SlideOverlayScreen";
+import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeColors } from "../utils/theme";
 
@@ -19,6 +20,7 @@ export function BrowseHistoryScreen() {
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
   const colors = useThemeColors();
+  const direction = useOverlayDirection("right");
   const insets = useSafeAreaInsets();
   const [manageMode, setManageMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -72,28 +74,26 @@ export function BrowseHistoryScreen() {
   };
 
   return (
-    <SlideOverlayScreen direction="right" backgroundColor={colors.background} onDismiss={() => navigation.goBack()}>
+    <SlideOverlayScreen direction={direction} backgroundColor={colors.background} onDismiss={() => navigation.goBack()}>
       {(dismiss) => (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-          <View style={[styles.overlayHeader, { borderBottomColor: colors.border }]}>
-            <Pressable style={styles.backButton} onPress={dismiss}>
-              <Ionicons name="chevron-back" size={28} color={colors.text} />
-            </Pressable>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>浏览记录</Text>
-            {token && items.length > 0 ? (
-              <Pressable
-                style={styles.headerAction}
-                onPress={() => {
-                  setManageMode((prev) => !prev);
-                  setSelectedIds([]);
-                }}
-              >
-                <Text style={[styles.manageAction, { color: colors.text }]}>{manageMode ? "完成" : "管理"}</Text>
-              </Pressable>
-            ) : (
-              <View style={styles.headerAction} />
-            )}
-          </View>
+          <OverlayContent.Header
+            title="浏览记录"
+            onBack={dismiss}
+            right={
+              token && items.length > 0 ? (
+                <Pressable
+                  style={styles.headerAction}
+                  onPress={() => {
+                    setManageMode((prev) => !prev);
+                    setSelectedIds([]);
+                  }}
+                >
+                  <Text style={[styles.manageAction, { color: colors.text }]}>{manageMode ? "完成" : "管理"}</Text>
+                </Pressable>
+              ) : null
+            }
+          />
           {!token ? (
             <RequireLogin onLogin={() => navigation.navigate("Login")} message="登录后可查看浏览记录" />
           ) : (
@@ -199,28 +199,11 @@ export function BrowseHistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  overlayHeader: {
-    minHeight: 54,
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 12,
-  },
-  backButton: {
+  headerAction: {
     width: 44,
     height: 44,
     alignItems: "center",
     justifyContent: "center",
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: "center",
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  headerAction: {
-    width: 44,
-    alignItems: "flex-end",
   },
   list: { padding: 18, gap: 14, paddingBottom: 120 },
   empty: {

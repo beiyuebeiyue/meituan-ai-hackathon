@@ -43,6 +43,8 @@ class FollowService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
         if target.id == user.id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能关注自己")
+        if user.role == "merchant":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="商家端不能关注用户，请切换到用户端")
 
         relation = db.scalar(
             select(UserFollow).where(

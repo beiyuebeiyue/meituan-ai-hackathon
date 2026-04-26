@@ -69,6 +69,8 @@ class UploadMigrationService:
     def _migrate_avatar(self, user: User) -> bool:
         if not isinstance(user.uid, int) or user.avatar_url is None:
             return False
+        if user.uid == 0 and user.avatar_url.endswith("/p0.png"):
+            return False
         source_path = self._resolve_source_path(public_url=user.avatar_url)
         if source_path is None or not source_path.exists():
             return False

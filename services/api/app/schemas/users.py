@@ -16,10 +16,11 @@ class UserRead(BaseModel):
     birthday: str | None = None
     bio: str | None = None
     location_city: str | None = None
-    show_following_public: bool = True
-    show_followers_public: bool = True
-    show_comments_public: bool = True
-    show_likes_public: bool = True
+    role: str = "consumer"
+    show_following_public: bool = False
+    show_followers_public: bool = False
+    show_comments_public: bool = False
+    show_likes_public: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -123,3 +124,12 @@ class AuthorProfileRead(BaseModel):
     has_blocked_viewer: bool = False
     viewer_has_blocked_author: bool = False
     posts: list[AuthorPostRead]
+
+
+def serialize_user_read(user: object) -> UserRead:
+    payload = UserRead.model_validate(user)
+    payload.show_following_public = False
+    payload.show_followers_public = False
+    payload.show_comments_public = False
+    payload.show_likes_public = False
+    return payload

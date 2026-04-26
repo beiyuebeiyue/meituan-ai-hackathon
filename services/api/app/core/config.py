@@ -23,6 +23,11 @@ class Settings(BaseSettings):
 
     openai_api_key: str = ""
     openai_image_model: str = "gpt-image-2"
+    image_pipeline_version: str = "mediapipe-sam31-v1"
+    image_provider_config_hash: str = ""
+    remote_gpu_tryon_url: str = ""
+    remote_gpu_tryon_api_key: str = ""
+    remote_gpu_tryon_timeout_seconds: float = 180.0
     meituan_app_key: str = ""
     meituan_app_secret: str = ""
     meituan_api_base_url: str = ""
@@ -33,13 +38,19 @@ class Settings(BaseSettings):
     meituan_poi_api_base_url: str = "https://poiopen.dianping.com/router/poisearch/search"
     default_admin_enabled: bool = True
     default_admin_phone: str = "13886722666"
-    default_admin_username: str = "momo酱"
+    default_admin_username: str = "keke"
     default_admin_password: str = "admin@123456"
-    default_admin_bio: str = "分享你心仪的美甲，记录每一次焕甲灵感。"
+    default_admin_bio: str = (
+        "谢谢关注!\n"
+        "大家有对我不满的地方都可以提出来，尽情发言，一会就给你们全删了。"
+        "*的竟敢对皇帝不满，我来上网就是来当皇帝的，顺我者昌逆我者亡。"
+        "能面刺寡人之过者，诛九族。上网谏寡人者，处极刑。谤讥于市朝闻寡人之耳者，赐自尽。"
+    )
 
     seed_xlsx_path: str = "./命题三美甲评测数据（对外版）.xlsx"
     upload_dir: str = "./data/uploads"
     tryon_result_dir: str = "./data/tryon_results"
+    tryon_artifact_dir: str = "./data/tryon_artifacts"
     seed_dir: str = "./data/seed"
     report_dir: str = "./data/reports"
     public_files_prefix: str = "/files"
@@ -69,6 +80,10 @@ class Settings(BaseSettings):
     @property
     def tryon_result_path(self) -> Path:
         return self.resolve_path(self.tryon_result_dir)
+
+    @property
+    def tryon_artifact_path(self) -> Path:
+        return self.resolve_path(self.tryon_artifact_dir)
 
     @property
     def seed_path(self) -> Path:

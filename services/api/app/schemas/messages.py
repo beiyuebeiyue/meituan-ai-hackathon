@@ -7,6 +7,7 @@ class DirectMessageTargetRead(BaseModel):
     id: str
     uid: int
     username: str
+    role: str
     avatar_url: str | None = None
 
 

@@ -33,6 +33,12 @@ def serialize_style(
         author_avatar_url=None,
         is_following_author=False,
         is_authored_by_me=False,
+        shop_id=style.shop_id,
+        shop_name=style.shop.name if style.shop is not None else None,
+        shop_city=style.shop.city if style.shop is not None else None,
+        shop_address=style.shop.address if style.shop is not None else None,
+        manage_post_id=None,
+        is_hidden=False,
         created_at=style.created_at,
     )
 
@@ -49,6 +55,8 @@ def serialize_style_detail(
     author_avatar_url: str | None = None,
     is_following_author: bool = False,
     is_authored_by_me: bool = False,
+    manage_post_id: str | None = None,
+    is_hidden: bool = False,
 ) -> NailStyleDetailRead:
     favorite_ids = favorite_ids or set()
     like_ids = like_ids or set()
@@ -71,6 +79,12 @@ def serialize_style_detail(
         author_avatar_url=author_avatar_url,
         is_following_author=is_following_author,
         is_authored_by_me=is_authored_by_me,
+        shop_id=style.shop_id,
+        shop_name=style.shop.name if style.shop is not None else None,
+        shop_city=style.shop.city if style.shop is not None else None,
+        shop_address=style.shop.address if style.shop is not None else None,
+        manage_post_id=manage_post_id,
+        is_hidden=is_hidden,
         created_at=style.created_at,
     )
 
