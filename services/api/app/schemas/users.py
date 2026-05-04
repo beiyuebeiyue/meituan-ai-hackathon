@@ -17,6 +17,7 @@ class UserRead(BaseModel):
     bio: str | None = None
     location_city: str | None = None
     role: str = "consumer"
+    is_shop: bool = False
     show_following_public: bool = False
     show_followers_public: bool = False
     show_comments_public: bool = False
@@ -29,6 +30,7 @@ class UserRead(BaseModel):
 class UserHandPhotoRead(BaseModel):
     id: str
     image_url: str
+    processing_status: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -97,6 +99,7 @@ class UserSummaryRead(BaseModel):
     avatar_url: str | None = None
     bio: str | None = None
     city: str
+    is_shop: bool = False
     is_following: bool = False
 
 
@@ -107,6 +110,8 @@ class UserListResponse(BaseModel):
 class AuthorProfileRead(BaseModel):
     id: str
     uid: int
+    role: str = "consumer"
+    is_shop: bool = False
     username: str
     avatar_url: str | None = None
     bio: str | None = None
@@ -123,11 +128,16 @@ class AuthorProfileRead(BaseModel):
     can_view_likes: bool = True
     has_blocked_viewer: bool = False
     viewer_has_blocked_author: bool = False
+    shop_id: str | None = None
+    shop_name: str | None = None
+    shop_city: str | None = None
+    shop_address: str | None = None
     posts: list[AuthorPostRead]
 
 
 def serialize_user_read(user: object) -> UserRead:
     payload = UserRead.model_validate(user)
+    payload.is_shop = payload.role == "merchant"
     payload.show_following_public = False
     payload.show_followers_public = False
     payload.show_comments_public = False

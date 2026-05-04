@@ -1,12 +1,11 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
-import { Alert, FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
+import { DrawerModuleCard, DrawerModuleThumbnail, drawerModuleListStyles } from "../components/DrawerModuleLayout";
+import { OverlayContent } from "../components/OverlayContent";
 import { UserSummary } from "../types/api";
 import { useThemeColors } from "../utils/theme";
-
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
 
 export function BlockedUsersScreen() {
   const colors = useThemeColors();
@@ -28,11 +27,10 @@ export function BlockedUsersScreen() {
   });
 
   const renderUser = ({ item }: { item: UserSummary }) => (
-    <Pressable
-      style={[styles.userRow, { backgroundColor: colors.surface }]}
+    <DrawerModuleCard
       onPress={() => navigation.navigate("AuthorProfile", { authorId: item.id })}
     >
-      <Image source={item.avatar_url ? { uri: resolveAssetUrl(item.avatar_url) } : defaultAvatar} style={styles.avatar} />
+      <DrawerModuleThumbnail uri={item.avatar_url ? resolveAssetUrl(item.avatar_url) : null} icon="person-outline" size="small" round />
       <View style={styles.userBody}>
         <Text style={[styles.username, { color: colors.text }]} numberOfLines={1}>
           {item.username}
@@ -45,15 +43,15 @@ export function BlockedUsersScreen() {
         style={[styles.unblockButton, { backgroundColor: colors.accentSoft }]}
         onPress={(event) => {
           event.stopPropagation();
-          Alert.alert("解除拉黑", `确认将 ${item.username} 移出黑名单吗？`, [
+          Alert.alert("恢复查看", `确认重新查看 ${item.username} 的内容吗？`, [
             { text: "取消", style: "cancel" },
-            { text: "解除", onPress: () => unblockMutation.mutate(item.id) },
+            { text: "恢复", onPress: () => unblockMutation.mutate(item.id) },
           ]);
         }}
       >
-        <Text style={[styles.unblockText, { color: colors.accent }]}>解除</Text>
+        <Text style={[styles.unblockText, { color: colors.accent }]}>恢复</Text>
       </Pressable>
-    </Pressable>
+    </DrawerModuleCard>
   );
 
   return (
@@ -62,12 +60,13 @@ export function BlockedUsersScreen() {
         data={query.data?.items ?? []}
         keyExtractor={(item) => item.id}
         renderItem={renderUser}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={drawerModuleListStyles.list}
         ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <Ionicons name="shield-checkmark-outline" size={34} color={colors.subtext} />
-            <Text style={[styles.empty, { color: colors.subtext }]}>{query.isLoading ? "正在加载..." : "当前没有拉黑用户"}</Text>
-          </View>
+          <OverlayContent.Empty
+            icon="shield-checkmark-outline"
+            title={query.isLoading ? "正在加载" : "当前没有不再看的用户"}
+            description="被你设置为不再看的用户会出现在这里。"
+          />
         }
       />
     </SafeAreaView>
@@ -76,23 +75,6 @@ export function BlockedUsersScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: {
-    padding: 16,
-    gap: 10,
-  },
-  userRow: {
-    minHeight: 82,
-    borderRadius: 20,
-    padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-  },
   userBody: {
     flex: 1,
     gap: 5,
@@ -112,13 +94,5 @@ const styles = StyleSheet.create({
   unblockText: {
     fontWeight: "800",
     fontSize: 12,
-  },
-  emptyWrap: {
-    marginTop: 120,
-    alignItems: "center",
-    gap: 10,
-  },
-  empty: {
-    fontWeight: "700",
   },
 });

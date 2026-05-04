@@ -38,7 +38,7 @@ class BlockService:
         if target is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
         if target.id == user.id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能拉黑自己")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能对自己设置不再看她")
 
         relation = db.scalar(
             select(UserBlock).where(
@@ -59,6 +59,6 @@ class BlockService:
             )
         )
         if relation is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="拉黑关系不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="不再看关系不存在")
         db.delete(relation)
         db.commit()

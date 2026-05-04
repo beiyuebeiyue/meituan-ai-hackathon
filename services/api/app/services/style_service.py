@@ -72,6 +72,26 @@ class StyleService:
         offset = (page - 1) * page_size
         return matched[offset : offset + page_size], total
 
+    def list_by_shop(
+        self,
+        db: Session,
+        shop_id: str,
+        page: int,
+        page_size: int,
+        viewer: User | None = None,
+    ) -> tuple[list[NailStyle], int]:
+        ordered = list(
+            db.scalars(
+                select(NailStyle)
+                .where(NailStyle.shop_id == shop_id)
+                .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
+            )
+        )
+        visible = self.filter_visible_styles(db, ordered, viewer)
+        total = len(visible)
+        offset = (page - 1) * page_size
+        return visible[offset : offset + page_size], total
+
     def search_styles(self, db: Session, query_text: str, page: int, page_size: int, viewer: User | None = None) -> tuple[list[NailStyle], int]:
         normalized_query = query_text.strip().lower().replace("＃", "#")
         tokens = [token for token in re.split(r"[\s#]+", normalized_query) if token]
@@ -188,13 +208,13 @@ class StyleService:
         }
 
     def resolve_style_author_user(self, db: Session, style: NailStyle) -> User | None:
-        if style.shop is not None and style.shop.merchant is not None:
-            return style.shop.merchant
         author_id = style.style_metadata_json.get("author_user_id") if isinstance(style.style_metadata_json, dict) else None
         if isinstance(author_id, str):
             author = db.get(User, author_id)
             if author is not None:
                 return author
+        if style.shop is not None and style.shop.merchant is not None:
+            return style.shop.merchant
         settings = get_settings()
         return db.scalar(select(User).where(User.phone == settings.default_admin_phone))
 
@@ -217,8 +237,11 @@ class StyleService:
 
     def is_style_visible(self, db: Session, style: NailStyle, viewer: User | None = None) -> bool:
         author = self.resolve_style_author_user(db, style)
-        if viewer is not None and author is not None and self.block_service.has_blocked(db, author.id, viewer.id):
-            return False
+        if viewer is not None and author is not None:
+            if self.block_service.has_blocked(db, author.id, viewer.id):
+                return False
+            if self.block_service.has_blocked(db, viewer.id, author.id):
+                return False
         post = self.get_post_for_style(db, style)
         if post is None or not post.is_hidden:
             return True
@@ -244,12 +267,14 @@ class StyleService:
             style.image_url = post.image_url
             style.local_image_path = post.local_image_path
             style.shop_id = post.shop_id
+            style.verified_booking_id = post.verified_booking_id
             db.add(style)
 
     def create_style_from_post(self, db: Session, user: User, post: UserPost) -> NailStyle:
         style = NailStyle(
             title=post.title,
             shop_id=post.shop_id,
+            verified_booking_id=post.verified_booking_id,
             description=post.description,
             image_url=post.image_url,
             local_image_path=post.local_image_path,

@@ -1,15 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { useQuery } from "@tanstack/react-query";
-import * as Location from "expo-location";
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Image,
-  Keyboard,
-  Linking,
-  Platform,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -17,183 +11,53 @@ import {
   TextInput,
   View,
 } from "react-native";
-import MapView, { Marker, Region } from "react-native-maps";
-import { api, resolveAssetUrl } from "../api/client";
-import { useMarketStore } from "../store/useMarketStore";
+import { resolveAssetUrl } from "../api/client";
+import { formatMarketDistance, formatMarketLocationLine, useMarketShops } from "../hooks/useMarketShops";
 import { NearbyShop } from "../types/api";
-import { DEFAULT_MARKET_CITY, findMarketCity, getMarketCityCenter } from "../utils/marketCities";
 import { useThemeColors } from "../utils/theme";
-
-const DEFAULT_CITY_CENTER = getMarketCityCenter(DEFAULT_MARKET_CITY) ?? { lat: 22.5431, lng: 114.0579 };
-
-function formatDistance(distanceMeters?: number | null) {
-  if (distanceMeters == null) return "距离暂未开放";
-  if (distanceMeters < 1000) return `${distanceMeters}m`;
-  return `${(distanceMeters / 1000).toFixed(distanceMeters >= 10000 ? 0 : 1)}km`;
-}
 
 function formatRating(rating?: number | null) {
   return typeof rating === "number" && rating > 0 ? rating.toFixed(1) : null;
 }
 
-function hasShopCoordinate(shop?: NearbyShop | null): shop is NearbyShop & { latitude: number; longitude: number } {
-  return typeof shop?.latitude === "number" && typeof shop?.longitude === "number";
-}
-
-function shopRegionForItems(items: NearbyShop[], fallback: { lat: number; lng: number }): Region {
-  const base = items.find(hasShopCoordinate);
-  return {
-    latitude: base?.latitude ?? fallback.lat,
-    longitude: base?.longitude ?? fallback.lng,
-    latitudeDelta: 0.08,
-    longitudeDelta: 0.08,
-  };
+function joinMeta(parts: Array<string | null | undefined>) {
+  return parts.filter(Boolean).join(" · ");
 }
 
 export function MarketScreen() {
   const colors = useThemeColors();
   const navigation = useNavigation<any>();
-  const selectedCity = useMarketStore((state) => state.selectedCity);
-  const setSelectedCity = useMarketStore((state) => state.setSelectedCity);
-  const [view, setView] = useState<"list" | "map">("list");
-  const [sort, setSort] = useState<"default" | "distance">("default");
-  const [detectedCity, setDetectedCity] = useState<string | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationBootstrapped, setLocationBootstrapped] = useState(false);
-  const [locationDenied, setLocationDenied] = useState(false);
-  const [searchDraft, setSearchDraft] = useState("");
-  const [submittedKeyword, setSubmittedKeyword] = useState("");
-  const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
-  const mapRef = useRef<MapView | null>(null);
+  const {
+    selectedCity,
+    sort,
+    setSort,
+    searchDraft,
+    setSearchDraft,
+    locationDenied,
+    locationBootstrapped,
+    query,
+    locationCopy,
+    unavailableMessage,
+    submitSearch,
+    clearSearch,
+  } = useMarketShops("list");
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status !== "granted") {
-          if (!cancelled) {
-            setLocationDenied(true);
-            setSelectedCity(DEFAULT_MARKET_CITY);
-          }
-          return;
-        }
-        const position = await Location.getCurrentPositionAsync({});
-        if (cancelled) return;
-        const nextCoords = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-        setCoords(nextCoords);
-        try {
-          const geocoded = await Location.reverseGeocodeAsync({
-            latitude: nextCoords.lat,
-            longitude: nextCoords.lng,
-          });
-          if (cancelled) return;
-          const matchedCity = findMarketCity(geocoded[0]?.city ?? geocoded[0]?.subregion ?? geocoded[0]?.region ?? "");
-          if (matchedCity) {
-            setDetectedCity(matchedCity.name);
-            setSelectedCity(matchedCity.name);
-          } else {
-            setDetectedCity(null);
-            setSelectedCity(DEFAULT_MARKET_CITY);
-          }
-        } catch {
-          if (!cancelled) {
-            setDetectedCity(null);
-            setSelectedCity(DEFAULT_MARKET_CITY);
-          }
-        }
-      } catch {
-        if (!cancelled) {
-          setLocationDenied(true);
-          setSelectedCity(DEFAULT_MARKET_CITY);
-        }
-      } finally {
-        if (!cancelled) {
-          setLocationBootstrapped(true);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [setSelectedCity]);
-
-  const selectedCityCenter = getMarketCityCenter(selectedCity) ?? DEFAULT_CITY_CENTER;
-  const shouldUseDeviceCoords = Boolean(coords && detectedCity && detectedCity === selectedCity);
-  const requestCoords = shouldUseDeviceCoords && coords ? coords : selectedCityCenter;
-
-  const query = useQuery({
-    queryKey: ["market-shops", selectedCity, sort, submittedKeyword || "default", `${requestCoords.lat}:${requestCoords.lng}`],
-    queryFn: () =>
-      api.getNearbyShops({
-        keyword: submittedKeyword || null,
-        city: selectedCity,
-        lat: requestCoords.lat,
-        lng: requestCoords.lng,
-        sort,
-        view,
-      }),
-    enabled: locationBootstrapped,
-  });
-
-  const coordinateShops = useMemo(() => (query.data?.items ?? []).filter(hasShopCoordinate), [query.data?.items]);
-
-  useEffect(() => {
-    const firstId = query.data?.items[0]?.id;
-    setSelectedShopId(firstId ?? null);
-  }, [query.data?.items]);
-
-  const selectedShop = useMemo(
-    () => query.data?.items.find((item) => item.id === selectedShopId) ?? query.data?.items[0] ?? null,
-    [query.data?.items, selectedShopId]
-  );
-
-  useEffect(() => {
-    if (view !== "map" || !hasShopCoordinate(selectedShop) || !mapRef.current) return;
-    mapRef.current.animateToRegion(
-      {
-        latitude: selectedShop.latitude,
-        longitude: selectedShop.longitude,
-        latitudeDelta: 0.045,
-        longitudeDelta: 0.045,
-      },
-      260
-    );
-  }, [selectedShop, view]);
-
-  const submitSearch = () => {
-    setSubmittedKeyword(searchDraft.trim());
-    Keyboard.dismiss();
-  };
-
-  const clearSearch = () => {
-    setSearchDraft("");
-    setSubmittedKeyword("");
-  };
-
-  const openInMaps = async (shop: NearbyShop) => {
-    if (!hasShopCoordinate(shop)) return;
-    const url =
-      Platform.OS === "ios"
-        ? `http://maps.apple.com/?ll=${shop.latitude},${shop.longitude}&q=${encodeURIComponent(shop.name)}`
-        : `geo:${shop.latitude},${shop.longitude}?q=${encodeURIComponent(shop.name)}`;
-    await Linking.openURL(url);
+  const openShopDetail = (shop: NearbyShop) => {
+    navigation.navigate("MarketShopDetail", { shop, entryEdge: "right" });
   };
 
   const renderShopCard = ({ item }: { item: NearbyShop }) => {
     const rating = formatRating(item.rating);
+    const priceAndTime = joinMeta([item.average_price_text, item.business_time_text]);
     return (
-      <Pressable style={styles.resultCard} onPress={() => (hasShopCoordinate(item) ? openInMaps(item) : undefined)}>
+      <Pressable style={styles.resultCard} onPress={() => openShopDetail(item)}>
         <Image source={{ uri: resolveAssetUrl(item.cover_image_url) }} style={[styles.resultImage, { backgroundColor: colors.surfaceAlt }]} />
         <View style={styles.resultBody}>
           <View style={styles.resultTitleRow}>
             <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={2}>
               {item.name}
             </Text>
-            <Text style={[styles.resultDistance, { color: colors.subtext }]}>{formatDistance(item.distance_meters)}</Text>
+            <Text style={[styles.resultDistance, { color: colors.subtext }]}>{formatMarketDistance(item.distance_meters)}</Text>
           </View>
           <View style={styles.ratingRow}>
             {rating ? (
@@ -202,30 +66,24 @@ export function MarketScreen() {
                 <Text style={styles.ratingText}>{rating}</Text>
               </>
             ) : null}
-            <Text style={[styles.resultMeta, { color: colors.subtext }]} numberOfLines={1}>
-              {rating ? "评价暂未开放" : "美团点评"} · {item.average_price_text}
-            </Text>
+            {priceAndTime ? (
+              <Text style={[styles.resultMeta, { color: colors.subtext }]} numberOfLines={1}>
+                {priceAndTime}
+              </Text>
+            ) : null}
           </View>
           <Text style={[styles.resultMeta, { color: colors.subtext }]} numberOfLines={1}>
-            美甲 · {item.region || "丽人"}
+            {formatMarketLocationLine(item.region, item.address)}
           </Text>
-          <View style={styles.tagRow}>
-            <Text style={[styles.rankTag, { color: colors.accent, backgroundColor: colors.accentSoft }]} numberOfLines={1}>
-              {item.heat_text || "美团点评门店"}
+          {item.heat_text ? (
+            <Text style={[styles.addressText, { color: colors.subtext }]} numberOfLines={1}>
+              商圈：{item.heat_text}
             </Text>
-            <Text style={[styles.softTag, { color: colors.subtext, borderColor: colors.border }]}>到店咨询</Text>
-            <Text style={[styles.softTag, { color: colors.subtext, borderColor: colors.border }]}>美甲</Text>
-          </View>
-          <Text style={[styles.addressText, { color: colors.subtext }]} numberOfLines={1}>
-            {item.address}
-          </Text>
+          ) : null}
         </View>
       </Pressable>
     );
   };
-
-  const locationCopy = shouldUseDeviceCoords ? "当前定位附近" : `${selectedCity}中心附近`;
-  const unavailableMessage = query.data?.source === "unavailable" ? query.data.message : null;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -243,7 +101,7 @@ export function MarketScreen() {
             style={[styles.searchInput, { color: colors.text }]}
             value={searchDraft}
             onChangeText={setSearchDraft}
-            placeholder="搜索美甲店"
+            placeholder="搜索城市/区县/商圈/地点"
             placeholderTextColor={colors.subtext}
             returnKeyType="search"
             onSubmitEditing={submitSearch}
@@ -254,9 +112,9 @@ export function MarketScreen() {
             </Pressable>
           ) : null}
         </View>
-        <Pressable style={styles.mapEntry} onPress={() => setView((current) => (current === "map" ? "list" : "map"))}>
-          <Ionicons name={view === "map" ? "list-outline" : "map-outline"} size={24} color={colors.text} />
-          <Text style={[styles.mapEntryText, { color: colors.text }]}>{view === "map" ? "列表" : "地图"}</Text>
+        <Pressable style={styles.mapEntry} onPress={() => navigation.navigate("MarketMap", { entryEdge: "right" })}>
+          <Ionicons name="map-outline" size={24} color={colors.text} />
+          <Text style={[styles.mapEntryText, { color: colors.text }]}>地图</Text>
         </Pressable>
       </View>
 
@@ -300,7 +158,7 @@ export function MarketScreen() {
       </View>
 
       <Text style={[styles.resultHint, { color: colors.subtext }]}>
-        {submittedKeyword ? `搜索 “${submittedKeyword}”` : "美甲店"} · {locationCopy}
+        美甲店 · {locationCopy}
       </Text>
 
       {!locationBootstrapped || query.isLoading ? (
@@ -308,70 +166,6 @@ export function MarketScreen() {
           <ActivityIndicator color={colors.accent} size="large" />
           <Text style={[styles.loadingText, { color: colors.subtext }]}>正在帮你找附近值得做的美甲店...</Text>
         </View>
-      ) : view === "map" ? (
-        coordinateShops.length === 0 ? (
-          <View style={styles.mapUnavailable}>
-            <Ionicons name="map-outline" size={36} color={colors.subtext} />
-            <Text style={[styles.emptyText, { color: colors.subtext }]}>当前数据暂不支持地图定位。</Text>
-          </View>
-        ) : (
-          <View style={styles.mapWrap}>
-            <MapView
-              ref={(ref) => {
-                mapRef.current = ref;
-              }}
-              style={styles.map}
-              initialRegion={shopRegionForItems(coordinateShops, requestCoords)}
-            >
-              {coordinateShops.map((shop) => (
-                <Marker
-                  key={shop.id}
-                  coordinate={{ latitude: shop.latitude, longitude: shop.longitude }}
-                  pinColor={selectedShopId === shop.id ? colors.accent : undefined}
-                  title={shop.name}
-                  description={shop.address}
-                  onPress={() => setSelectedShopId(shop.id)}
-                />
-              ))}
-            </MapView>
-            <FlatList
-              horizontal
-              pagingEnabled
-              snapToInterval={290}
-              decelerationRate="fast"
-              showsHorizontalScrollIndicator={false}
-              data={coordinateShops}
-              keyExtractor={(item) => `map-${item.id}`}
-              contentContainerStyle={styles.mapCards}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={[styles.mapCard, { backgroundColor: colors.surface }]}
-                  onPress={() => {
-                    setSelectedShopId(item.id);
-                    openInMaps(item);
-                  }}
-                >
-                  <Text style={[styles.mapCardTitle, { color: colors.text }]} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <Text style={[styles.mapCardMeta, { color: colors.subtext }]} numberOfLines={1}>
-                    {item.region} · {formatDistance(item.distance_meters)} · {item.average_price_text}
-                  </Text>
-                  <Text style={[styles.mapCardMeta, { color: colors.subtext }]} numberOfLines={2}>
-                    {item.address}
-                  </Text>
-                </Pressable>
-              )}
-              onMomentumScrollEnd={(event) => {
-                const index = Math.round(event.nativeEvent.contentOffset.x / 290);
-                const shop = coordinateShops[index];
-                if (shop) {
-                  setSelectedShopId(shop.id);
-                }
-              }}
-            />
-          </View>
-        )
       ) : (
         <FlatList
           data={query.data?.items ?? []}
@@ -511,37 +305,11 @@ const styles = StyleSheet.create({
   },
   ratingText: { color: "#ff6b26", fontSize: 15, fontWeight: "900" },
   resultMeta: { fontSize: 13, lineHeight: 18 },
-  tagRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexWrap: "wrap",
-  },
-  rankTag: {
-    maxWidth: 150,
-    borderRadius: 5,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  softTag: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 5,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    fontSize: 11,
-    fontWeight: "700",
-  },
   addressText: { fontSize: 12, lineHeight: 17 },
   emptyText: {
     paddingTop: 40,
     textAlign: "center",
     fontSize: 14,
-  },
-  mapWrap: {
-    flex: 1,
-    marginTop: 8,
   },
   mapUnavailable: {
     flex: 1,
@@ -550,24 +318,4 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 24,
   },
-  map: {
-    flex: 1,
-  },
-  mapCards: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 112,
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  mapCard: {
-    width: 274,
-    borderRadius: 18,
-    padding: 14,
-    marginRight: 10,
-    gap: 8,
-  },
-  mapCardTitle: { fontSize: 16, fontWeight: "800" },
-  mapCardMeta: { fontSize: 12, lineHeight: 18 },
 });

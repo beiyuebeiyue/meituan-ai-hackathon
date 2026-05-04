@@ -6,7 +6,7 @@ import { Alert, Image, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet
 import { AuthorProfileScreen } from "./AuthorProfileScreen";
 import { api, resolveAssetUrl } from "../api/client";
 import { useAuthStore } from "../store/useAuthStore";
-import { Booking } from "../types/api";
+import { bookingStatusLabel, getBookingStatusTextColor } from "../utils/bookingStatus";
 import { useThemeColors } from "../utils/theme";
 
 const defaultAvatar = require("../../assets/profile/default_avatar.png");
@@ -16,14 +16,6 @@ const sloganHighlights = [
   { icon: "sparkles-outline", text: "AI焕甲，随意试戴" },
   { icon: "share-social-outline", text: "心仪美甲，随手分享" },
 ] as const;
-
-const bookingStatusLabel: Record<Booking["status"], string> = {
-  pending: "待处理",
-  accepted: "已接受",
-  rejected: "已拒绝",
-  completed: "已完成",
-  cancelled: "已取消",
-};
 
 export function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -46,10 +38,17 @@ export function ProfileScreen() {
   const displayUser = meQuery.data ?? user;
 
   if (token && displayUser?.id) {
-    if (displayUser.role !== "merchant") {
-      return <ConsumerProfileScreen />;
-    }
     return <AuthorProfileScreen authorId={displayUser.id} asProfileTab />;
+  }
+
+  if (token) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingWrap}>
+          <Text style={[styles.emptyBooking, { color: colors.subtext }]}>正在加载我的主页...</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -120,14 +119,16 @@ function ConsumerProfileScreen() {
   const menuItems = [
     { key: "bookings", icon: "receipt-outline", title: "我的订单", subtitle: "查看预约与历史订单" },
     { key: "browse-history", icon: "time-outline", title: "浏览记录", subtitle: "最近看过的美甲" },
+    { key: "following", icon: "storefront-outline", title: "我的关注", subtitle: "管理关注的商家" },
     { key: "likes", icon: "heart-outline", title: "喜爱", subtitle: "查看赞过的美甲" },
     { key: "tryon", icon: "sparkles-outline", title: "AI 焕甲记录", subtitle: "查看试戴结果" },
-    { key: "hands", icon: "hand-left-outline", title: "手图管理", subtitle: "管理已上传手图" },
+    { key: "hands", icon: "hand-left-outline", title: "手图管理", subtitle: "管理本地手图" },
   ] as const;
 
   const openItem = (key: (typeof menuItems)[number]["key"]) => {
     if (key === "bookings") navigation.navigate("ConsumerOrders");
     if (key === "browse-history") navigation.navigate("BrowseHistory");
+    if (key === "following" && user?.id) navigation.navigate("FollowList", { authorId: user.id, kind: "following", title: "我的关注" });
     if (key === "likes") navigation.navigate("ConsumerLikes");
     if (key === "tryon") navigation.navigate("TryOnHistory");
     if (key === "hands") navigation.navigate("HandPhotoManagement");
@@ -141,7 +142,6 @@ function ConsumerProfileScreen() {
           <View style={styles.consumerHeroText}>
             <Text style={[styles.consumerName, { color: colors.text }]}>{user?.username ?? "焕甲用户"}</Text>
             <Text style={[styles.consumerMeta, { color: colors.subtext }]}>焕甲号：{user?.uid ?? "--"}</Text>
-            <Text style={[styles.consumerMeta, { color: colors.subtext }]}>用户端 · 浏览、试戴、预约门店</Text>
           </View>
           <Pressable
             style={[styles.consumerSettingsButton, { backgroundColor: colors.surfaceAlt }]}
@@ -154,15 +154,23 @@ function ConsumerProfileScreen() {
         <View style={[styles.consumerCard, { backgroundColor: colors.surface }]}>
           <Text style={[styles.consumerSectionTitle, { color: colors.text }]}>预约订单</Text>
           {bookingsQuery.data?.items.slice(0, 3).map((item) => (
-            <Pressable key={item.id} style={[styles.bookingRow, { borderBottomColor: colors.border }]} onPress={() => navigation.navigate("StylePreview", { styleId: item.style_id })}>
+            <Pressable
+              key={item.id}
+              style={[styles.bookingRow, { borderBottomColor: colors.border }]}
+              onPress={() => {
+                if (item.style_id) navigation.navigate("StylePreview", { styleId: item.style_id });
+              }}
+            >
               <View style={styles.bookingText}>
                 <Text style={[styles.bookingTitle, { color: colors.text }]} numberOfLines={1}>{item.style_title}</Text>
                 <Text style={[styles.bookingMeta, { color: colors.subtext }]}>{item.shop_name} · {item.appointment_time}</Text>
               </View>
-              <Text style={[styles.bookingStatus, { color: colors.accent }]}>{bookingStatusLabel[item.status]}</Text>
+              <Text style={[styles.bookingStatus, { color: getBookingStatusTextColor(item.status, colors) }]}>
+                {bookingStatusLabel[item.status]}
+              </Text>
             </Pressable>
           ))}
-          {!bookingsQuery.data?.items.length ? <Text style={[styles.emptyBooking, { color: colors.subtext }]}>还没有预约，看到喜欢的美甲可以直接下单预约。</Text> : null}
+          {!bookingsQuery.data?.items.length ? <Text style={[styles.emptyBooking, { color: colors.subtext }]}>还没有预约，焕甲成功后可以继续预约门店。</Text> : null}
         </View>
 
         <View style={styles.consumerGrid}>
@@ -181,6 +189,7 @@ function ConsumerProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   loggedOutContent: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 120, gap: 14 },
   loggedOutHero: {
     flexDirection: "row",

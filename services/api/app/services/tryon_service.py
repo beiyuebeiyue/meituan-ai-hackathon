@@ -13,7 +13,9 @@ from app.models.user import User
 from app.schemas.events import StyleEventInput
 from app.services.event_service import EventService
 from app.services.hand_service import get_hand_service
+from app.providers.remote_gpu_tryon_provider import RemoteGpuTryOnProvider
 from app.services.image_edit_service import get_image_edit_service
+from app.services.image_processing_artifact_service import ImageProcessingArtifactService
 from app.services.segmentation_service import get_segmentation_service
 from app.services.style_service import StyleService
 from app.services.user_hand_photo_service import UserHandPhotoService
@@ -26,6 +28,8 @@ class TryOnService:
         self.hand_service = get_hand_service()
         self.segmentation_service = get_segmentation_service()
         self.image_edit_service = get_image_edit_service()
+        self.remote_gpu_provider = RemoteGpuTryOnProvider()
+        self.artifact_service = ImageProcessingArtifactService()
         self.event_service = EventService()
         self.user_hand_photo_service = UserHandPhotoService()
 
@@ -57,6 +61,7 @@ class TryOnService:
             selected_style_id=style.id,
             prompt_text=prompt_text,
             status="pending",
+            stage="pending",
         )
         db.add(job)
         db.commit()
@@ -89,21 +94,70 @@ class TryOnService:
 
         try:
             job.status = "processing"
+            job.stage = "preprocessing"
             job.error_message = None
             db.add(job)
             db.commit()
 
-            detection = self.hand_service.detect(hand_image_path)
-            segmentation = self.segmentation_service.segment(hand_image_path, detection)
-            generated = self.image_edit_service.generate_tryon(
-                hand_image_path=hand_image_path,
-                style_image_path=style_image_path,
-                prompt_text=job.prompt_text,
-                roi_boxes=segmentation.roi_boxes,
-                mask_path=segmentation.mask_path,
-            )
+            user_artifact = self.artifact_service.get_or_create(db, hand_image_path, "user_hand")
+            style_artifact = self.artifact_service.get_or_create(db, style_image_path, "style_reference")
+
+            if self.remote_gpu_provider.is_configured:
+                self.artifact_service.mark_processing(db, user_artifact)
+                self.artifact_service.mark_processing(db, style_artifact)
+                generated = self.remote_gpu_provider.render_tryon(
+                    job_id=job.id,
+                    hand_image_path=hand_image_path,
+                    style_image_path=style_image_path,
+                    prompt_text=job.prompt_text,
+                    cached_user_artifact=self.artifact_service.to_remote_payload(user_artifact),
+                    cached_style_artifact=self.artifact_service.to_remote_payload(style_artifact),
+                )
+                job.stage = "generating"
+                db.add(job)
+                db.commit()
+                self.artifact_service.mark_succeeded_from_remote(db, user_artifact, generated.artifacts, "user_hand")
+                self.artifact_service.mark_succeeded_from_remote(db, style_artifact, generated.artifacts, "style_hand")
+            else:
+                if user_artifact.status != "succeeded":
+                    self.artifact_service.mark_processing(db, user_artifact)
+                    user_detection = self.hand_service.detect(hand_image_path)
+                    user_segmentation = self.segmentation_service.segment(hand_image_path, user_detection)
+                    user_artifact = self.artifact_service.mark_succeeded_from_local(
+                        db,
+                        user_artifact,
+                        hand_image_path,
+                        user_detection,
+                        user_segmentation,
+                    )
+                if style_artifact.status != "succeeded":
+                    self.artifact_service.mark_processing(db, style_artifact)
+                    style_detection = self.hand_service.detect(style_image_path)
+                    style_segmentation = self.segmentation_service.segment(style_image_path, style_detection)
+                    style_artifact = self.artifact_service.mark_succeeded_from_local(
+                        db,
+                        style_artifact,
+                        style_image_path,
+                        style_detection,
+                        style_segmentation,
+                        create_cutout=True,
+                    )
+
+                job.stage = "generating"
+                db.add(job)
+                db.commit()
+                user_mask_path = self.artifact_service.local_path(user_artifact.mask_path)
+                style_reference_path = self.artifact_service.local_path(style_artifact.cutout_path) or style_image_path
+                generated = self.image_edit_service.generate_tryon(
+                    hand_image_path=hand_image_path,
+                    style_image_path=style_reference_path,
+                    prompt_text=job.prompt_text,
+                    roi_boxes=user_artifact.roi_boxes_json,
+                    mask_path=user_mask_path,
+                )
 
             job.status = "succeeded"
+            job.stage = "succeeded"
             job.result_image_path = relative_to_base(generated.local_path)
             job.result_image_url = generated.public_url
             db.add(job)
@@ -117,6 +171,7 @@ class TryOnService:
             return job
         except Exception as exc:
             job.status = "failed"
+            job.stage = "failed"
             job.error_message = str(exc)
             db.add(job)
             db.commit()

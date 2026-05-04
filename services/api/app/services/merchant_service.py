@@ -11,6 +11,11 @@ from app.models.user import User
 from app.models.user_post import UserPost
 
 
+KEKE_SHOP_ADDRESS = "龙岗区香港中文大学深圳图书馆"
+KEKE_SHOP_LATITUDE = 22.683980
+KEKE_SHOP_LONGITUDE = 114.208552
+
+
 def require_merchant(user: User) -> None:
     if user.role != "merchant":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="仅商家账号可使用该功能")
@@ -126,9 +131,9 @@ class MerchantShopService:
                 merchant_user_id=admin_user.id,
                 name=admin_user.username,
                 city="深圳",
-                address="深圳市南山区",
-                latitude=22.5431,
-                longitude=114.0579,
+                address=KEKE_SHOP_ADDRESS,
+                latitude=KEKE_SHOP_LATITUDE,
+                longitude=KEKE_SHOP_LONGITUDE,
                 contact_phone=settings.default_admin_phone,
                 is_default=True,
             )
@@ -142,6 +147,18 @@ class MerchantShopService:
             db.add(shop)
         if shop.contact_phone != settings.default_admin_phone:
             shop.contact_phone = settings.default_admin_phone
+            db.add(shop)
+        if shop.city != "深圳":
+            shop.city = "深圳"
+            db.add(shop)
+        if shop.address != KEKE_SHOP_ADDRESS:
+            shop.address = KEKE_SHOP_ADDRESS
+            db.add(shop)
+        if shop.latitude != KEKE_SHOP_LATITUDE:
+            shop.latitude = KEKE_SHOP_LATITUDE
+            db.add(shop)
+        if shop.longitude != KEKE_SHOP_LONGITUDE:
+            shop.longitude = KEKE_SHOP_LONGITUDE
             db.add(shop)
 
         for post in db.scalars(select(UserPost).where(UserPost.user_id == admin_user.id, UserPost.shop_id.is_(None))):

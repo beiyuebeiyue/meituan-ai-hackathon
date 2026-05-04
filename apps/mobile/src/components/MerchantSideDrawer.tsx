@@ -5,27 +5,42 @@ import { Alert, Animated, Dimensions, Easing, Modal, Pressable, SafeAreaView, Sc
 import { useThemeColors } from "../utils/theme";
 
 export type MerchantDrawerActionKey = "market-data" | "booking-management" | "order-management" | "support" | "settings" | "scan";
-export type ConsumerDrawerActionKey = "orders" | "browse-history" | "likes" | "tryon-history" | "hand-photos" | "support" | "settings" | "scan";
+export type ConsumerDrawerActionKey =
+  | "orders"
+  | "browse-history"
+  | "tryon-history"
+  | "hand-photos"
+  | "blocked-users"
+  | "support"
+  | "settings"
+  | "scan";
 
 type DrawerIconName = ComponentProps<typeof Ionicons>["name"];
-type DrawerActionItem<Key extends string> = { key: Key; icon: DrawerIconName; label: string };
+type DrawerActionItem<Key extends string> = { key: Key; icon: DrawerIconName; label: string; description?: string };
+type DrawerActionGroup<Key extends string> = { title: string; items: Array<DrawerActionItem<Key>> };
 
-const merchantDrawerGroups: Array<Array<DrawerActionItem<MerchantDrawerActionKey>>> = [
-  [
-    { key: "market-data", icon: "bar-chart-outline", label: "市场数据" },
-    { key: "booking-management", icon: "calendar-outline", label: "预约管理" },
-    { key: "order-management", icon: "receipt-outline", label: "订单管理" },
-  ],
+const merchantDrawerGroups: Array<DrawerActionGroup<MerchantDrawerActionKey>> = [
+  {
+    title: "商家工作台",
+    items: [
+      { key: "market-data", icon: "bar-chart-outline", label: "市场数据", description: "查看商圈趋势和曝光表现" },
+      { key: "booking-management", icon: "calendar-outline", label: "预约管理", description: "处理待确认预约" },
+      { key: "order-management", icon: "receipt-outline", label: "订单管理", description: "跟进服务订单状态" },
+    ],
+  },
 ];
 
-const consumerDrawerGroups: Array<Array<DrawerActionItem<ConsumerDrawerActionKey>>> = [
-  [
-    { key: "orders", icon: "receipt-outline", label: "我的订单" },
-    { key: "browse-history", icon: "time-outline", label: "浏览记录" },
-    { key: "likes", icon: "heart-outline", label: "喜爱" },
-    { key: "tryon-history", icon: "sparkles-outline", label: "AI 焕甲记录" },
-    { key: "hand-photos", icon: "hand-left-outline", label: "手图管理" },
-  ],
+const consumerDrawerGroups: Array<DrawerActionGroup<ConsumerDrawerActionKey>> = [
+  {
+    title: "我的服务",
+    items: [
+      { key: "orders", icon: "receipt-outline", label: "我的订单", description: "预约意向和历史订单" },
+      { key: "browse-history", icon: "time-outline", label: "浏览记录", description: "最近看过的美甲内容" },
+      { key: "tryon-history", icon: "sparkles-outline", label: "AI 焕甲记录", description: "查看试戴生成结果" },
+      { key: "hand-photos", icon: "hand-left-outline", label: "手图管理", description: "管理试戴用手部照片" },
+      { key: "blocked-users", icon: "remove-circle-outline", label: "不再看她", description: "管理屏蔽的用户" },
+    ],
+  },
 ];
 
 const merchantBottomActions: Array<DrawerActionItem<MerchantDrawerActionKey>> = [
@@ -90,7 +105,7 @@ function AppSideDrawer<Key extends string>({
   visible: boolean;
   onClose: () => void;
   onAction: (key: Key) => void;
-  groups: Array<Array<DrawerActionItem<Key>>>;
+  groups: Array<DrawerActionGroup<Key>>;
   bottomActions: Array<DrawerActionItem<Key>>;
 }) {
   const colors = useThemeColors();
@@ -141,14 +156,14 @@ function AppSideDrawer<Key extends string>({
 
   const handleAction = (key: Key) => {
     if (key === "scan") {
-      closeWithAction(() => Alert.alert("扫一扫", "扫一扫功能后续补充。"));
+      Alert.alert("扫一扫", "扫一扫功能后续补充。");
       return;
     }
     if (key === "support") {
-      closeWithAction(() => Alert.alert("帮助与客服", "在线客服功能演示中，后续会接入真实客服。"));
+      Alert.alert("帮助与客服", "在线客服功能演示中，后续会接入真实客服。");
       return;
     }
-    closeWithAction(() => onAction(key));
+    onAction(key);
   };
 
   if (!mounted) return null;
@@ -188,14 +203,44 @@ function AppSideDrawer<Key extends string>({
         >
           <SafeAreaView style={styles.safe}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-              {groups.map((group, index) => (
-                <View key={`group-${index}`} style={[styles.group, { backgroundColor: colors.surface }]}>
-                  {group.map((item) => (
-                    <Pressable key={item.key} style={styles.item} onPress={() => handleAction(item.key)}>
-                      <Ionicons name={item.icon} size={24} color={colors.text} style={styles.itemIcon} />
-                      <Text style={[styles.itemText, { color: colors.text }]}>{item.label}</Text>
-                    </Pressable>
-                  ))}
+              <View style={styles.drawerHeader}>
+                <View style={[styles.brandMark, { backgroundColor: colors.accent }]}>
+                  <Text style={styles.brandMarkText}>焕</Text>
+                </View>
+                <View style={styles.drawerHeaderText}>
+                  <Text style={[styles.drawerTitle, { color: colors.text }]}>快捷入口</Text>
+                  <Text style={[styles.drawerSubtitle, { color: colors.subtext }]}>管理你的焕甲服务</Text>
+                </View>
+              </View>
+
+              {groups.map((group) => (
+                <View key={group.title} style={styles.group}>
+                  <Text style={[styles.groupTitle, { color: colors.subtext }]}>{group.title}</Text>
+                  <View style={[styles.groupCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    {group.items.map((item, itemIndex) => (
+                      <Pressable
+                        key={item.key}
+                        style={[
+                          styles.item,
+                          itemIndex < group.items.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+                        ]}
+                        onPress={() => handleAction(item.key)}
+                      >
+                        <View style={[styles.itemIconWrap, { backgroundColor: colors.accentSoft }]}>
+                          <Ionicons name={item.icon} size={20} color={colors.accent} />
+                        </View>
+                        <View style={styles.itemBody}>
+                          <Text style={[styles.itemText, { color: colors.text }]}>{item.label}</Text>
+                          {item.description ? (
+                            <Text style={[styles.itemDescription, { color: colors.subtext }]} numberOfLines={1}>
+                              {item.description}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
+                      </Pressable>
+                    ))}
+                  </View>
                 </View>
               ))}
             </ScrollView>
@@ -239,27 +284,78 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 72,
+    paddingTop: 26,
     paddingBottom: 24,
-    gap: 14,
+    gap: 18,
+  },
+  drawerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingTop: 18,
+    paddingBottom: 10,
+  },
+  brandMark: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandMarkText: {
+    color: "#ffffff",
+    fontSize: 22,
+    fontWeight: "900",
+  },
+  drawerHeaderText: {
+    flex: 1,
+    gap: 4,
+  },
+  drawerTitle: {
+    fontSize: 21,
+    fontWeight: "900",
+  },
+  drawerSubtitle: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   group: {
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    gap: 8,
+  },
+  groupTitle: {
+    paddingHorizontal: 4,
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  groupCard: {
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
   },
   item: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    paddingVertical: 18,
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 13,
   },
-  itemIcon: {
-    width: 26,
-    textAlign: "center",
+  itemIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  itemBody: {
+    flex: 1,
+    gap: 3,
   },
   itemText: {
-    fontSize: 18,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  itemDescription: {
+    fontSize: 12,
     fontWeight: "600",
   },
   bottomRow: {
@@ -271,15 +367,15 @@ const styles = StyleSheet.create({
   },
   bottomButton: {
     flex: 1,
-    borderRadius: 22,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingVertical: 16,
+    paddingVertical: 14,
   },
   bottomLabel: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "800",
     textAlign: "center",
   },
 });

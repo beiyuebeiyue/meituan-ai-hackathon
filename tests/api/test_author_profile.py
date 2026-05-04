@@ -30,19 +30,181 @@ def _promote_to_merchant(db_session, user_payload: dict[str, object]) -> None:
     db_session.commit()
 
 
-def test_consumer_cannot_create_post(client, image_factory):
-    headers, _user = _register_and_login(client, phone="13910000031", username="consumer31")
+def test_consumer_can_create_personal_post(client, image_factory):
+    headers, user = _register_and_login(client, phone="13910000031", username="consumer31")
 
     with image_factory("consumer-post.png").open("rb") as image_file:
         create_response = client.post(
             "/api/v1/posts",
             headers=headers,
             files={"image": ("post.png", image_file.read(), "image/png")},
-            data={"title": "普通用户发布", "description": "应该被拒绝", "tags": "裸粉"},
+            data={"title": "普通用户发布", "description": "个人美甲分享", "tags": "裸粉"},
         )
 
-    assert create_response.status_code == 403
-    assert "仅商家账号" in create_response.text
+    assert create_response.status_code == 200
+    created_post = create_response.json()
+    assert created_post["title"] == "普通用户发布"
+
+    profile_response = client.get(f"/api/v1/users/{user['id']}/author-profile", headers=headers)
+    assert profile_response.status_code == 200
+    profile_payload = profile_response.json()
+    assert profile_payload["published_count"] == 1
+    assert profile_payload["posts"][0]["title"] == "普通用户发布"
+
+
+def test_consumer_can_bind_completed_booking_as_verified_consumption(client, db_session, image_factory):
+    merchant_headers, merchant = _register_and_login(client, phone="13910000041", username="merchant41")
+    _promote_to_merchant(db_session, merchant)
+    consumer_headers, _consumer = _register_and_login(client, phone="13910000042", username="consumer42")
+
+    with image_factory("merchant-style.png").open("rb") as image_file:
+        create_merchant_post = client.post(
+            "/api/v1/posts",
+            headers=merchant_headers,
+            files={"image": ("post.png", image_file.read(), "image/png")},
+            data={"title": "商家款式", "description": "门店款式", "tags": "显白"},
+        )
+    assert create_merchant_post.status_code == 200
+
+    merchant_profile = client.get(f"/api/v1/users/{merchant['id']}/author-profile", headers=merchant_headers).json()
+    style_id = merchant_profile["posts"][0]["id"]
+    style_detail = client.get(f"/api/v1/nails/{style_id}", headers=consumer_headers).json()
+
+    booking_response = client.post(
+        "/api/v1/bookings",
+        headers=consumer_headers,
+        json={
+            "style_id": style_id,
+            "shop_id": style_detail["shop_id"],
+            "appointment_time": "2026-05-04 10:00",
+            "contact_phone": "13886722665",
+        },
+    )
+    assert booking_response.status_code == 200
+    booking_id = booking_response.json()["id"]
+
+    complete_response = client.patch(
+        f"/api/v1/bookings/merchant/{booking_id}",
+        headers=merchant_headers,
+        json={"status": "completed"},
+    )
+    assert complete_response.status_code == 200
+
+    with image_factory("verified-consumer-post.png").open("rb") as image_file:
+        create_verified_post = client.post(
+            "/api/v1/posts",
+            headers=consumer_headers,
+            files={"image": ("post.png", image_file.read(), "image/png")},
+            data={
+                "title": "真实消费分享",
+                "description": "刚做完的款式",
+                "tags": "真实消费",
+                "verified_booking_id": booking_id,
+            },
+        )
+    assert create_verified_post.status_code == 200
+    created_post = create_verified_post.json()
+    assert created_post["verified_consumption"] is True
+    assert created_post["verified_shop_name"] == style_detail["shop_name"]
+
+    consumer_profile = client.get(f"/api/v1/users/{_consumer['id']}/author-profile", headers=consumer_headers).json()
+    verified_style_id = consumer_profile["posts"][0]["id"]
+    verified_detail = client.get(f"/api/v1/nails/{verified_style_id}", headers=consumer_headers).json()
+    assert verified_detail["verified_consumption"] is True
+    assert verified_detail["verified_shop_id"] == style_detail["shop_id"]
+    assert verified_detail["verified_shop_name"] == style_detail["shop_name"]
+
+
+def test_consumer_can_create_shop_level_booking_without_style(client, db_session, image_factory):
+    merchant_headers, merchant = _register_and_login(client, phone="13910000046", username="merchant46")
+    _promote_to_merchant(db_session, merchant)
+    consumer_headers, _consumer = _register_and_login(client, phone="13910000047", username="consumer47")
+
+    with image_factory("merchant-style-shop-only.png").open("rb") as image_file:
+        create_merchant_post = client.post(
+            "/api/v1/posts",
+            headers=merchant_headers,
+            files={"image": ("post.png", image_file.read(), "image/png")},
+            data={"title": "门店预约来源", "description": "用于创建默认门店", "tags": "预约"},
+        )
+    assert create_merchant_post.status_code == 200
+
+    merchant_profile = client.get(f"/api/v1/users/{merchant['id']}/author-profile", headers=merchant_headers).json()
+    shop_id = merchant_profile["shop_id"]
+    assert shop_id
+
+    booking_response = client.post(
+        "/api/v1/bookings",
+        headers=consumer_headers,
+        json={
+            "shop_id": shop_id,
+            "appointment_time": "2026-05-04 12:00",
+            "contact_phone": "13886722665",
+            "note": "到店选款",
+        },
+    )
+    assert booking_response.status_code == 200
+    payload = booking_response.json()
+    assert payload["style_id"] is None
+    assert payload["style_title"] == "门店预约"
+    assert payload["shop_id"] == shop_id
+    assert payload["merchant_user_id"] == merchant["id"]
+
+
+def test_consumer_cannot_bind_unfinished_or_foreign_booking(client, db_session, image_factory):
+    merchant_headers, merchant = _register_and_login(client, phone="13910000043", username="merchant43")
+    _promote_to_merchant(db_session, merchant)
+    consumer_headers, _consumer = _register_and_login(client, phone="13910000044", username="consumer44")
+    other_headers, _other = _register_and_login(client, phone="13910000045", username="consumer45")
+
+    with image_factory("merchant-style-2.png").open("rb") as image_file:
+        client.post(
+            "/api/v1/posts",
+            headers=merchant_headers,
+            files={"image": ("post.png", image_file.read(), "image/png")},
+            data={"title": "商家款式2", "description": "门店款式", "tags": "显白"},
+        )
+    merchant_profile = client.get(f"/api/v1/users/{merchant['id']}/author-profile", headers=merchant_headers).json()
+    style_id = merchant_profile["posts"][0]["id"]
+    style_detail = client.get(f"/api/v1/nails/{style_id}", headers=consumer_headers).json()
+    booking = client.post(
+        "/api/v1/bookings",
+        headers=consumer_headers,
+        json={
+            "style_id": style_id,
+            "shop_id": style_detail["shop_id"],
+            "appointment_time": "2026-05-04 11:00",
+            "contact_phone": "13886722665",
+        },
+    ).json()
+
+    with image_factory("unfinished-booking-post.png").open("rb") as image_file:
+        unfinished_response = client.post(
+            "/api/v1/posts",
+            headers=consumer_headers,
+            files={"image": ("post.png", image_file.read(), "image/png")},
+            data={"title": "未完成订单", "verified_booking_id": booking["id"]},
+        )
+    assert unfinished_response.status_code == 400
+
+    client.patch(f"/api/v1/bookings/merchant/{booking['id']}", headers=merchant_headers, json={"status": "completed"})
+    with image_factory("foreign-booking-post.png").open("rb") as image_file:
+        foreign_response = client.post(
+            "/api/v1/posts",
+            headers=other_headers,
+            files={"image": ("post.png", image_file.read(), "image/png")},
+            data={"title": "别人的订单", "verified_booking_id": booking["id"]},
+        )
+    assert foreign_response.status_code == 404
+
+    with image_factory("forged-shop-post.png").open("rb") as image_file:
+        forged_response = client.post(
+            "/api/v1/posts",
+            headers=consumer_headers,
+            files={"image": ("post.png", image_file.read(), "image/png")},
+            data={"title": "伪造门店", "shop_id": style_detail["shop_id"]},
+        )
+    assert forged_response.status_code == 400
 
 
 def test_author_profile_edit_and_hide_posts(client, db_session, image_factory):
@@ -241,17 +403,19 @@ def test_author_profile_uses_user_location_city(client):
     assert profile_response.json()["city"] == "上海"
 
 
-def test_follow_lists_are_private_except_owner(client):
+def test_follow_lists_are_public_for_social_profiles(client, db_session):
     author_headers, author = _register_and_login(client, phone="13910000025", username="privacy-author")
     viewer_headers, viewer = _register_and_login(client, phone="13910000026", username="privacy-viewer")
+    _promote_to_merchant(db_session, author)
 
-    assert client.post(f"/api/v1/users/{viewer['id']}/follow", headers=author_headers).status_code == 200
     assert client.post(f"/api/v1/users/{author['id']}/follow", headers=viewer_headers).status_code == 200
 
     following_response = client.get(f"/api/v1/users/{author['id']}/following", headers=viewer_headers)
     followers_response = client.get(f"/api/v1/users/{author['id']}/followers", headers=viewer_headers)
-    assert following_response.status_code == 403
-    assert followers_response.status_code == 403
+    assert following_response.status_code == 200
+    assert following_response.json()["items"] == []
+    assert followers_response.status_code == 200
+    assert followers_response.json()["items"][0]["id"] == viewer["id"]
 
     privacy_response = client.patch(
         "/api/v1/users/me/privacy",
@@ -264,17 +428,29 @@ def test_follow_lists_are_private_except_owner(client):
 
     private_profile = client.get(f"/api/v1/users/{author['id']}/author-profile", headers=viewer_headers)
     assert private_profile.status_code == 200
-    assert private_profile.json()["can_view_following"] is False
-    assert private_profile.json()["can_view_followers"] is False
+    assert private_profile.json()["can_view_following"] is True
+    assert private_profile.json()["can_view_followers"] is True
     owner_following = client.get(f"/api/v1/users/{author['id']}/following", headers=author_headers)
     owner_followers = client.get(f"/api/v1/users/{author['id']}/followers", headers=author_headers)
     assert owner_following.status_code == 200
-    assert owner_following.json()["items"][0]["id"] == viewer["id"]
+    assert owner_following.json()["items"] == []
     assert owner_followers.status_code == 200
     assert owner_followers.json()["items"][0]["id"] == viewer["id"]
 
 
-def test_merchant_cannot_follow_another_merchant(client, db_session):
+def test_consumer_can_follow_consumer(client):
+    first_headers, first = _register_and_login(client, phone="13910000029", username="consumer-a")
+    _second_headers, second = _register_and_login(client, phone="13910000033", username="consumer-b")
+
+    response = client.post(f"/api/v1/users/{second['id']}/follow", headers=first_headers)
+
+    assert response.status_code == 200
+    followers_response = client.get(f"/api/v1/users/{second['id']}/followers", headers=first_headers)
+    assert followers_response.status_code == 200
+    assert followers_response.json()["items"][0]["id"] == first["id"]
+
+
+def test_merchant_can_follow_another_merchant(client, db_session):
     first_headers, first = _register_and_login(client, phone="13910000030", username="merchant-a")
     _second_headers, second = _register_and_login(client, phone="13910000032", username="merchant-b")
     _promote_to_merchant(db_session, first)
@@ -282,8 +458,10 @@ def test_merchant_cannot_follow_another_merchant(client, db_session):
 
     response = client.post(f"/api/v1/users/{second['id']}/follow", headers=first_headers)
 
-    assert response.status_code == 403
-    assert "商家端不能关注用户" in response.text
+    assert response.status_code == 200
+    followers_response = client.get(f"/api/v1/users/{second['id']}/followers", headers=first_headers)
+    assert followers_response.status_code == 200
+    assert followers_response.json()["items"][0]["id"] == first["id"]
 
 
 def test_comment_like_privacy_and_block_list(client, db_session, image_factory):

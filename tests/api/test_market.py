@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-from app.services.market_service import (
-    MarketService,
-    MeituanPoiSearchProvider,
-    NearbyShopProvider,
-    build_meituan_poi_sign,
-)
+from app.services.market_service import GaodePoiSearchProvider, MarketService, NearbyShopProvider
 
 
 def test_market_requires_location(client):
-    response = client.get("/api/v1/market/shops/nearby?city=广州&sort=default")
+    response = client.get("/api/v1/market/shops/nearby?city=深圳&sort=default")
 
     assert response.status_code == 200
     payload = response.json()
@@ -19,126 +14,263 @@ def test_market_requires_location(client):
     assert "定位" in payload["message"]
 
 
-def test_market_disabled_returns_prompt_without_demo_data(client):
-    response = client.get(
-        "/api/v1/market/shops/nearby",
-        params={
-            "city": "广州",
-            "lat": 23.1324,
-            "lng": 113.3229,
-            "sort": "distance",
-        },
+def test_market_without_gaode_key_returns_prompt_without_demo_data(client):
+    service = MarketService(
+        provider=GaodePoiSearchProvider(
+            api_key="",
+            around_api_url="https://example.test/place/around",
+        )
     )
+    result = service.search_nearby(place=None, city="深圳", region=None, lat=22.5431, lng=114.0579, sort="distance")
 
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["source"] == "unavailable"
-    assert payload["used_location"] is True
-    assert payload["items"] == []
-    assert "美团 POI 接口尚未启用" in payload["message"]
-
-
-def test_meituan_poi_sign_sorts_lowercases_and_ignores_empty_values():
-    sign = build_meituan_poi_sign(
-        {
-            "B": "2",
-            "a": "1",
-            "AB": "3",
-            "empty": "",
-            "none": None,
-            "sign": "ignored",
-        },
-        "xyz",
-    )
-
-    assert sign == "32d22b4bb85983b360ade00ffb469420"
+    assert result.source == "unavailable"
+    assert result.used_location is True
+    assert result.items == []
+    assert result.message and "高德 POI" in result.message
 
 
-def test_meituan_provider_maps_success_response(monkeypatch):
+def test_gaode_provider_maps_success_response(monkeypatch):
     class FakeResponse:
         def raise_for_status(self):
             return None
 
         def json(self):
             return {
-                "status": "OK",
-                "records": [
+                "status": "1",
+                "info": "OK",
+                "pois": [
                     {
-                        "openshopid": "shop-1",
+                        "id": "B001",
                         "name": "甲甲美学",
-                        "branchname": "天河店",
-                        "distance": 120,
-                        "shopaddress": "天河路100号",
-                        "category": "丽人",
+                        "type": "生活服务;美容美发店;美容美发店",
+                        "typecode": "071100",
+                        "address": "科技园路100号",
+                        "location": "114.057900,22.543100",
+                        "distance": "120",
+                        "pname": "广东省",
+                        "cityname": "深圳市",
+                        "adname": "南山区",
+                        "business": {"rating": "4.8", "cost": "88", "opentime_today": "10:00-22:00", "tel": "0755-12345678"},
+                        "photos": [{"url": "https://example.test/shop.jpg"}],
                     }
                 ],
             }
 
-    def fake_post(url, *, json, timeout):
-        assert url == "https://example.test/search"
-        assert json["keyword"] == "甲甲美学"
-        assert json["categories"] == "丽人"
-        assert json["radius"] == 5000
-        assert json["limit"] == 25
-        assert json["latitude"] == 23.12
-        assert json["longitude"] == 113.32
-        assert json["sign"]
-        assert timeout == 5.0
+    def fake_get(url, *, params, timeout):
+        assert url == "https://example.test/place/around"
+        assert params["key"] == "gaode-key"
+        assert params["keywords"] == "美甲"
+        assert params["location"] == "114.057900,22.543100"
+        assert params["radius"] == 5000
+        assert params["sortrule"] == "distance"
+        assert params["page_size"] == 25
+        assert params["page_num"] == 1
+        assert params["show_fields"] == "business,photos"
+        assert timeout == 15.0
         return FakeResponse()
 
-    monkeypatch.setattr("app.services.market_service.httpx.post", fake_post)
-    provider = MeituanPoiSearchProvider(
-        appkey="app-key",
-        appsecret="app-secret",
-        session="session",
-        api_base_url="https://example.test/search",
+    monkeypatch.setattr("app.services.market_service.httpx.get", fake_get)
+    provider = GaodePoiSearchProvider(
+        api_key="gaode-key",
+        around_api_url="https://example.test/place/around",
     )
 
-    result = provider.search_nearby(keyword="甲甲美学", city="广州", region=None, lat=23.12, lng=113.32, sort="distance")
+    result = provider.search_nearby(place=None, city="深圳", region=None, lat=22.5431, lng=114.0579, sort="distance")
 
-    assert result.source == "meituan"
+    assert result.source == "gaode"
     assert result.used_location is True
-    assert result.items[0].id == "shop-1"
-    assert result.items[0].name == "甲甲美学·天河店"
+    assert result.items[0].id == "B001"
+    assert result.items[0].name == "甲甲美学"
     assert result.items[0].distance_meters == 120
-    assert result.items[0].address == "天河路100号"
-    assert result.items[0].latitude is None
+    assert result.items[0].address == "科技园路100号"
+    assert result.items[0].latitude == 22.5431
+    assert result.items[0].longitude == 114.0579
+    assert result.items[0].rating == 4.8
+    assert result.items[0].average_price_text == "人均¥88"
+    assert result.items[0].business_time_text == "10:00-22:00"
+    assert result.items[0].phone_text == "0755-12345678"
 
 
-def test_meituan_provider_uses_default_keyword_when_empty(monkeypatch):
+def test_gaode_provider_uses_fixed_nail_keyword(monkeypatch):
     class FakeResponse:
         def raise_for_status(self):
             return None
 
         def json(self):
-            return {"status": "OK", "records": []}
+            return {"status": "1", "pois": []}
 
-    def fake_post(url, *, json, timeout):
-        assert json["keyword"] == "美甲"
+    def fake_get(url, *, params, timeout):
+        assert params["keywords"] == "美甲"
+        assert params["sortrule"] == "weight"
         return FakeResponse()
 
-    monkeypatch.setattr("app.services.market_service.httpx.post", fake_post)
-    provider = MeituanPoiSearchProvider(
-        appkey="app-key",
-        appsecret="app-secret",
-        session="session",
-        api_base_url="https://example.test/search",
+    monkeypatch.setattr("app.services.market_service.httpx.get", fake_get)
+    provider = GaodePoiSearchProvider(
+        api_key="gaode-key",
+        around_api_url="https://example.test/place/around",
     )
 
-    result = provider.search_nearby(keyword="", city="广州", region=None, lat=23.12, lng=113.32, sort="default")
+    result = provider.search_nearby(place=None, city="深圳", region=None, lat=22.5431, lng=114.0579, sort="default")
 
-    assert result.source == "meituan"
+    assert result.source == "gaode"
+
+
+def test_gaode_provider_geocodes_place_before_around_search(monkeypatch):
+    class FakeGeocodeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "status": "1",
+                "geocodes": [
+                    {
+                        "formatted_address": "广东省深圳市龙岗区香港中文大学深圳",
+                        "city": "深圳市",
+                        "district": "龙岗区",
+                        "location": "114.206900,22.693200",
+                    }
+                ],
+            }
+
+    class FakeAroundResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "status": "1",
+                "pois": [
+                    {
+                        "id": "B002",
+                        "name": "南山美甲社",
+                        "address": "南山大道1号",
+                        "location": "113.931000,22.533900",
+                        "distance": "80",
+                        "cityname": "深圳市",
+                        "adname": "南山区",
+                    }
+                ],
+            }
+
+    calls = []
+
+    def fake_get(url, *, params, timeout):
+        calls.append((url, params))
+        if url == "https://example.test/geocode/geo":
+            assert params["key"] == "gaode-key"
+            assert params["address"] == "香港中文大学深圳"
+            assert params["city"] == "深圳"
+            return FakeGeocodeResponse()
+        assert url == "https://example.test/place/around"
+        assert params["keywords"] == "美甲"
+        assert params["location"] == "114.206900,22.693200"
+        assert params["radius"] == 5000
+        assert params["sortrule"] == "weight"
+        assert params["show_fields"] == "business,photos"
+        return FakeAroundResponse()
+
+    monkeypatch.setattr("app.services.market_service.httpx.get", fake_get)
+    provider = GaodePoiSearchProvider(
+        api_key="gaode-key",
+        around_api_url="https://example.test/place/around",
+        geocode_api_url="https://example.test/geocode/geo",
+    )
+
+    result = provider.search_nearby(place="香港中文大学深圳", city="深圳", region=None, lat=None, lng=None, sort="default")
+
+    assert result.source == "gaode"
+    assert result.used_location is True
+    assert result.resolved_city == "深圳市"
+    assert result.resolved_region == "广东省深圳市龙岗区香港中文大学深圳"
+    assert result.items[0].name == "南山美甲社"
+    assert [call[0] for call in calls] == [
+        "https://example.test/geocode/geo",
+        "https://example.test/place/around",
+    ]
+
+
+def test_gaode_provider_treats_region_input_as_geocoded_center(monkeypatch):
+    class FakeGeocodeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "status": "1",
+                "geocodes": [
+                    {
+                        "formatted_address": "广东省深圳市龙岗区",
+                        "city": "深圳市",
+                        "district": "龙岗区",
+                        "location": "114.246884,22.720889",
+                    }
+                ],
+            }
+
+    class FakeAroundResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "status": "1",
+                "pois": [
+                    {
+                        "id": "B003",
+                        "name": "龙岗美甲店",
+                        "address": "龙岗中心城",
+                        "location": "114.247000,22.721000",
+                        "distance": "60",
+                        "cityname": "深圳市",
+                        "adname": "龙岗区",
+                    }
+                ],
+            }
+
+    calls = []
+
+    def fake_get(url, *, params, timeout):
+        calls.append((url, params))
+        if url == "https://example.test/geocode/geo":
+            assert params["address"] == "龙岗区"
+            assert params["city"] == "深圳"
+            return FakeGeocodeResponse()
+        assert url == "https://example.test/place/around"
+        assert params["keywords"] == "美甲"
+        assert params["location"] == "114.246884,22.720889"
+        assert "region" in params
+        return FakeAroundResponse()
+
+    monkeypatch.setattr("app.services.market_service.httpx.get", fake_get)
+    provider = GaodePoiSearchProvider(
+        api_key="gaode-key",
+        around_api_url="https://example.test/place/around",
+        geocode_api_url="https://example.test/geocode/geo",
+    )
+
+    result = provider.search_nearby(place="龙岗区", city="深圳", region=None, lat=None, lng=None, sort="default")
+
+    assert result.source == "gaode"
+    assert result.used_location is True
+    assert result.resolved_city == "深圳市"
+    assert result.resolved_region == "广东省深圳市龙岗区"
+    assert result.items[0].name == "龙岗美甲店"
+    assert [call[0] for call in calls] == [
+        "https://example.test/geocode/geo",
+        "https://example.test/place/around",
+    ]
 
 
 def test_market_service_returns_unavailable_when_provider_fails():
     class FailingProvider(NearbyShopProvider):
-        def search_nearby(self, *, keyword, city, region, lat, lng, sort):
-            raise RuntimeError("unauthorized")
+        def search_nearby(self, *, place, city, region, lat, lng, sort):
+            raise RuntimeError("INVALID_USER_KEY")
 
-    service = MarketService(provider=FailingProvider(), enabled=True)
+    service = MarketService(provider=FailingProvider())
 
-    result = service.search_nearby(keyword=None, city="广州", region=None, lat=23.1324, lng=113.3229, sort="default")
+    result = service.search_nearby(place=None, city="深圳", region=None, lat=22.5431, lng=114.0579, sort="default")
 
     assert result.source == "unavailable"
     assert result.items == []
-    assert result.message and "暂时无法访问美团 POI 接口" in result.message
+    assert result.message and "暂时无法访问高德 POI 接口" in result.message

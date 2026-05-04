@@ -13,6 +13,7 @@ from app.schemas.auth import LoginRequest, RegisterRequest
 from app.utils.files import public_url_for_path
 
 INT32_MAX = 2_147_483_647
+DEMO_CONSUMER_UID = 1
 DEMO_CONSUMER_PHONE = "13886722665"
 DEMO_CONSUMER_USERNAME = "momo酱"
 DEFAULT_ADMIN_AVATAR_FILENAME = "p0.png"
@@ -41,18 +42,51 @@ class AuthService:
                 break
         return public_url_for_path(target_path)
 
-    def _apply_uid2_display_name(self, db: Session) -> bool:
-        uid2_user = db.scalar(select(User).where(User.uid == 2))
-        if uid2_user is None or uid2_user.username == DEMO_CONSUMER_USERNAME:
-            return False
-        conflict = db.scalar(
-            select(User).where(User.username == DEMO_CONSUMER_USERNAME, User.id != uid2_user.id)
+    def _apply_demo_consumer_identity(self, db: Session, user: User | None = None) -> bool:
+        internal_email = self._internal_email_for_phone(DEMO_CONSUMER_PHONE)
+        demo_user = user or db.scalar(
+            select(User).where(
+                or_(
+                    User.phone == DEMO_CONSUMER_PHONE,
+                    User.email == internal_email,
+                )
+            )
         )
-        if conflict is not None:
+        if demo_user is None:
             return False
-        uid2_user.username = DEMO_CONSUMER_USERNAME
-        db.add(uid2_user)
-        return True
+
+        changed = False
+        if demo_user.uid != DEMO_CONSUMER_UID:
+            occupied_user = db.scalar(
+                select(User).where(User.uid == DEMO_CONSUMER_UID, User.id != demo_user.id)
+            )
+            if occupied_user is not None:
+                db.delete(occupied_user)
+                db.flush()
+            demo_user.uid = DEMO_CONSUMER_UID
+            changed = True
+
+        if demo_user.email != internal_email:
+            demo_user.email = internal_email
+            changed = True
+        if demo_user.phone != DEMO_CONSUMER_PHONE:
+            demo_user.phone = DEMO_CONSUMER_PHONE
+            changed = True
+        if demo_user.role != "consumer":
+            demo_user.role = "consumer"
+            changed = True
+
+        username_conflict = db.scalar(
+            select(User).where(User.username == DEMO_CONSUMER_USERNAME, User.id != demo_user.id)
+        )
+        if username_conflict is None and demo_user.username != DEMO_CONSUMER_USERNAME:
+            demo_user.username = DEMO_CONSUMER_USERNAME
+            changed = True
+
+        if changed:
+            db.add(demo_user)
+            db.flush()
+        return changed
 
     def _next_uid(self, db: Session) -> int:
         current_max = db.scalar(select(func.max(User.uid)))
@@ -105,8 +139,9 @@ class AuthService:
             next_uid += 1
             changed = True
 
-        if self._apply_uid2_display_name(db):
+        if self._apply_demo_consumer_identity(db):
             changed = True
+            users = list(db.scalars(select(User).order_by(User.created_at.asc(), User.id.asc())).all())
 
         if changed:
             db.add_all(users)
@@ -145,8 +180,12 @@ class AuthService:
             )
         )
         if user is None:
+            occupied_user = db.scalar(select(User).where(User.uid == DEMO_CONSUMER_UID))
+            if occupied_user is not None:
+                db.delete(occupied_user)
+                db.flush()
             user = User(
-                uid=self._next_uid(db),
+                uid=DEMO_CONSUMER_UID,
                 email=internal_email,
                 phone=DEMO_CONSUMER_PHONE,
                 username=DEMO_CONSUMER_USERNAME,
@@ -163,8 +202,7 @@ class AuthService:
         user.username = DEMO_CONSUMER_USERNAME
         user.password_hash = get_password_hash(settings.default_admin_password)
         user.role = "consumer"
-        if not isinstance(user.uid, int) or user.uid == 0:
-            user.uid = self._next_uid(db)
+        self._apply_demo_consumer_identity(db, user)
         db.add(user)
         db.commit()
         db.refresh(user)

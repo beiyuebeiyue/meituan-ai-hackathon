@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveAssetUrl } from "../api/client";
+import { AuthorRoleBadge } from "./AuthorRoleBadge";
 import { NailStyle } from "../types/api";
 import { useThemeColors } from "../utils/theme";
 
@@ -32,6 +33,7 @@ export function NailCard({ item, onToggleLike, onPress }: NailCardProps) {
         <Text style={[styles.desc, { color: colors.subtext }]} numberOfLines={2}>
           {item.description}
         </Text>
+        <AuthorRoleBadge isMerchant={item.author_is_shop} compact />
         <View style={styles.tagRow}>
           {item.tags.slice(0, 2).map((tag) => (
             <View key={tag} style={[styles.tag, { backgroundColor: colors.accentSoft }]}>

@@ -12,6 +12,7 @@ class UserPost(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     shop_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("merchant_shops.id", ondelete="SET NULL"), nullable=True)
+    verified_booking_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("bookings.id", ondelete="SET NULL"), nullable=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     image_url: Mapped[str] = mapped_column(String(512), nullable=False)
@@ -21,3 +22,4 @@ class UserPost(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     user = relationship("User", back_populates="posts")
     shop = relationship("MerchantShop", back_populates="posts")
+    verified_booking = relationship("Booking", foreign_keys=[verified_booking_id])

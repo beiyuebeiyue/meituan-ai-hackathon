@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
+import { AuthorRoleBadge } from "../components/AuthorRoleBadge";
 import { OverlayContent } from "../components/OverlayContent";
 import { RequireLogin } from "../components/RequireLogin";
 import { useAuthStore } from "../store/useAuthStore";
@@ -65,6 +66,7 @@ export function ConsumerLikesScreen() {
             <Text style={[styles.author, { color: colors.subtext }]} numberOfLines={1}>
               {item.author_name}
             </Text>
+            <AuthorRoleBadge isMerchant={item.author_is_shop} compact />
           </View>
           <Pressable
             style={styles.likeButton}

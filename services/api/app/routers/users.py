@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
 from app.dependencies import get_current_user, get_optional_current_user
 from app.models.nail_style import NailStyle
+from app.models.merchant_shop import MerchantShop
 from app.models.user import User
 from app.models.user_follow import UserFollow
 from app.models.user_style_like import UserStyleLike
@@ -34,12 +35,14 @@ from app.services.follow_service import FollowService
 from app.services.style_comment_service import StyleCommentService
 from app.services.style_service import StyleService
 from app.services.user_hand_photo_service import UserHandPhotoService
+from app.services.image_processing_artifact_service import ImageProcessingArtifactService
 from app.utils.files import public_url_for_path, save_user_upload_file, user_upload_dir
 from app.core.config import get_settings
 
 
 router = APIRouter(prefix="/users", tags=["users"])
 hand_photo_service = UserHandPhotoService()
+image_artifact_service = ImageProcessingArtifactService()
 browse_history_service = BrowseHistoryService()
 block_service = BlockService()
 follow_service = FollowService()
@@ -64,6 +67,7 @@ def serialize_user_summary(db: Session, target: User, viewer: User | None) -> Us
         avatar_url=target.avatar_url,
         bio=target.bio,
         city=target.location_city or "广东",
+        is_shop=target.role == "merchant",
         is_following=bool(viewer and viewer.id != target.id and follow_service.is_following(db, viewer.id, target.id)),
     )
 
@@ -86,6 +90,7 @@ def build_style_payloads_for_viewer(db: Session, items: list, viewer: User | Non
                 author_id=author.id if author else None,
                 author_name=author.username if author else "焕甲图库",
                 author_avatar_url=author.avatar_url if author else None,
+                author_is_shop=bool(author and author.role == "merchant"),
                 is_following_author=bool(viewer and author and author.id != viewer.id and author.id in following_ids),
                 is_authored_by_me=bool(viewer and author and author.id == viewer.id),
             )
@@ -100,8 +105,34 @@ def get_me(user: User = Depends(get_current_user)) -> UserRead:
 
 @router.get("/me/hand-photos", response_model=UserHandPhotoListResponse)
 def get_my_hand_photos(user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> UserHandPhotoListResponse:
-    items = [UserHandPhotoRead.model_validate(item) for item in hand_photo_service.list_for_user(db, user)]
+    items = []
+    for item in hand_photo_service.list_for_user(db, user):
+        artifact = image_artifact_service.get_existing_for_hash(db, item.sha256, "user_hand")
+        items.append(
+            UserHandPhotoRead(
+                id=item.id,
+                image_url=item.image_url,
+                processing_status=artifact.status if artifact is not None else None,
+                created_at=item.created_at,
+            )
+        )
     return UserHandPhotoListResponse(items=items)
+
+
+@router.post("/me/hand-photos", response_model=UserHandPhotoRead)
+def upload_my_hand_photo(
+    image: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> UserHandPhotoRead:
+    item = hand_photo_service.save_uploaded(db, user, image)
+    artifact = image_artifact_service.get_existing_for_hash(db, item.sha256, "user_hand")
+    return UserHandPhotoRead(
+        id=item.id,
+        image_url=item.image_url,
+        processing_status=artifact.status if artifact is not None else None,
+        created_at=item.created_at,
+    )
 
 
 @router.delete("/me/hand-photos/{hand_photo_id}")
@@ -264,6 +295,43 @@ def get_my_style_comments(
     return MyStyleCommentListResponse(items=items)
 
 
+@router.get("/search", response_model=UserListResponse)
+def search_users(
+    query: str = Query(min_length=1, max_length=80),
+    limit: int = Query(default=20, ge=1, le=50),
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_current_user),
+) -> UserListResponse:
+    keyword = query.strip()
+    if not keyword:
+        return UserListResponse(items=[])
+
+    pattern = f"%{keyword}%"
+    conditions = [
+        User.username.ilike(pattern),
+        User.bio.ilike(pattern),
+        User.location_city.ilike(pattern),
+    ]
+    if keyword.isdigit():
+        conditions.append(cast(User.uid, String).ilike(f"{keyword}%"))
+
+    candidates = list(
+        db.scalars(
+            select(User)
+            .where(or_(*conditions))
+            .order_by(User.uid.asc())
+            .limit(limit)
+        )
+    )
+    visible_users = []
+    for item in candidates:
+        has_blocked_viewer, viewer_has_blocked_item = block_service.get_relationship(db, user.id if user else None, item.id)
+        if has_blocked_viewer or viewer_has_blocked_item:
+            continue
+        visible_users.append(serialize_user_summary(db, item, user))
+    return UserListResponse(items=visible_users)
+
+
 @router.get("/{author_id}/following", response_model=UserListResponse)
 def get_author_following(
     author_id: str,
@@ -273,7 +341,6 @@ def get_author_following(
     author = db.get(User, author_id)
     if author is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="作者不存在")
-    ensure_section_visible(author, user, "该用户已设置关注列表不可见")
     items = [serialize_user_summary(db, item, user) for item in follow_service.list_following(db, author.id)]
     return UserListResponse(items=items)
 
@@ -287,7 +354,6 @@ def get_author_followers(
     author = db.get(User, author_id)
     if author is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="作者不存在")
-    ensure_section_visible(author, user, "该用户已设置粉丝列表不可见")
     items = [serialize_user_summary(db, item, user) for item in follow_service.list_followers(db, author.id)]
     return UserListResponse(items=items)
 
@@ -384,10 +450,19 @@ def get_author_profile(
     follower_count = db.scalar(select(func.count()).select_from(UserFollow).where(UserFollow.followed_user_id == author.id)) or 0
     following_count = db.scalar(select(func.count()).select_from(UserFollow).where(UserFollow.follower_user_id == author.id)) or 0
     has_blocked_viewer, viewer_has_blocked_author = block_service.get_relationship(db, user.id if user else None, author.id)
+    default_shop = None
+    if author.role == "merchant":
+        default_shop = db.scalar(
+            select(MerchantShop)
+            .where(MerchantShop.merchant_user_id == author.id)
+            .order_by(MerchantShop.is_default.desc(), MerchantShop.created_at.asc())
+        )
 
     return AuthorProfileRead(
         id=author.id,
         uid=author.uid,
+        role=author.role,
+        is_shop=author.role == "merchant",
         username=author.username,
         avatar_url=author.avatar_url,
         bio=author.bio,
@@ -398,12 +473,16 @@ def get_author_profile(
         total_like_count=total_like_count,
         is_following=bool(user and user.id != author.id and follow_service.is_following(db, user.id, author.id)),
         is_mine=is_mine,
-        can_view_following=can_view_private_section(author, user),
-        can_view_followers=can_view_private_section(author, user),
+        can_view_following=True,
+        can_view_followers=True,
         can_view_comments=can_view_private_section(author, user),
         can_view_likes=can_view_private_section(author, user),
         has_blocked_viewer=has_blocked_viewer,
         viewer_has_blocked_author=viewer_has_blocked_author,
+        shop_id=default_shop.id if default_shop else None,
+        shop_name=default_shop.name if default_shop else None,
+        shop_city=default_shop.city if default_shop else None,
+        shop_address=default_shop.address if default_shop else None,
         posts=authored_posts,
     )
 
@@ -435,7 +514,7 @@ def block_user(
     user: User = Depends(get_current_user),
 ) -> dict[str, str]:
     target = block_service.block(db, user, target_user_id)
-    return {"message": f"已拉黑 {target.username}"}
+    return {"message": f"已设置不再看 {target.username}"}
 
 
 @router.delete("/{target_user_id}/block")
@@ -445,4 +524,4 @@ def unblock_user(
     user: User = Depends(get_current_user),
 ) -> dict[str, str]:
     block_service.unblock(db, user, target_user_id)
-    return {"message": "已解除拉黑"}
+    return {"message": "已恢复查看"}

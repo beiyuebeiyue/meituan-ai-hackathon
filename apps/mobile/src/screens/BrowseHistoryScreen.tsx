@@ -2,9 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
+import {
+  DrawerModuleCard,
+  DrawerModuleInfoBanner,
+  DrawerModuleThumbnail,
+  drawerModuleListStyles,
+} from "../components/DrawerModuleLayout";
 import { OverlayContent } from "../components/OverlayContent";
 import { RequireLogin } from "../components/RequireLogin";
 import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
@@ -101,23 +107,19 @@ export function BrowseHistoryScreen() {
               <FlatList
                 data={items}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={[styles.list, { paddingBottom: contentPaddingBottom }]}
+                style={{ backgroundColor: colors.surfaceAlt }}
+                contentContainerStyle={[drawerModuleListStyles.list, { paddingBottom: contentPaddingBottom }]}
                 ListHeaderComponent={
                   items.length ? (
-                    <Text style={[styles.tip, { color: colors.subtext }]}>仅保留最近 30 天浏览记录</Text>
+                    <DrawerModuleInfoBanner icon="time-outline" title="仅保留最近 30 天" description="浏览记录按最近访问时间排序，管理模式下可批量删除。" />
                   ) : null
                 }
-                ListEmptyComponent={<Text style={[styles.empty, { color: colors.subtext }]}>你还没有浏览记录</Text>}
+                ListEmptyComponent={
+                  <OverlayContent.Empty icon="time-outline" title={query.isLoading ? "正在加载浏览记录" : "你还没有浏览记录"} description="看过的美甲会按时间收纳在这里。" />
+                }
                 renderItem={({ item }) => (
-                  <Pressable
-                    style={[
-                      styles.card,
-                      {
-                        backgroundColor: colors.surface,
-                        shadowColor: colors.overlay,
-                        borderColor: selectedIds.includes(item.id) ? colors.accent : "transparent",
-                      },
-                    ]}
+                  <DrawerModuleCard
+                    selected={selectedIds.includes(item.id)}
                     onPress={() => {
                       if (manageMode) {
                         toggleSelect(item.id);
@@ -141,7 +143,7 @@ export function BrowseHistoryScreen() {
                         </View>
                       </View>
                     ) : null}
-                    <Image source={{ uri: resolveAssetUrl(item.style.image_url) }} style={[styles.image, { backgroundColor: colors.accentSoft }]} />
+                    <DrawerModuleThumbnail uri={resolveAssetUrl(item.style.image_url)} size="large" />
                     <View style={styles.body}>
                       <Text style={[styles.title, { color: colors.text }]}>{item.style.title}</Text>
                       <Text style={[styles.meta, { color: colors.subtext }]}>浏览时间 {formatViewedAt(item.viewed_at)}</Text>
@@ -149,7 +151,7 @@ export function BrowseHistoryScreen() {
                         {item.style.description}
                       </Text>
                     </View>
-                  </Pressable>
+                  </DrawerModuleCard>
                 )}
               />
               {manageMode ? (
@@ -205,27 +207,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  list: { padding: 18, gap: 14, paddingBottom: 120 },
-  empty: {
-    paddingTop: 80,
-    textAlign: "center",
-    fontSize: 15,
-  },
-  tip: {
-    fontSize: 13,
-    marginBottom: 2,
-  },
-  card: {
-    flexDirection: "row",
-    gap: 14,
-    padding: 14,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-  },
   selectionWrap: {
     alignSelf: "center",
     paddingRight: 4,
@@ -237,11 +218,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-  },
-  image: {
-    width: 104,
-    height: 132,
-    borderRadius: 18,
   },
   body: {
     flex: 1,

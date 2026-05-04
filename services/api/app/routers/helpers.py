@@ -31,12 +31,18 @@ def serialize_style(
         author_id=None,
         author_name="焕甲图库",
         author_avatar_url=None,
+        author_is_shop=False,
         is_following_author=False,
         is_authored_by_me=False,
         shop_id=style.shop_id,
         shop_name=style.shop.name if style.shop is not None else None,
         shop_city=style.shop.city if style.shop is not None else None,
         shop_address=style.shop.address if style.shop is not None else None,
+        verified_consumption=bool(style.verified_booking_id),
+        verified_shop_id=style.shop_id if style.verified_booking_id else None,
+        verified_shop_name=style.shop.name if style.verified_booking_id and style.shop is not None else None,
+        verified_shop_city=style.shop.city if style.verified_booking_id and style.shop is not None else None,
+        verified_shop_address=style.shop.address if style.verified_booking_id and style.shop is not None else None,
         manage_post_id=None,
         is_hidden=False,
         created_at=style.created_at,
@@ -53,6 +59,7 @@ def serialize_style_detail(
     author_id: str | None = None,
     author_name: str = "焕甲图库",
     author_avatar_url: str | None = None,
+    author_is_shop: bool = False,
     is_following_author: bool = False,
     is_authored_by_me: bool = False,
     manage_post_id: str | None = None,
@@ -77,19 +84,29 @@ def serialize_style_detail(
         author_id=author_id,
         author_name=author_name,
         author_avatar_url=author_avatar_url,
+        author_is_shop=author_is_shop,
         is_following_author=is_following_author,
         is_authored_by_me=is_authored_by_me,
         shop_id=style.shop_id,
         shop_name=style.shop.name if style.shop is not None else None,
         shop_city=style.shop.city if style.shop is not None else None,
         shop_address=style.shop.address if style.shop is not None else None,
+        verified_consumption=bool(style.verified_booking_id),
+        verified_shop_id=style.shop_id if style.verified_booking_id else None,
+        verified_shop_name=style.shop.name if style.verified_booking_id and style.shop is not None else None,
+        verified_shop_city=style.shop.city if style.verified_booking_id and style.shop is not None else None,
+        verified_shop_address=style.shop.address if style.verified_booking_id and style.shop is not None else None,
         manage_post_id=manage_post_id,
         is_hidden=is_hidden,
         created_at=style.created_at,
     )
 
 
-def serialize_style_comment(comment: StyleComment, is_mine: bool = False) -> StyleCommentRead:
+def serialize_style_comment(
+    comment: StyleComment,
+    is_mine: bool = False,
+    style_author_id: str | None = None,
+) -> StyleCommentRead:
     author = comment.user
     return StyleCommentRead(
         id=comment.id,
@@ -97,6 +114,8 @@ def serialize_style_comment(comment: StyleComment, is_mine: bool = False) -> Sty
         created_at=comment.created_at,
         author_name=author.username if author is not None else "焕甲用户",
         author_avatar_url=author.avatar_url if author is not None else None,
+        author_is_shop=bool(author and author.role == "merchant"),
+        is_style_author=bool(style_author_id and comment.user_id == style_author_id),
         is_mine=is_mine,
     )
 
@@ -111,6 +130,8 @@ def serialize_post(post: UserPost) -> UserPostRead:
         created_at=post.created_at,
         updated_at=post.updated_at,
         is_hidden=post.is_hidden,
+        verified_consumption=bool(post.verified_booking_id),
+        verified_shop_name=post.shop.name if post.verified_booking_id and post.shop is not None else None,
     )
 
 
@@ -136,4 +157,6 @@ def serialize_author_post(
         like_count=like_count,
         view_count=view_count,
         unique_viewer_count=unique_viewer_count,
+        verified_consumption=bool(style.verified_booking_id),
+        verified_shop_name=style.shop.name if style.verified_booking_id and style.shop is not None else None,
     )

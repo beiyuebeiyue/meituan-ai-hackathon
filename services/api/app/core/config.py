@@ -28,14 +28,7 @@ class Settings(BaseSettings):
     remote_gpu_tryon_url: str = ""
     remote_gpu_tryon_api_key: str = ""
     remote_gpu_tryon_timeout_seconds: float = 180.0
-    meituan_app_key: str = ""
-    meituan_app_secret: str = ""
-    meituan_api_base_url: str = ""
-    meituan_poi_enabled: bool = False
-    meituan_poi_appkey: str = ""
-    meituan_poi_appsecret: str = ""
-    meituan_poi_session: str = ""
-    meituan_poi_api_base_url: str = "https://poiopen.dianping.com/router/poisearch/search"
+    gaode_api_key: str = ""
     default_admin_enabled: bool = True
     default_admin_phone: str = "13886722666"
     default_admin_username: str = "keke"

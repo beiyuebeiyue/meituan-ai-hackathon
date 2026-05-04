@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   Image,
   Keyboard,
   KeyboardAvoidingView,
@@ -78,9 +80,10 @@ function resolvePublishDate(createdAt: string, authorName: string) {
   return new Date(createdAt);
 }
 
-function formatPublishMeta(createdAt: string, authorName: string) {
+function formatPublishMeta(createdAt: string, authorName: string, authorIsShop: boolean) {
   const publishDate = resolvePublishDate(createdAt, authorName);
-  if (Number.isNaN(publishDate.getTime())) return "广东";
+  const roleText = authorIsShop ? "商家" : "客户";
+  if (Number.isNaN(publishDate.getTime())) return `广东 · ${roleText}`;
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -88,10 +91,11 @@ function formatPublishMeta(createdAt: string, authorName: string) {
   const diffDays = Math.floor((todayStart - publishStart) / 86400000);
   const timePart = `${pad2(publishDate.getHours())}:${pad2(publishDate.getMinutes())}`;
   const monthDayPart = `${pad2(publishDate.getMonth() + 1)}-${pad2(publishDate.getDate())}`;
+  const suffix = `广东 · ${roleText}`;
 
-  if (diffDays <= 0) return `${timePart} 广东`;
-  if (diffDays === 1) return `昨天${timePart} 广东`;
-  return `${monthDayPart} 广东`;
+  if (diffDays <= 0) return `${timePart} ${suffix}`;
+  if (diffDays === 1) return `昨天${timePart} ${suffix}`;
+  return `${monthDayPart} ${suffix}`;
 }
 
 function buildStyleTryOnPrompt(style: StyleDetail) {
@@ -115,6 +119,12 @@ export function StylePreviewScreen() {
   const isDark = useIsDarkMode();
   const direction = useOverlayDirection("right");
   const inputRef = useRef<TextInput>(null);
+  const composerTranslateY = useRef(new Animated.Value(420)).current;
+  const composerOpacity = composerTranslateY.interpolate({
+    inputRange: [0, 420],
+    outputRange: [1, 0.88],
+    extrapolate: "clamp",
+  });
   const pageBackground = isDark ? colors.surfaceAlt : colors.surface;
   const lightCardBackground = isDark ? colors.surface : colors.surfaceAlt;
   const [commentText, setCommentText] = useState("");
@@ -125,11 +135,7 @@ export function StylePreviewScreen() {
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [tryOnChooserVisible, setTryOnChooserVisible] = useState(false);
   const [resumeTryOnAfterLogin, setResumeTryOnAfterLogin] = useState(false);
-  const [bookingVisible, setBookingVisible] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
-  const [appointmentTime, setAppointmentTime] = useState("");
-  const [bookingPhone, setBookingPhone] = useState("");
-  const [bookingNote, setBookingNote] = useState("");
 
   const query = useQuery({
     queryKey: ["style", route.params.styleId, authScope],
@@ -137,8 +143,9 @@ export function StylePreviewScreen() {
     enabled: hydrated,
   });
   const commentsQuery = useQuery({
-    queryKey: ["style-comments", route.params.styleId],
+    queryKey: ["style-comments", route.params.styleId, authScope],
     queryFn: () => api.getStyleComments(route.params.styleId),
+    enabled: hydrated,
   });
   const tryOnPrompt = query.data ? buildStyleTryOnPrompt(query.data) : "请直接把这款美甲焕到我的手上";
 
@@ -180,6 +187,12 @@ export function StylePreviewScreen() {
     setTryOnChooserVisible(true);
   }, [resumeTryOnAfterLogin, token]);
 
+  useEffect(() => {
+    return () => {
+      composerTranslateY.stopAnimation();
+    };
+  }, [composerTranslateY]);
+
   const likeMutation = useMutation({
     mutationFn: async () => {
       if (!query.data) return;
@@ -216,9 +229,7 @@ export function StylePreviewScreen() {
     onSuccess: () => {
       setCommentText("");
       setPendingCommentImageUri(null);
-      setComposerExpanded(false);
-      setEmojiPanelOpen(false);
-      Keyboard.dismiss();
+      closeComposer();
       void queryClient.invalidateQueries({ queryKey: ["style", route.params.styleId] });
       void queryClient.invalidateQueries({ queryKey: ["style-comments", route.params.styleId] });
     },
@@ -229,23 +240,6 @@ export function StylePreviewScreen() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["style", route.params.styleId] });
       void queryClient.invalidateQueries({ queryKey: ["style-comments", route.params.styleId] });
-    },
-  });
-
-  const bookingMutation = useMutation({
-    mutationFn: () =>
-      api.createBooking({
-        style_id: route.params.styleId,
-        shop_id: query.data?.shop_id,
-        appointment_time: appointmentTime.trim(),
-        contact_phone: bookingPhone.trim(),
-        note: bookingNote.trim() || null,
-      }),
-    onSuccess: () => {
-      setBookingVisible(false);
-      setBookingNote("");
-      void queryClient.invalidateQueries({ queryKey: ["my-bookings"] });
-      Alert.alert("预约已提交", "商家会在预约列表里处理你的意向单。");
     },
   });
 
@@ -292,30 +286,48 @@ export function StylePreviewScreen() {
     setTryOnChooserVisible(true);
   };
 
-  const openBookingFlow = () => {
+  const openMerchantChat = () => {
     if (isMerchantViewer) return;
     if (!ensureAuthed()) return;
-    if (!query.data?.shop_id) {
-      Alert.alert("暂不能预约", "这款美甲还没有绑定商家门店。");
+    if (!query.data?.author_id) {
+      Alert.alert("暂不能联系商家", "这款美甲还没有绑定商家账号。");
       return;
     }
-    const now = new Date();
-    setAppointmentTime((value) => value || `${now.getMonth() + 1}月${now.getDate()}日 ${String(now.getHours() + 1).padStart(2, "0")}:00`);
-    setBookingPhone((value) => value || currentUser?.phone || "");
-    setBookingVisible(true);
+    navigation.navigate("DirectMessage", { userId: query.data.author_id, entryEdge: "right" });
   };
 
   const openComposer = () => {
     if (!ensureAuthed()) return;
+    composerTranslateY.stopAnimation();
+    composerTranslateY.setValue(420);
     setComposerExpanded(true);
     setEmojiPanelOpen(false);
-    setTimeout(() => inputRef.current?.focus(), 80);
+    requestAnimationFrame(() => {
+      Animated.timing(composerTranslateY, {
+        toValue: 0,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start(() => {
+        inputRef.current?.focus();
+      });
+    });
   };
 
   const closeComposer = () => {
-    setComposerExpanded(false);
     setEmojiPanelOpen(false);
     Keyboard.dismiss();
+    composerTranslateY.stopAnimation();
+    Animated.timing(composerTranslateY, {
+      toValue: 420,
+      duration: 190,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setComposerExpanded(false);
+      }
+    });
   };
 
   const pickCommentImage = async () => {
@@ -394,7 +406,7 @@ export function StylePreviewScreen() {
       );
     }
 
-    const publishMeta = formatPublishMeta(query.data.created_at, query.data.author_name);
+    const publishMeta = formatPublishMeta(query.data.created_at, query.data.author_name, query.data.author_is_shop);
     const canManagePost = Boolean(isMerchantViewer && query.data.is_authored_by_me && query.data.manage_post_id);
     const descriptionText = query.data.description.trim();
 
@@ -463,6 +475,11 @@ export function StylePreviewScreen() {
         <ScrollView
           style={{ backgroundColor: pageBackground }}
           scrollEnabled={!composerExpanded}
+          bounces={false}
+          alwaysBounceVertical={false}
+          overScrollMode="never"
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
           contentContainerStyle={[
             styles.content,
             { backgroundColor: pageBackground, paddingBottom: composerExpanded ? (emojiPanelOpen ? 400 : 220) : 108 },
@@ -484,7 +501,7 @@ export function StylePreviewScreen() {
                       <Text
                         key={tag}
                         style={[styles.inlineTag, { color: colors.accent }]}
-                        onPress={() => navigation.navigate("BrowseSearch", { initialQuery: `#${tag}`, entryEdge: "right" })}
+                        onPress={() => navigation.navigate("Hashtag", { tag, entryEdge: "right" })}
                       >
                         {index > 0 ? "  " : ""}#{tag}
                       </Text>
@@ -493,7 +510,30 @@ export function StylePreviewScreen() {
                 ) : null}
               </Text>
             ) : null}
-            <Text style={[styles.publishMeta, { color: colors.subtext }]}>{publishMeta}</Text>
+            <View style={styles.publishMetaRow}>
+              {query.data.verified_consumption ? (
+                <View style={[styles.verifiedBadge, { backgroundColor: isDark ? "rgba(56, 189, 122, 0.16)" : "#e9f8ef" }]}>
+                  <Ionicons name="shield-checkmark" size={13} color="#28a45f" />
+                  <Text style={styles.verifiedBadgeText}>真实消费</Text>
+                </View>
+              ) : null}
+              <Text style={[styles.publishMeta, { color: colors.subtext }]}>{publishMeta}</Text>
+            </View>
+            {query.data.verified_consumption && query.data.verified_shop_name ? (
+              <View style={[styles.verifiedShopCard, { backgroundColor: lightCardBackground, borderColor: colors.border }]}>
+                <View style={[styles.verifiedShopIcon, { backgroundColor: colors.accentSoft }]}>
+                  <Ionicons name="storefront-outline" size={18} color={colors.accent} />
+                </View>
+                <View style={styles.verifiedShopText}>
+                  <Text style={[styles.verifiedShopName, { color: colors.text }]} numberOfLines={1}>
+                    {query.data.verified_shop_name}
+                  </Text>
+                  <Text style={[styles.verifiedShopMeta, { color: colors.subtext }]} numberOfLines={2}>
+                    {[query.data.verified_shop_city, query.data.verified_shop_address].filter(Boolean).join(" · ")}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.commentHeader}>
@@ -512,14 +552,14 @@ export function StylePreviewScreen() {
                     <View style={styles.commentTop}>
                       <View style={styles.commentNameRow}>
                         <Text style={[styles.commentAuthor, { color: isDark ? "#cfcfd4" : colors.subtext }]}>{item.author_name}</Text>
-                        {item.author_name === query.data.author_name ? (
+                        {item.author_is_shop ? (
                           <Text
                             style={[
-                              styles.authorBadge,
-                              { backgroundColor: isDark ? "rgba(255, 87, 87, 0.12)" : "#ffe8e3", color: "#ff7e7e" },
+                              styles.merchantCommentBadge,
+                              { backgroundColor: isDark ? "rgba(240, 139, 109, 0.14)" : "#ffe5da", color: colors.accent },
                             ]}
                           >
-                            作者
+                            商家
                           </Text>
                         ) : null}
                         {item.is_mine ? (
@@ -530,6 +570,16 @@ export function StylePreviewScreen() {
                             ]}
                           >
                             我
+                          </Text>
+                        ) : null}
+                        {item.is_style_author ? (
+                          <Text
+                            style={[
+                              styles.authorBadge,
+                              { backgroundColor: isDark ? "rgba(255, 87, 87, 0.12)" : "#ffe8e3", color: "#ff7e7e" },
+                            ]}
+                          >
+                            作者
                           </Text>
                         ) : null}
                       </View>
@@ -561,13 +611,24 @@ export function StylePreviewScreen() {
                 <Text style={[styles.emptyCommentsText, { color: colors.subtext }]}>还没有评论，来抢个沙发</Text>
               </View>
             )}
+            <Text style={[styles.commentEndText, { color: colors.subtext }]}>- 到底了 -</Text>
           </View>
         </ScrollView>
 
         {composerExpanded ? <Pressable style={styles.commentDismissLayer} onPress={closeComposer} /> : null}
 
         {composerExpanded ? (
-          <View style={[styles.expandedComposer, { borderTopColor: colors.border, backgroundColor: pageBackground }]}>
+          <Animated.View
+            style={[
+              styles.expandedComposer,
+              {
+                borderTopColor: colors.border,
+                backgroundColor: pageBackground,
+                opacity: composerOpacity,
+                transform: [{ translateY: composerTranslateY }],
+              },
+            ]}
+          >
             <View style={[styles.expandedInputShell, { backgroundColor: colors.input }]}>
               <TextInput
                 ref={inputRef}
@@ -658,12 +719,12 @@ export function StylePreviewScreen() {
                 </View>
               </View>
             ) : null}
-          </View>
+          </Animated.View>
         ) : (
           <View style={[styles.collapsedComposer, { borderTopColor: colors.border, backgroundColor: pageBackground }]}>
             <Pressable style={[styles.collapsedInput, { backgroundColor: colors.input }]} onPress={openComposer}>
               <Ionicons name="create-outline" size={18} color={colors.subtext} />
-              <Text style={[styles.collapsedPlaceholder, { color: colors.subtext }]}>说点什么...</Text>
+              <Text style={[styles.collapsedPlaceholder, { color: colors.subtext }]} numberOfLines={1}>说点什么...</Text>
             </Pressable>
 
             {!isMerchantViewer ? (
@@ -674,7 +735,7 @@ export function StylePreviewScreen() {
                   likeMutation.mutate();
                 }}
               >
-                <Ionicons name={query.data.is_liked ? "heart" : "heart-outline"} size={24} color={query.data.is_liked ? colors.accent : colors.text} />
+                <Ionicons name={query.data.is_liked ? "heart" : "heart-outline"} size={23} color={query.data.is_liked ? colors.accent : colors.text} />
                 <Text style={[styles.socialCount, { color: colors.text }]}>{formatSocialCount(query.data.like_count)}</Text>
               </Pressable>
             ) : null}
@@ -695,7 +756,7 @@ export function StylePreviewScreen() {
             ) : null}
 
             <Pressable style={styles.socialAction} onPress={openComposer}>
-              <Ionicons name="chatbubble-ellipses-outline" size={24} color={colors.text} />
+              <Ionicons name="chatbubble-ellipses-outline" size={23} color={colors.text} />
               <Text style={[styles.socialCount, { color: colors.text }]}>{formatSocialCount(query.data.comment_count)}</Text>
             </Pressable>
 
@@ -721,10 +782,10 @@ export function StylePreviewScreen() {
                 </Pressable>
                 <Pressable
                   style={[styles.bookingButton, { backgroundColor: isDark ? "#2a2a30" : colors.accentSoft }]}
-                  onPress={openBookingFlow}
+                  onPress={openMerchantChat}
                 >
-                  <Ionicons name="calendar-outline" size={15} color={colors.accent} />
-                  <Text style={[styles.bookingButtonText, { color: colors.accent }]}>预约</Text>
+                  <Ionicons name="chatbubble-ellipses-outline" size={15} color={colors.accent} />
+                  <Text style={[styles.bookingButtonText, { color: colors.accent }]}>私信</Text>
                 </Pressable>
               </>
             ) : null}
@@ -754,54 +815,6 @@ export function StylePreviewScreen() {
           </View>
         </Modal>
 
-        <Modal visible={bookingVisible && !isMerchantViewer} transparent animationType="fade" onRequestClose={() => setBookingVisible(false)}>
-          <KeyboardAvoidingView
-            style={[styles.tryOnModalBackdrop, { backgroundColor: colors.overlay }]}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-          >
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setBookingVisible(false)} />
-            <View style={[styles.bookingSheet, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.bookingTitle, { color: colors.text }]}>预约下单</Text>
-              <Text style={[styles.bookingMetaText, { color: colors.subtext }]}>
-                {query.data.shop_name ?? "美甲门店"} · {query.data.shop_city ?? "同城"}
-              </Text>
-              <TextInput
-                value={appointmentTime}
-                onChangeText={setAppointmentTime}
-                placeholder="预约时间，如 明天 14:00"
-                placeholderTextColor={colors.subtext}
-                style={[styles.bookingInput, { backgroundColor: colors.input, color: colors.text }]}
-              />
-              <TextInput
-                value={bookingPhone}
-                onChangeText={setBookingPhone}
-                placeholder="联系电话"
-                keyboardType="phone-pad"
-                placeholderTextColor={colors.subtext}
-                style={[styles.bookingInput, { backgroundColor: colors.input, color: colors.text }]}
-              />
-              <TextInput
-                value={bookingNote}
-                onChangeText={setBookingNote}
-                placeholder="备注，可选"
-                placeholderTextColor={colors.subtext}
-                style={[styles.bookingInput, styles.bookingTextarea, { backgroundColor: colors.input, color: colors.text }]}
-                multiline
-              />
-              <Pressable
-                style={[
-                  styles.bookingSubmit,
-                  { backgroundColor: colors.accent },
-                  (!appointmentTime.trim() || !bookingPhone.trim() || bookingMutation.isPending) && styles.tryOnButtonDisabled,
-                ]}
-                disabled={!appointmentTime.trim() || !bookingPhone.trim() || bookingMutation.isPending}
-                onPress={() => bookingMutation.mutate()}
-              >
-                {bookingMutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.bookingSubmitText}>提交预约</Text>}
-              </Pressable>
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
         <ShareSheet visible={shareVisible} onClose={() => setShareVisible(false)} />
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -901,9 +914,55 @@ const styles = StyleSheet.create({
   inlineTag: {
     fontWeight: "800",
   },
+  publishMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
   publishMeta: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  verifiedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  verifiedBadgeText: {
+    color: "#28a45f",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  verifiedShopCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  verifiedShopIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  verifiedShopText: {
+    flex: 1,
+    gap: 4,
+  },
+  verifiedShopName: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  verifiedShopMeta: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   commentHeader: {
     paddingHorizontal: 18,
@@ -957,6 +1016,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     overflow: "hidden",
   },
+  merchantCommentBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    fontWeight: "700",
+    fontSize: 12,
+    overflow: "hidden",
+  },
   mineBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -983,34 +1050,43 @@ const styles = StyleSheet.create({
   emptyCommentsText: {
     fontSize: 14,
   },
+  commentEndText: {
+    textAlign: "center",
+    fontSize: 13,
+    fontWeight: "600",
+    paddingTop: 8,
+    paddingBottom: 18,
+  },
   collapsedComposer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 14,
+    gap: 7,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderTopWidth: 1,
   },
   collapsedInput: {
     flex: 1,
-    height: 48,
-    borderRadius: 24,
-    paddingHorizontal: 16,
+    minWidth: 88,
+    height: 44,
+    borderRadius: 22,
+    paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 7,
   },
   collapsedPlaceholder: {
-    fontSize: 15,
+    flex: 1,
+    fontSize: 14,
   },
   socialAction: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 3,
   },
   socialCount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
   },
   managePostAction: {
@@ -1027,35 +1103,35 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   tryOnButton: {
-    minWidth: 82,
-    height: 42,
-    borderRadius: 21,
-    paddingHorizontal: 14,
+    minWidth: 72,
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 11,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 5,
   },
   tryOnButtonDisabled: {
     opacity: 0.72,
   },
   tryOnButtonText: {
     color: "#ffffff",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
   },
   bookingButton: {
-    minWidth: 70,
-    height: 42,
-    borderRadius: 21,
-    paddingHorizontal: 12,
+    minWidth: 58,
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 9,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
+    gap: 4,
   },
   bookingButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "900",
   },
   commentDismissLayer: {
@@ -1063,6 +1139,10 @@ const styles = StyleSheet.create({
     zIndex: 8,
   },
   expandedComposer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 14,

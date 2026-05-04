@@ -9,6 +9,7 @@ export type User = {
   bio?: string | null;
   location_city?: string | null;
   role: "consumer" | "merchant";
+  is_shop: boolean;
   show_following_public: boolean;
   show_followers_public: boolean;
   show_comments_public: boolean;
@@ -30,6 +31,7 @@ export type UserSummary = {
   avatar_url?: string | null;
   bio?: string | null;
   city: string;
+  is_shop: boolean;
   is_following: boolean;
 };
 
@@ -42,6 +44,7 @@ export type AuthResponse = {
 export type UserHandPhoto = {
   id: string;
   image_url: string;
+  processing_status?: "pending" | "processing" | "succeeded" | "failed" | null;
   created_at: string;
 };
 
@@ -68,12 +71,18 @@ export type NailStyle = {
   author_id?: string | null;
   author_name: string;
   author_avatar_url?: string | null;
+  author_is_shop: boolean;
   is_following_author: boolean;
   is_authored_by_me: boolean;
   shop_id?: string | null;
   shop_name?: string | null;
   shop_city?: string | null;
   shop_address?: string | null;
+  verified_consumption: boolean;
+  verified_shop_id?: string | null;
+  verified_shop_name?: string | null;
+  verified_shop_city?: string | null;
+  verified_shop_address?: string | null;
   manage_post_id?: string | null;
   is_hidden?: boolean;
   created_at: string;
@@ -91,6 +100,8 @@ export type StyleComment = {
   created_at: string;
   author_name: string;
   author_avatar_url?: string | null;
+  author_is_shop: boolean;
+  is_style_author: boolean;
   is_mine: boolean;
 };
 
@@ -116,6 +127,7 @@ export type RecommendationResponse = {
 export type TryOnJob = {
   job_id: string;
   status: "pending" | "processing" | "succeeded" | "failed";
+  stage?: "pending" | "preprocessing" | "generating" | "succeeded" | "failed";
   result_image_url?: string | null;
   source_hand_image_url?: string | null;
   error_message?: string | null;
@@ -127,6 +139,7 @@ export type TryOnJob = {
 export type TryOnHistoryItem = {
   job_id: string;
   status: "pending" | "processing" | "succeeded" | "failed";
+  stage?: "pending" | "preprocessing" | "generating" | "succeeded" | "failed";
   result_image_url?: string | null;
   source_hand_image_url?: string | null;
   prompt_text?: string | null;
@@ -145,6 +158,8 @@ export type UserPost = {
   created_at: string;
   updated_at: string;
   is_hidden: boolean;
+  verified_consumption: boolean;
+  verified_shop_name?: string | null;
 };
 
 export type AuthorPost = {
@@ -161,11 +176,15 @@ export type AuthorPost = {
   like_count: number;
   view_count: number;
   unique_viewer_count: number;
+  verified_consumption: boolean;
+  verified_shop_name?: string | null;
 };
 
 export type AuthorProfile = {
   id: string;
   uid: number;
+  role: "consumer" | "merchant";
+  is_shop: boolean;
   username: string;
   avatar_url?: string | null;
   bio?: string | null;
@@ -182,11 +201,16 @@ export type AuthorProfile = {
   can_view_likes: boolean;
   has_blocked_viewer: boolean;
   viewer_has_blocked_author: boolean;
+  shop_id?: string | null;
+  shop_name?: string | null;
+  shop_city?: string | null;
+  shop_address?: string | null;
   posts: AuthorPost[];
 };
 
 export type NearbyShop = {
   id: string;
+  platform_shop_id?: string | null;
   name: string;
   cover_image_url: string;
   city: string;
@@ -198,15 +222,19 @@ export type NearbyShop = {
   rating?: number | null;
   heat_text: string;
   average_price_text: string;
+  business_time_text?: string | null;
+  phone_text?: string | null;
 };
 
 export type NearbyShopSearchResponse = {
   items: NearbyShop[];
   resolved_city: string;
   resolved_region?: string | null;
+  center_lat?: number | null;
+  center_lng?: number | null;
   used_location: boolean;
   available_sorts: Array<"default" | "distance">;
-  source?: "meituan" | "unavailable";
+  source?: "gaode" | "unavailable";
   message?: string | null;
 };
 
@@ -228,7 +256,7 @@ export type BookingStatus = "pending" | "accepted" | "rejected" | "completed" | 
 
 export type Booking = {
   id: string;
-  style_id: string;
+  style_id?: string | null;
   style_title: string;
   style_image_url: string;
   shop_id: string;
@@ -267,6 +295,7 @@ export type DirectMessageTarget = {
   uid: number;
   username: string;
   role: "consumer" | "merchant";
+  is_shop: boolean;
   avatar_url?: string | null;
 };
 
@@ -275,6 +304,22 @@ export type DirectMessage = {
   sender_user_id: string;
   recipient_user_id: string;
   content: string;
+  image_url?: string | null;
+  shared_style?: {
+    id: string;
+    title: string;
+    image_url: string;
+    author_name: string;
+    author_avatar_url?: string | null;
+    author_is_shop: boolean;
+    like_count: number;
+  } | null;
+  booking_invite?: {
+    shop_id: string;
+    shop_name: string;
+    shop_city: string;
+    shop_address?: string | null;
+  } | null;
   created_at: string;
   is_mine: boolean;
   read_at?: string | null;

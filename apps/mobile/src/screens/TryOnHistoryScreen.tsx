@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
-import { Alert, FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
+import { DrawerModuleCard, DrawerModulePill, DrawerModuleThumbnail, drawerModuleListStyles } from "../components/DrawerModuleLayout";
 import { OverlayContent } from "../components/OverlayContent";
 import { RequireLogin } from "../components/RequireLogin";
 import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
@@ -13,6 +14,13 @@ function getStatusLabel(status: "pending" | "processing" | "succeeded" | "failed
   if (status === "processing") return "生成中";
   if (status === "succeeded") return "已完成";
   return "已失败";
+}
+
+function getStatusTone(status: "pending" | "processing" | "succeeded" | "failed") {
+  if (status === "failed") return "danger";
+  if (status === "succeeded") return "success";
+  if (status === "processing") return "accent";
+  return "muted";
 }
 
 export function TryOnHistoryScreen() {
@@ -49,7 +57,7 @@ export function TryOnHistoryScreen() {
               style={{ backgroundColor: colors.surfaceAlt }}
               data={query.data?.items ?? []}
               keyExtractor={(item) => item.job_id}
-              contentContainerStyle={styles.list}
+              contentContainerStyle={drawerModuleListStyles.list}
               ListEmptyComponent={
                 <OverlayContent.Empty
                   icon="sparkles-outline"
@@ -61,19 +69,12 @@ export function TryOnHistoryScreen() {
                 const imageUrl = item.result_image_url || item.source_hand_image_url || item.style_image_url;
                 const deletingDisabled = item.status === "processing";
                 return (
-                  <View style={[styles.card, { backgroundColor: colors.surface }]}>
-                    <Image source={{ uri: resolveAssetUrl(imageUrl) }} style={[styles.image, { backgroundColor: colors.accentSoft }]} />
+                  <DrawerModuleCard>
+                    <DrawerModuleThumbnail uri={resolveAssetUrl(imageUrl)} size="large" />
                     <View style={styles.body}>
                       <View style={styles.header}>
                         <Text style={[styles.title, { color: colors.text }]}>{item.style_title}</Text>
-                        <Text
-                          style={[
-                            styles.status,
-                            { color: item.status === "failed" ? "#c24444" : "#2d8a52" },
-                          ]}
-                        >
-                          {getStatusLabel(item.status)}
-                        </Text>
+                        <DrawerModulePill label={getStatusLabel(item.status)} tone={getStatusTone(item.status)} />
                       </View>
                       <Text style={[styles.meta, { color: colors.subtext }]}>创建于 {item.created_at.replace("T", " ").slice(0, 16)}</Text>
                       <Text style={[styles.prompt, { color: colors.subtext }]} numberOfLines={2}>
@@ -100,7 +101,7 @@ export function TryOnHistoryScreen() {
                         </Pressable>
                       </View>
                     </View>
-                  </View>
+                  </DrawerModuleCard>
                 );
               }}
             />
@@ -113,18 +114,6 @@ export function TryOnHistoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  list: { padding: 10, gap: 12, paddingBottom: 120 },
-  card: {
-    flexDirection: "row",
-    gap: 14,
-    padding: 14,
-    borderRadius: 22,
-  },
-  image: {
-    width: 108,
-    height: 138,
-    borderRadius: 18,
-  },
   body: {
     flex: 1,
     gap: 8,
@@ -140,10 +129,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: "700",
-  },
-  status: {
-    fontWeight: "700",
-    fontSize: 12,
   },
   meta: {
     fontSize: 12,

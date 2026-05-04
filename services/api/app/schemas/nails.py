@@ -20,12 +20,18 @@ class NailStyleRead(BaseModel):
     author_id: str | None = None
     author_name: str = "焕甲图库"
     author_avatar_url: str | None = None
+    author_is_shop: bool = False
     is_following_author: bool = False
     is_authored_by_me: bool = False
     shop_id: str | None = None
     shop_name: str | None = None
     shop_city: str | None = None
     shop_address: str | None = None
+    verified_consumption: bool = False
+    verified_shop_id: str | None = None
+    verified_shop_name: str | None = None
+    verified_shop_city: str | None = None
+    verified_shop_address: str | None = None
     manage_post_id: str | None = None
     is_hidden: bool = False
     created_at: datetime
@@ -45,6 +51,8 @@ class StyleCommentRead(BaseModel):
     created_at: datetime
     author_name: str
     author_avatar_url: str | None = None
+    author_is_shop: bool = False
+    is_style_author: bool = False
     is_mine: bool = False
 
 

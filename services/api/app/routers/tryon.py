@@ -33,7 +33,7 @@ def create_tryon_job(
         saved_hand_photo_id=saved_hand_photo_id,
     )
     background_tasks.add_task(run_tryon_job, job.id)
-    return TryOnJobCreateResponse(job_id=job.id, status=job.status)
+    return TryOnJobCreateResponse(job_id=job.id, status=job.status, stage=job.stage)
 
 
 @router.get("/jobs/{job_id}", response_model=TryOnJobRead)
@@ -46,6 +46,7 @@ def get_tryon_job(
     return TryOnJobRead(
         job_id=job.id,
         status=job.status,
+        stage=job.stage,
         result_image_url=job.result_image_url,
         source_hand_image_url=job.source_hand_image_url,
         error_message=job.error_message,
@@ -64,6 +65,7 @@ def list_my_tryon_jobs(
         TryOnHistoryItemRead(
             job_id=item.id,
             status=item.status,
+            stage=item.stage,
             result_image_url=item.result_image_url,
             source_hand_image_url=item.source_hand_image_url,
             prompt_text=item.prompt_text,

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveAssetUrl } from "../api/client";
+import { AuthorRoleBadge } from "./AuthorRoleBadge";
 import { NailStyle } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
@@ -28,9 +29,14 @@ export function BrowseFeedCard({ item, onPress, onToggleLike, showLike = true }:
         <View style={styles.footer}>
           <View style={styles.authorWrap}>
             <Image source={avatarSource} style={[styles.avatar, { backgroundColor: isDark ? "#34343a" : colors.surfaceAlt }]} />
-            <Text style={[styles.authorName, { color: colors.subtext }]} numberOfLines={1}>
-              {item.author_name}
-            </Text>
+            <View style={styles.authorTextBlock}>
+              <View style={styles.authorNameRow}>
+                <Text style={[styles.authorName, { color: colors.subtext }]} numberOfLines={1}>
+                  {item.author_name}
+                </Text>
+              <AuthorRoleBadge isMerchant={item.author_is_shop} compact />
+            </View>
+            </View>
           </View>
           {showLike ? (
             <Pressable style={styles.likeWrap} onPress={() => onToggleLike(item)} hitSlop={8}>
@@ -61,7 +67,7 @@ const styles = StyleSheet.create({
   },
   body: {
     padding: 10,
-    gap: 10,
+    gap: 8,
   },
   title: {
     fontSize: 15,
@@ -72,8 +78,8 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
+    position: "relative",
+    paddingRight: 52,
   },
   authorWrap: {
     flex: 1,
@@ -86,13 +92,27 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
   },
-  authorName: {
+  authorTextBlock: {
     flex: 1,
-    fontSize: 12,
   },
-  likeWrap: {
+  authorNameRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 5,
+  },
+  authorName: {
+    flexShrink: 1,
+    fontSize: 12,
+    lineHeight: 14,
+  },
+  likeWrap: {
+    position: "absolute",
+    right: 0,
+    top: 3,
+    width: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
     gap: 4,
   },
   likeText: {

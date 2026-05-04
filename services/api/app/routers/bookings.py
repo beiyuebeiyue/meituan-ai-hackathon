@@ -22,8 +22,8 @@ def create_booking(
     booking = booking_service.create(
         db,
         user,
-        style_id=payload.style_id,
         shop_id=payload.shop_id,
+        style_id=payload.style_id,
         appointment_time=payload.appointment_time,
         contact_phone=payload.contact_phone,
         note=payload.note,

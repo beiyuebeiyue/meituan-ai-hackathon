@@ -6,9 +6,13 @@ from sqlalchemy.orm import Session
 
 from app.models.user import User
 from app.models.user_follow import UserFollow
+from app.services.block_service import BlockService
 
 
 class FollowService:
+    def __init__(self) -> None:
+        self.block_service = BlockService()
+
     def get_following_ids(self, db: Session, user_id: str) -> set[str]:
         statement = select(UserFollow.followed_user_id).where(UserFollow.follower_user_id == user_id)
         return set(db.scalars(statement))
@@ -43,8 +47,9 @@ class FollowService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
         if target.id == user.id:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不能关注自己")
-        if user.role == "merchant":
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="商家端不能关注用户，请切换到用户端")
+        blocked_by_target, viewer_has_blocked_target = self.block_service.get_relationship(db, user.id, target.id)
+        if blocked_by_target or viewer_has_blocked_target:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="当前无法关注该用户")
 
         relation = db.scalar(
             select(UserFollow).where(

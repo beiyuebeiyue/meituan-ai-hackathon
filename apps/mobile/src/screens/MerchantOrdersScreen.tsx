@@ -1,27 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
+import { Ionicons } from "@expo/vector-icons";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
 import { OverlayContent } from "../components/OverlayContent";
 import { RequireLogin } from "../components/RequireLogin";
-import { Booking } from "../types/api";
 import { useAuthStore } from "../store/useAuthStore";
+import { bookingStatusLabel, getBookingStatusTone } from "../utils/bookingStatus";
 import { useThemeColors } from "../utils/theme";
-
-const statusLabel: Record<Booking["status"], string> = {
-  pending: "待处理",
-  accepted: "已接受",
-  rejected: "已拒绝",
-  completed: "已完成",
-  cancelled: "已取消",
-};
-
-const statusTone: Record<Booking["status"], "accent" | "muted"> = {
-  pending: "accent",
-  accepted: "accent",
-  completed: "accent",
-  rejected: "muted",
-  cancelled: "muted",
-};
 
 function pad2(value: number) {
   return String(value).padStart(2, "0");
@@ -62,23 +47,29 @@ export function MerchantOrdersScreen({ navigation }: any) {
 
       {items.length ? (
         items.map((item) => {
-          const tone = statusTone[item.status];
+          const statusTone = getBookingStatusTone(item.status, colors);
           return (
             <Pressable
               key={item.id}
               style={[styles.card, { backgroundColor: colors.surface }]}
-              onPress={() => navigation.navigate("StylePreview", { styleId: item.style_id })}
+              onPress={() => {
+                if (item.style_id) navigation.navigate("StylePreview", { styleId: item.style_id });
+              }}
             >
-              <Image source={{ uri: resolveAssetUrl(item.style_image_url) }} style={[styles.image, { backgroundColor: colors.surfaceAlt }]} />
+              {item.style_image_url ? (
+                <Image source={{ uri: resolveAssetUrl(item.style_image_url) }} style={[styles.image, { backgroundColor: colors.surfaceAlt }]} />
+              ) : (
+                <View style={[styles.image, styles.placeholderImage, { backgroundColor: colors.surfaceAlt }]}>
+                  <Ionicons name="storefront-outline" size={28} color={colors.subtext} />
+                </View>
+              )}
               <View style={styles.body}>
                 <View style={styles.rowBetween}>
                   <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
                     {item.style_title}
                   </Text>
-                  <View style={[styles.statusPill, { backgroundColor: tone === "accent" ? colors.accentSoft : colors.surfaceAlt }]}>
-                    <Text style={[styles.statusText, { color: tone === "accent" ? colors.accent : colors.subtext }]}>
-                      {statusLabel[item.status]}
-                    </Text>
+                  <View style={[styles.statusPill, { backgroundColor: statusTone.backgroundColor }]}>
+                    <Text style={[styles.statusText, { color: statusTone.textColor }]}>{bookingStatusLabel[item.status]}</Text>
                   </View>
                 </View>
                 <Text style={[styles.meta, { color: colors.subtext }]} numberOfLines={1}>
@@ -115,6 +106,10 @@ const styles = StyleSheet.create({
     width: 94,
     height: 94,
     borderRadius: 16,
+  },
+  placeholderImage: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   body: {
     flex: 1,

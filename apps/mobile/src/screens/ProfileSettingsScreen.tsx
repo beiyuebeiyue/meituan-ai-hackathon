@@ -13,7 +13,7 @@ const helpItems = [
 
 const accountItems = [
   { key: "profile-info", title: "个人信息", subtitle: "修改头像、用户名和生日" },
-  { key: "privacy", title: "隐私设置", subtitle: "查看和管理黑名单" },
+  { key: "privacy", title: "隐私设置", subtitle: "管理不再看她列表" },
 ] as const;
 
 const logoutItem = { key: "logout", title: "退出登录", subtitle: "退出当前账号并清空本地登录态" } as const;

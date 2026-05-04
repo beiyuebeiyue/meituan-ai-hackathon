@@ -8,7 +8,25 @@ class DirectMessageTargetRead(BaseModel):
     uid: int
     username: str
     role: str
+    is_shop: bool = False
     avatar_url: str | None = None
+
+
+class DirectMessageSharedStyleRead(BaseModel):
+    id: str
+    title: str
+    image_url: str
+    author_name: str
+    author_avatar_url: str | None = None
+    author_is_shop: bool = False
+    like_count: int = 0
+
+
+class DirectMessageBookingInviteRead(BaseModel):
+    shop_id: str
+    shop_name: str
+    shop_city: str
+    shop_address: str | None = None
 
 
 class DirectMessageRead(BaseModel):
@@ -16,6 +34,9 @@ class DirectMessageRead(BaseModel):
     sender_user_id: str
     recipient_user_id: str
     content: str
+    image_url: str | None = None
+    shared_style: DirectMessageSharedStyleRead | None = None
+    booking_invite: DirectMessageBookingInviteRead | None = None
     created_at: datetime
     is_mine: bool
     read_at: datetime | None = None
@@ -34,6 +55,16 @@ class DirectMessageThreadRead(BaseModel):
 
 class DirectMessageCreateRequest(BaseModel):
     content: str
+
+
+class DirectMessageStyleCreateRequest(BaseModel):
+    style_id: str
+    content: str = ""
+
+
+class DirectMessageBookingInviteCreateRequest(BaseModel):
+    shop_id: str | None = None
+    content: str = ""
 
 
 class MessageInboxThreadRead(BaseModel):

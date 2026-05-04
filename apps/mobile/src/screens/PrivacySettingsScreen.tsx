@@ -10,7 +10,7 @@ export function PrivacySettingsScreen() {
 
   return (
     <OverlayContent.Scroll>
-      <Text style={[styles.sectionTitle, { color: colors.subtext }]}>黑名单</Text>
+      <Text style={[styles.sectionTitle, { color: colors.subtext }]}>不再看她</Text>
       <View style={[styles.card, { backgroundColor: colors.surface }]}>
         <Pressable style={styles.blockRow} onPress={() => navigation.navigate("BlockedUsers")}>
           <View style={styles.blockLeft}>
@@ -18,8 +18,8 @@ export function PrivacySettingsScreen() {
               <Ionicons name="ban-outline" size={20} color={colors.text} />
             </View>
             <View style={styles.rowText}>
-              <Text style={[styles.rowTitle, { color: colors.text }]}>查看黑名单用户</Text>
-              <Text style={[styles.rowSubtitle, { color: colors.subtext }]}>管理你已拉黑的用户</Text>
+              <Text style={[styles.rowTitle, { color: colors.text }]}>查看不再看她列表</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.subtext }]}>管理你不想再看到的用户</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.subtext} />

@@ -12,6 +12,8 @@ class UserPostRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     is_hidden: bool = False
+    verified_consumption: bool = False
+    verified_shop_name: str | None = None
 
 
 class AuthorPostRead(BaseModel):
@@ -28,6 +30,8 @@ class AuthorPostRead(BaseModel):
     like_count: int = 0
     view_count: int = 0
     unique_viewer_count: int = 0
+    verified_consumption: bool = False
+    verified_shop_name: str | None = None
 
 
 class UserPostListResponse(BaseModel):

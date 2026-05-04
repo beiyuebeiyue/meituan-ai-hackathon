@@ -89,17 +89,20 @@ def test_registered_users_receive_incrementing_uid(client):
     assert second_response.json()["user"]["role"] == "consumer"
 
 
-def test_uid2_user_is_renamed_when_display_defaults_are_reapplied(client, db_session):
-    client.post(
+def test_demo_consumer_is_promoted_to_uid1_when_display_defaults_are_reapplied(client, db_session):
+    stale_response = client.post(
         "/api/v1/auth/register",
         json={"phone": "13900000021", "password": "pass123456", "username": "user21"},
     )
-    second_response = client.post(
-        "/api/v1/auth/register",
-        json={"phone": "13900000022", "password": "pass123456", "username": "user22"},
+    demo_response = client.post(
+        "/api/v1/auth/login",
+        json={"phone": "13886722665", "password": "admin@123456", "requested_role": "consumer"},
     )
-    assert second_response.json()["user"]["uid"] == 2
 
     AuthService().ensure_user_uids(db_session)
-    user = db_session.query(User).filter(User.uid == 2).one()
+    user = db_session.query(User).filter(User.uid == 1).one()
+    assert stale_response.json()["user"]["uid"] == 1
+    assert demo_response.json()["user"]["uid"] == 1
+    assert user.phone == "13886722665"
     assert user.username == "momo酱"
+    assert db_session.query(User).filter(User.id == stale_response.json()["user"]["id"]).one_or_none() is None

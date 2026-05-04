@@ -6,11 +6,13 @@ from pydantic import BaseModel
 class TryOnJobCreateResponse(BaseModel):
     job_id: str
     status: str
+    stage: str = "pending"
 
 
 class TryOnJobRead(BaseModel):
     job_id: str
     status: str
+    stage: str = "pending"
     result_image_url: str | None = None
     source_hand_image_url: str | None = None
     error_message: str | None = None
@@ -22,6 +24,7 @@ class TryOnJobRead(BaseModel):
 class TryOnHistoryItemRead(BaseModel):
     job_id: str
     status: str
+    stage: str = "pending"
     result_image_url: str | None = None
     source_hand_image_url: str | None = None
     prompt_text: str | None = None

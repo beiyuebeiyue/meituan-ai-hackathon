@@ -22,7 +22,7 @@ class BookingService:
         return BookingRead(
             id=booking.id,
             style_id=booking.style_id,
-            style_title=style.title if style else "美甲款式",
+            style_title=style.title if style else "门店预约",
             style_image_url=style.image_url if style else "",
             shop_id=booking.shop_id,
             shop_name=shop.name if shop else "美甲门店",
@@ -47,26 +47,27 @@ class BookingService:
         db: Session,
         user: User,
         *,
-        style_id: str,
-        shop_id: str | None,
+        shop_id: str,
+        style_id: str | None = None,
         appointment_time: str,
         contact_phone: str,
         note: str | None = None,
     ) -> Booking:
-        style = db.get(NailStyle, style_id)
-        if style is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="款式不存在")
-        resolved_shop_id = shop_id or style.shop_id
-        if not resolved_shop_id:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="这款美甲暂未绑定门店")
-        shop = db.get(MerchantShop, resolved_shop_id)
+        shop = db.get(MerchantShop, shop_id)
         if shop is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="门店不存在")
+        style: NailStyle | None = None
+        if style_id:
+            style = db.get(NailStyle, style_id)
+            if style is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="款式不存在")
+            if style.shop_id and style.shop_id != shop.id:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="款式不属于该门店")
         booking = Booking(
             user_id=user.id,
             merchant_user_id=shop.merchant_user_id,
             shop_id=shop.id,
-            style_id=style.id,
+            style_id=style.id if style else None,
             appointment_time=appointment_time.strip(),
             contact_phone=contact_phone.strip(),
             note=note.strip() if note else None,

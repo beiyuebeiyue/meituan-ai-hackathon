@@ -79,6 +79,65 @@ def test_style_detail_supports_like_favorite_and_comments(client, db_session, im
     assert after_delete.json()["comment_count"] == 0
 
 
+def test_style_comments_expose_author_and_merchant_badges_to_regular_users(client, db_session, image_factory):
+    merchant_response = client.post(
+        "/api/v1/auth/login",
+        json={"phone": "13886722666", "password": "admin@123456", "requested_role": "merchant"},
+    )
+    assert merchant_response.status_code == 200
+    merchant_payload = merchant_response.json()
+    merchant_headers = {"Authorization": f"Bearer {merchant_payload['access_token']}"}
+    merchant_id = merchant_payload["user"]["id"]
+
+    user_response = client.post(
+        "/api/v1/auth/login",
+        json={"phone": "13886722665", "password": "admin@123456", "requested_role": "consumer"},
+    )
+    assert user_response.status_code == 200
+    user_headers = {"Authorization": f"Bearer {user_response.json()['access_token']}"}
+
+    style = NailStyle(
+        title="红棕法式",
+        description="显白耐看",
+        image_url="http://example.com/merchant-comment-style.png",
+        local_image_path=str(image_factory("merchant-comment-style.png")),
+        source_type="user_post",
+        tags_json=["法式", "显白"],
+        dominant_colors_json=["#a6372e"],
+        style_metadata_json={"author_user_id": merchant_id},
+        popularity_score=16,
+        is_trending=False,
+    )
+    db_session.add(style)
+    db_session.commit()
+
+    merchant_comment = client.post(
+        f"/api/v1/nails/{style.id}/comments",
+        json={"content": "这款是我们店里的热门款。"},
+        headers=merchant_headers,
+    )
+    assert merchant_comment.status_code == 200
+    assert merchant_comment.json()["author_is_shop"] is True
+    assert merchant_comment.json()["is_style_author"] is True
+
+    user_comment = client.post(
+        f"/api/v1/nails/{style.id}/comments",
+        json={"content": "普通用户也能看到作者标识。"},
+        headers=user_headers,
+    )
+    assert user_comment.status_code == 200
+    assert user_comment.json()["author_is_shop"] is False
+    assert user_comment.json()["is_style_author"] is False
+
+    comments_response = client.get(f"/api/v1/nails/{style.id}/comments", headers=user_headers)
+    assert comments_response.status_code == 200
+    comments = comments_response.json()["items"]
+    merchant_comments = [item for item in comments if item["content"] == "这款是我们店里的热门款。"]
+    assert len(merchant_comments) == 1
+    assert merchant_comments[0]["author_is_shop"] is True
+    assert merchant_comments[0]["is_style_author"] is True
+
+
 def test_following_feed_supports_followed_author_and_blocks_self_follow(client, db_session, image_factory):
     style = NailStyle(
         title="奶咖法式",

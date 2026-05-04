@@ -46,6 +46,7 @@ def build_style_payloads(db: Session, items: list, user: User | None) -> list[Na
                 author_id=author.id if author else None,
                 author_name=author.username if author else "焕甲图库",
                 author_avatar_url=author.avatar_url if author else None,
+                author_is_shop=bool(author and author.role == "merchant"),
                 is_following_author=bool(user and author and author.id != user.id and author.id in following_ids),
                 is_authored_by_me=bool(user and author and author.id == user.id),
                 manage_post_id=post.id if post is not None else None,
@@ -174,6 +175,23 @@ def list_my_liked_styles(
     )
 
 
+@router.get("/by-shop/{shop_id}", response_model=NailStyleListResponse)
+def list_styles_by_shop(
+    shop_id: str,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=30, ge=1, le=50),
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_optional_current_user),
+) -> NailStyleListResponse:
+    items, total = style_service.list_by_shop(db, shop_id, page, page_size, viewer=user)
+    return NailStyleListResponse(
+        page=page,
+        page_size=page_size,
+        total=total,
+        items=build_style_payloads(db, items, user),
+    )
+
+
 @router.get("/{style_id}", response_model=NailStyleDetailRead)
 def get_style(
     style_id: str,
@@ -201,9 +219,18 @@ def list_style_comments(
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> StyleCommentListResponse:
+    style = style_service.get_style(db, style_id, viewer=user)
+    style_author = style_service.resolve_style_author_user(db, style)
     items = style_comment_service.list_for_style(db, style_id)
     return StyleCommentListResponse(
-        items=[serialize_style_comment(item, is_mine=bool(user and item.user_id == user.id)) for item in items]
+        items=[
+            serialize_style_comment(
+                item,
+                is_mine=bool(user and item.user_id == user.id),
+                style_author_id=style_author.id if style_author else None,
+            )
+            for item in items
+        ]
     )
 
 
@@ -255,8 +282,10 @@ def create_style_comment(
     content = payload.content.strip()
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="评论内容不能为空")
+    style = style_service.get_style(db, style_id, viewer=user)
+    style_author = style_service.resolve_style_author_user(db, style)
     comment = style_comment_service.create(db, user, style_id, content)
-    return serialize_style_comment(comment, is_mine=True)
+    return serialize_style_comment(comment, is_mine=True, style_author_id=style_author.id if style_author else None)
 
 
 @router.delete("/{style_id}/comments/{comment_id}")

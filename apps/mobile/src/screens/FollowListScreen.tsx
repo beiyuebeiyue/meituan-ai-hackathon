@@ -1,7 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { useEffect, useState } from "react";
 import { FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
@@ -12,11 +11,6 @@ import { useThemeColors } from "../utils/theme";
 const defaultAvatar = require("../../assets/profile/default_avatar.png");
 type FollowTab = "following" | "followers";
 
-const tabs: Array<{ key: FollowTab; label: string }> = [
-  { key: "following", label: "关注" },
-  { key: "followers", label: "粉丝" },
-];
-
 export function FollowListScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
@@ -24,30 +18,27 @@ export function FollowListScreen() {
   const queryClient = useQueryClient();
   const colors = useThemeColors();
   const currentUser = useAuthStore((state) => state.user);
-  const { authorId, kind } = route.params as { authorId: string; kind: "following" | "followers" };
-  const isMerchantViewer = currentUser?.role === "merchant";
-  const [activeTab, setActiveTab] = useState<FollowTab>(kind === "followers" ? "followers" : "following");
-  const displayTab: FollowTab = isMerchantViewer ? "followers" : activeTab;
-
-  useEffect(() => {
-    if (isMerchantViewer && activeTab !== "followers") {
-      setActiveTab("followers");
-    }
-  }, [activeTab, isMerchantViewer]);
+  const {
+    authorId,
+    kind,
+    title,
+  } = route.params as { authorId: string; kind: "following" | "followers"; title?: string };
+  const displayTab: FollowTab = kind === "followers" ? "followers" : "following";
 
   const followingQuery = useQuery({
     queryKey: ["follow-list", authorId, "following"],
     queryFn: () => api.getUserFollowing(authorId),
-    enabled: !isMerchantViewer,
+    enabled: displayTab === "following",
   });
 
   const followersQuery = useQuery({
     queryKey: ["follow-list", authorId, "followers"],
     queryFn: () => api.getUserFollowers(authorId),
+    enabled: displayTab === "followers",
   });
 
-  const followMutation = useMutation({
-    mutationFn: (userId: string) => api.followUser(userId),
+  const toggleFollowMutation = useMutation({
+    mutationFn: (item: UserSummary) => (item.is_following ? api.unfollowUser(item.id) : api.followUser(item.id)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["follow-list", authorId] });
       queryClient.invalidateQueries({ queryKey: ["author-profile"] });
@@ -67,27 +58,26 @@ export function FollowListScreen() {
         ? followingQuery.isError
         : followersQuery.isError;
 
-  const sectionTitle = isMerchantViewer
-    ? `粉丝（${followers.length}）`
-    : displayTab === "following"
-        ? `我的关注（${following.length}）`
-        : `我的粉丝（${followers.length}）`;
+  const sectionTitle =
+    displayTab === "following"
+      ? `关注（${following.length}）`
+      : `粉丝（${followers.length}）`;
 
   const emptyText =
     displayTab === "following"
-        ? "还没有关注任何用户"
+        ? "还没有关注任何商家"
         : "还没有粉丝";
 
   const getSubtitle = (item: UserSummary) => {
     if (displayTab === "followers") {
-      return `粉丝 · 焕甲号 ${item.uid}`;
+      return `粉丝 · IP：${item.city || "广东"}`;
     }
-    return item.is_following ? `已关注 · 焕甲号 ${item.uid}` : `焕甲号 ${item.uid}`;
+    return item.is_following ? `已关注 · IP：${item.city || "广东"}` : `IP：${item.city || "广东"}`;
   };
 
   const renderUser = ({ item }: { item: UserSummary }) => {
-    const canFollow = !isMerchantViewer && !item.is_following;
-    const actionText = canFollow ? "关注" : "已关注";
+    const canToggleFollow = displayTab === "following" && item.id !== currentUser?.id;
+    const actionText = item.is_following ? "取消关注" : "关注";
     return (
     <Pressable
       style={[styles.userRow, { backgroundColor: colors.background }]}
@@ -107,25 +97,23 @@ export function FollowListScreen() {
           </Text>
         ) : null}
       </View>
-      {!isMerchantViewer ? (
+      {canToggleFollow ? (
         <Pressable
-          disabled={!canFollow || followMutation.isPending}
+          disabled={toggleFollowMutation.isPending}
           style={[
             styles.followBadge,
             {
-              borderColor: canFollow ? colors.accent : colors.border,
-              backgroundColor: canFollow ? "transparent" : colors.surfaceAlt,
-              opacity: followMutation.isPending ? 0.7 : 1,
+              borderColor: colors.accent,
+              backgroundColor: item.is_following ? colors.accentSoft : "transparent",
+              opacity: toggleFollowMutation.isPending ? 0.7 : 1,
             },
           ]}
           onPress={(event) => {
             event.stopPropagation();
-            if (canFollow) {
-              followMutation.mutate(item.id);
-            }
+            toggleFollowMutation.mutate(item);
           }}
         >
-          <Text style={[styles.followBadgeText, { color: canFollow ? colors.accent : colors.subtext }]}>
+          <Text style={[styles.followBadgeText, { color: colors.accent }]}>
             {actionText}
           </Text>
         </Pressable>
@@ -140,23 +128,9 @@ export function FollowListScreen() {
         <Pressable style={styles.backButton} onPress={() => dismissOverlay?.() ?? navigation.goBack()}>
           <Ionicons name="chevron-back" size={30} color={colors.text} />
         </Pressable>
-        {isMerchantViewer ? (
-          <Text style={[styles.headerTitle, { color: colors.text }]}>粉丝</Text>
-        ) : (
-          <View style={styles.tabBar}>
-            {tabs.map((tab) => {
-              const selected = activeTab === tab.key;
-              return (
-                <Pressable key={tab.key} style={styles.tabButton} onPress={() => setActiveTab(tab.key)}>
-                  <View style={styles.tabLabelRow}>
-                    <Text style={[styles.tabText, { color: selected ? colors.text : colors.subtext }]}>{tab.label}</Text>
-                  </View>
-                  <View style={[styles.tabUnderline, { backgroundColor: selected ? colors.accent : "transparent" }]} />
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {title ?? (displayTab === "followers" ? "粉丝" : "关注")}
+        </Text>
       </View>
 
       {activeIsError ? (
@@ -199,32 +173,6 @@ const styles = StyleSheet.create({
     left: 18,
     top: 16,
     zIndex: 2,
-  },
-  tabBar: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 48,
-    gap: 24,
-  },
-  tabButton: {
-    alignItems: "center",
-    gap: 7,
-    paddingTop: 12,
-  },
-  tabLabelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: "800",
-  },
-  tabUnderline: {
-    width: 28,
-    height: 3,
-    borderRadius: 999,
   },
   headerTitle: {
     textAlign: "center",

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -10,6 +11,7 @@ import {
   FlatList,
   Image,
   KeyboardAvoidingView,
+  Dimensions,
   Modal,
   Platform,
   Pressable,
@@ -19,21 +21,27 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
-import { MerchantDrawerActionKey, MerchantSideDrawer } from "../components/MerchantSideDrawer";
+import { BookingSheet } from "../components/BookingSheet";
+import { ConsumerDrawerActionKey, ConsumerSideDrawer, MerchantDrawerActionKey, MerchantSideDrawer } from "../components/MerchantSideDrawer";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { ShareSheet } from "../components/ShareSheet";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
-import { AuthorPost, MyStyleCommentItem, NailStyle } from "../types/api";
+import { AuthorPost, AuthorProfile, MyStyleCommentItem, NailStyle, NearbyShop } from "../types/api";
+import { getStoredValue, setStoredValue } from "../utils/sessionStorage";
 import { formatRelativeRegionTime } from "../utils/postTime";
-import { useThemeColors } from "../utils/theme";
+import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const profileBgDefault = require("../../assets/profile/profile_bg_default.png");
 const FEED_HEART_ACTIVE_COLOR = "#ff7a8a";
 const FEED_HEART_INACTIVE_COLOR = "#d0d0d5";
+const PROFILE_HEADER_HEIGHT = Math.min(330, Math.max(300, Math.round(Dimensions.get("window").height * 0.34)));
 
 const REGION_NAME_MAP: Record<string, string> = {
   Guangdong: "广东",
@@ -93,17 +101,40 @@ function resolveProfileLocationLabel(address?: Location.LocationGeocodedAddress 
 
 const selfShortcutActions = [
   { key: "browse-history", icon: "time-outline", title: "浏览记录", subtitle: "看过的美甲" },
-  { key: "hand-photos", icon: "hand-left-outline", title: "手图管理", subtitle: "管理已上传手图" },
+  { key: "hand-photos", icon: "hand-left-outline", title: "手图管理", subtitle: "管理本地手图" },
   { key: "tryon-history", icon: "sparkles-outline", title: "AI焕甲", subtitle: "查看试戴记录" },
 ] as const;
 
 type SelfShortcutKey = (typeof selfShortcutActions)[number]["key"];
 type ProfileContentTab = "posts" | "comments" | "liked";
+type PostVisibilityTab = "public" | "private";
 
 type AuthorProfileScreenProps = {
   authorId?: string;
   asProfileTab?: boolean;
 };
+
+function buildAuthorShopDetail(author: AuthorProfile): NearbyShop | null {
+  if (!author.shop_id) return null;
+  const city = author.shop_city || author.city || "深圳";
+  return {
+    id: author.shop_id,
+    platform_shop_id: author.shop_id,
+    name: author.shop_name || author.username,
+    cover_image_url: author.avatar_url || "",
+    city,
+    region: city,
+    address: author.shop_address || "",
+    latitude: null,
+    longitude: null,
+    distance_meters: null,
+    rating: null,
+    heat_text: "平台入驻商家",
+    average_price_text: "",
+    business_time_text: null,
+    phone_text: null,
+  };
+}
 
 function StatBlock({
   value,
@@ -144,6 +175,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const route = useRoute<any>();
   const queryClient = useQueryClient();
   const colors = useThemeColors();
+  const isDarkMode = useIsDarkMode();
+  const { width: windowWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const token = useAuthStore((state) => state.token);
   const hydrated = useAuthStore((state) => state.hydrated);
   const currentUser = useAuthStore((state) => state.user);
@@ -157,8 +191,16 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const [editingDescription, setEditingDescription] = useState("");
   const [editingTags, setEditingTags] = useState("");
   const [activeContentTab, setActiveContentTab] = useState<ProfileContentTab>("posts");
+  const [postVisibilityTab, setPostVisibilityTab] = useState<PostVisibilityTab>("public");
+  const [profileBgUri, setProfileBgUri] = useState<string | null>(null);
   const [shareVisible, setShareVisible] = useState(false);
+  const [bookingVisible, setBookingVisible] = useState(false);
   const refreshSpin = useRef(new Animated.Value(0)).current;
+  const profilePullY = useRef(new Animated.Value(0)).current;
+  const selfPanelBackground = isDarkMode ? "rgba(8,8,12,0.86)" : colors.surface;
+  const selfPanelBorder = isDarkMode ? "rgba(255,255,255,0.08)" : colors.border;
+  const selfTabActiveColor = isDarkMode ? "#ffffff" : colors.text;
+  const selfTabInactiveColor = isDarkMode ? "rgba(255,255,255,0.48)" : colors.subtext;
 
   const resolvedAuthorId = authorId ?? route.params?.authorId;
 
@@ -169,7 +211,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   });
 
   const canQueryComments = Boolean(query.data && (query.data.is_mine || query.data.can_view_comments));
-  const canQueryLikedStyles = Boolean(query.data && currentUser?.role !== "merchant" && (query.data.is_mine || query.data.can_view_likes));
+  const canQueryLikedStyles = Boolean(query.data && (query.data.is_mine || query.data.can_view_likes));
   const commentsQuery = useQuery({
     queryKey: ["user-style-comments", resolvedAuthorId, authScope],
     queryFn: () => api.getUserStyleComments(resolvedAuthorId),
@@ -185,6 +227,29 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     queryFn: api.getMyMerchantShops,
     enabled: Boolean(token && asProfileTab && currentUser?.role === "merchant"),
   });
+  const profileBgStorageKey = query.data?.is_mine ? `profile-bg:${query.data.uid}` : null;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!profileBgStorageKey) {
+      setProfileBgUri(null);
+      return;
+    }
+    getStoredValue(profileBgStorageKey)
+      .then((value) => {
+        if (!cancelled) {
+          setProfileBgUri(value);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProfileBgUri(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profileBgStorageKey]);
 
   useEffect(() => {
     const initialTab = route.params?.initialTab;
@@ -224,16 +289,35 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   }, [isPullRefreshing, refreshSpin]);
 
   const followMutation = useMutation({
-    mutationFn: async () => {
-      if (!query.data) return;
-      if (query.data.is_following) {
-        await api.unfollowUser(query.data.id);
+    mutationFn: async ({ targetId, isFollowing }: { targetId: string; isFollowing: boolean }) => {
+      if (isFollowing) {
+        await api.unfollowUser(targetId);
       } else {
-        await api.followUser(query.data.id);
+        await api.followUser(targetId);
       }
     },
-    onSuccess: () => {
+    onMutate: async ({ isFollowing }) => {
+      await queryClient.cancelQueries({ queryKey: ["author-profile", resolvedAuthorId] });
+      const previousProfiles = queryClient.getQueriesData<AuthorProfile>({ queryKey: ["author-profile", resolvedAuthorId] });
+      queryClient.setQueriesData<AuthorProfile>({ queryKey: ["author-profile", resolvedAuthorId] }, (old) => {
+        if (!old) return old;
+        const followerDelta = isFollowing ? -1 : 1;
+        return {
+          ...old,
+          is_following: !isFollowing,
+          follower_count: Math.max(0, old.follower_count + followerDelta),
+        };
+      });
+      return { previousProfiles };
+    },
+    onError: (_error, _variables, context) => {
+      context?.previousProfiles.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["author-profile", resolvedAuthorId] });
+      void queryClient.invalidateQueries({ queryKey: ["follow-list"] });
       void queryClient.invalidateQueries({ queryKey: ["browse"] });
       void queryClient.invalidateQueries({ queryKey: ["style"] });
     },
@@ -398,6 +482,32 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     }
   };
 
+  const handleConsumerDrawerAction = (key: ConsumerDrawerActionKey) => {
+    if (key === "orders") {
+      navigation.navigate("ConsumerOrders", { entryEdge: "left" });
+      return;
+    }
+    if (key === "browse-history") {
+      navigation.navigate("BrowseHistory", { entryEdge: "left" });
+      return;
+    }
+    if (key === "tryon-history") {
+      navigation.navigate("TryOnHistory", { entryEdge: "left" });
+      return;
+    }
+    if (key === "hand-photos") {
+      navigation.navigate("HandPhotoManagement", { entryEdge: "left" });
+      return;
+    }
+    if (key === "blocked-users") {
+      navigation.navigate("BlockedUsers", { entryEdge: "left" });
+      return;
+    }
+    if (key === "settings") {
+      navigation.navigate("ProfileSettings", { entryEdge: "left" });
+    }
+  };
+
   const handleRefresh = async () => {
     if (!(asProfileTab && query.data?.is_mine)) return;
     setIsPullRefreshing(true);
@@ -416,6 +526,27 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     setDrawerMounted(false);
   };
 
+  const pickProfileBackground = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("需要相册权限", "请允许访问相册后再更换主页背景。");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.9,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      const nextUri = result.assets[0].uri;
+      setProfileBgUri(nextUri);
+      if (profileBgStorageKey) {
+        await setStoredValue(profileBgStorageKey, nextUri);
+      }
+    }
+  };
+
   if (!query.data) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -429,22 +560,62 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const author = query.data;
   const dmDisabled = author.has_blocked_viewer || author.viewer_has_blocked_author;
   const shouldCompactSelfProfile = Boolean(asProfileTab && author.is_mine);
+  const heroTextColor = shouldCompactSelfProfile ? "#ffffff" : colors.text;
+  const heroSubtextColor = shouldCompactSelfProfile ? "rgba(255,255,255,0.78)" : colors.subtext;
+  const pullCenterAvatarOpacity = profilePullY.interpolate({
+    inputRange: [0, 72, 128],
+    outputRange: [0, 0.55, 1],
+    extrapolate: "clamp",
+  });
+  const pullCenterAvatarScale = profilePullY.interpolate({
+    inputRange: [0, 72, 128],
+    outputRange: [0.58, 0.82, 1],
+    extrapolate: "clamp",
+  });
+  const pullCenterAvatarTranslateY = profilePullY.interpolate({
+    inputRange: [0, 128],
+    outputRange: [-18, 0],
+    extrapolate: "clamp",
+  });
+  const pullProfileInfoOpacity = profilePullY.interpolate({
+    inputRange: [0, 72, 128],
+    outputRange: [1, 0.45, 0],
+    extrapolate: "clamp",
+  });
+  const pullProfileInfoTranslateY = profilePullY.interpolate({
+    inputRange: [0, 128],
+    outputRange: [0, -36],
+    extrapolate: "clamp",
+  });
+  const pullProfileInfoStyle = shouldCompactSelfProfile
+    ? {
+        opacity: pullProfileInfoOpacity,
+        transform: [{ translateY: pullProfileInfoTranslateY }],
+      }
+    : undefined;
   const isMerchantViewer = currentUser?.role === "merchant";
+  const isMerchantAuthor = author.role === "merchant";
   const isMerchantSelfProfile = Boolean(asProfileTab && author.is_mine && currentUser?.role === "merchant");
-  const visibleSelfShortcutActions = isMerchantSelfProfile ? [] : selfShortcutActions;
+  const canBookMerchant = Boolean(!author.is_mine && isMerchantAuthor && author.shop_id && currentUser?.role !== "merchant");
+  const authorShopDetail = isMerchantAuthor ? buildAuthorShopDetail(author) : null;
+  const canFollowAuthor = Boolean(!author.is_mine);
+  const visibleSelfShortcutActions: Array<(typeof selfShortcutActions)[number]> = [];
   const merchantShop = isMerchantSelfProfile ? merchantShopQuery.data?.items[0] ?? null : null;
   const bioText = author.bio?.trim() ?? "";
   const canShowComments = author.is_mine || author.can_view_comments;
-  const canShowLikes = !isMerchantViewer && (author.is_mine || author.can_view_likes);
-  const commentsLockedForOthers = Boolean(author.is_mine && !isMerchantSelfProfile);
-  const likesLockedForOthers = Boolean(author.is_mine && currentUser?.role !== "merchant");
+  const canShowLikes = author.is_mine || author.can_view_likes;
+  const commentsLockedForOthers = false;
+  const likesLockedForOthers = false;
+  const publicPosts = author.posts.filter((post) => !post.is_hidden);
+  const privatePosts = author.posts.filter((post) => post.is_hidden);
+  const visiblePosts = author.is_mine ? (postVisibilityTab === "private" ? privatePosts : publicPosts) : author.posts;
   const profileTabs = [
-    { key: "posts" as const, label: "作品", count: author.posts.length },
+    { key: "posts" as const, label: author.is_mine ? "笔记" : "作品", count: author.is_mine ? visiblePosts.length : author.posts.length },
     ...(canShowComments
       ? [{ key: "comments" as const, label: "评论", count: commentsQuery.data?.items.length ?? 0, locked: commentsLockedForOthers }]
       : []),
     ...(canShowLikes
-      ? [{ key: "liked" as const, label: "赞过", count: likedStylesQuery.data?.items.length ?? 0, locked: likesLockedForOthers }]
+      ? [{ key: "liked" as const, label: author.is_mine ? "喜欢" : "赞过", count: likedStylesQuery.data?.items.length ?? 0, locked: likesLockedForOthers }]
       : []),
   ];
   const listData: Array<AuthorPost | MyStyleCommentItem | NailStyle> =
@@ -452,7 +623,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
       ? commentsQuery.data?.items ?? []
       : activeContentTab === "liked"
         ? likedStylesQuery.data?.items ?? []
-        : author.posts;
+        : visiblePosts;
   const listIsTwoColumns = activeContentTab !== "comments";
   const emptyText =
     activeContentTab === "comments"
@@ -463,7 +634,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
         ? author.is_mine
           ? "你还没有赞过作品"
           : "这个作者还没有公开赞过的作品"
-        : "这个作者还没有发布作品";
+        : author.is_mine && postVisibilityTab === "private"
+          ? "还没有私密笔记"
+          : "这个作者还没有发布作品";
 
   const openFollowList = (kind: "following" | "followers") => {
     const canView = kind === "following" ? author.can_view_following : author.can_view_followers;
@@ -477,52 +650,93 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
       title: kind === "following" ? "关注" : "粉丝",
     });
   };
-  const selfStats = isMerchantSelfProfile
-    ? [
-        { key: "follower", value: author.follower_count, label: "粉丝", onPress: () => openFollowList("followers") },
-        { key: "liked", value: author.total_like_count, label: "获赞", onPress: undefined },
-      ]
-    : [
-        { key: "following", value: author.following_count, label: "关注", onPress: () => openFollowList("following") },
-        { key: "follower", value: author.follower_count, label: "粉丝", onPress: () => openFollowList("followers") },
-        { key: "liked", value: author.total_like_count, label: "获赞", onPress: undefined },
-      ];
+  const selfStats = [
+    { key: "following", value: author.following_count, label: "关注", onPress: () => openFollowList("following") },
+    { key: "follower", value: author.follower_count, label: "粉丝", onPress: () => openFollowList("followers") },
+    { key: "liked", value: author.total_like_count, label: "获赞", onPress: undefined },
+  ];
+  const selfFloatingTopBar = shouldCompactSelfProfile ? (
+    <View style={[styles.floatingTopBar, { top: Math.max(insets.top, 26) + 10 }]} pointerEvents="box-none">
+      <Pressable style={[styles.topButton, styles.compactTopButton, styles.profileGlassButton]} onPress={openDrawer}>
+        <Ionicons name="menu-outline" size={28} color={heroTextColor} />
+      </Pressable>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.floatingCenterAvatarWrap,
+          {
+            opacity: pullCenterAvatarOpacity,
+            transform: [{ translateY: pullCenterAvatarTranslateY }, { scale: pullCenterAvatarScale }],
+          },
+        ]}
+      >
+        <Image
+          source={author.avatar_url ? { uri: resolveAssetUrl(author.avatar_url) } : defaultAvatar}
+          style={[styles.floatingCenterAvatar, { backgroundColor: colors.surfaceAlt }]}
+        />
+      </Animated.View>
+      <View style={styles.topRightActions}>
+        <Pressable style={styles.topEditPill} onPress={() => navigation.navigate("ProfileEdit")}>
+          <Ionicons name="create-outline" size={17} color="#ffffff" />
+          <Text style={styles.topEditPillText}>{isMerchantSelfProfile ? "编辑商户信息" : "编辑主页"}</Text>
+        </Pressable>
+        <Pressable style={[styles.topButton, styles.compactTopButton, styles.profileGlassButton]} onPress={pickProfileBackground}>
+          <Ionicons name="image-outline" size={21} color={heroTextColor} />
+        </Pressable>
+        <Pressable style={[styles.topButton, styles.compactTopButton, styles.profileGlassButton]} onPress={() => setShareVisible(true)}>
+          <Ionicons name="arrow-redo-outline" size={22} color={heroTextColor} />
+        </Pressable>
+      </View>
+    </View>
+  ) : null;
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <FlatList
-        key={`author-content-${activeContentTab}-${listIsTwoColumns ? "grid" : "list"}`}
-        data={listData}
-        keyExtractor={(item) => ("comment_id" in item ? item.comment_id : item.id)}
-        numColumns={listIsTwoColumns ? 2 : 1}
-        columnWrapperStyle={listIsTwoColumns ? styles.columnWrap : undefined}
-        refreshControl={
-          asProfileTab && author.is_mine ? (
-            <RefreshControl
-              refreshing={isPullRefreshing}
-              onRefresh={handleRefresh}
-              tintColor="transparent"
-              colors={["transparent"]}
-              progressBackgroundColor="transparent"
-            />
-          ) : undefined
-        }
-        contentContainerStyle={[styles.list, shouldCompactSelfProfile && styles.compactList]}
-        ListHeaderComponent={
-          <View style={[styles.headerCard, shouldCompactSelfProfile && styles.compactHeaderCard, { backgroundColor: colors.surface }]}>
-            <View style={[styles.headerBackdrop, { backgroundColor: colors.accentSoft }]} />
-            <View style={[styles.topBar, shouldCompactSelfProfile && styles.compactTopBar]}>
+  const profileHeader = (
+          <View
+            style={[
+              styles.headerCard,
+              shouldCompactSelfProfile && styles.compactHeaderCard,
+              shouldCompactSelfProfile && { width: windowWidth, alignSelf: "center" },
+              { backgroundColor: colors.surface },
+            ]}
+          >
+            {shouldCompactSelfProfile ? (
+              <>
+                <Image
+                  source={profileBgUri ? { uri: profileBgUri } : profileBgDefault}
+                  resizeMode="cover"
+                  style={[styles.profileBackgroundImage, { width: windowWidth }]}
+                />
+                <View style={styles.profileBackgroundOverlay} />
+              </>
+            ) : (
+              <View style={[styles.headerBackdrop, { backgroundColor: colors.accentSoft }]} />
+            )}
+            {!shouldCompactSelfProfile ? (
+            <View style={styles.topBar}>
               {asProfileTab && author.is_mine ? (
                 <>
-                  <Pressable style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton]} onPress={openDrawer}>
-                    <Ionicons name="menu-outline" size={28} color={colors.text} />
+                  <Pressable
+                    style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton, shouldCompactSelfProfile && styles.profileGlassButton]}
+                    onPress={openDrawer}
+                  >
+                    <Ionicons name="menu-outline" size={28} color={heroTextColor} />
                   </Pressable>
                   <View style={styles.topRightActions}>
+                    <Pressable style={styles.topEditPill} onPress={() => navigation.navigate("ProfileEdit")}>
+                      <Ionicons name="create-outline" size={17} color="#ffffff" />
+                      <Text style={styles.topEditPillText}>{isMerchantSelfProfile ? "编辑商户信息" : "编辑主页"}</Text>
+                    </Pressable>
                     <Pressable
-                      style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton, { backgroundColor: colors.surfaceAlt }]}
+                      style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton, styles.profileGlassButton]}
+                      onPress={pickProfileBackground}
+                    >
+                      <Ionicons name="image-outline" size={21} color={heroTextColor} />
+                    </Pressable>
+                    <Pressable
+                      style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton, styles.profileGlassButton]}
                       onPress={() => setShareVisible(true)}
                     >
-                      <Ionicons name="arrow-redo-outline" size={22} color={colors.text} />
+                      <Ionicons name="arrow-redo-outline" size={22} color={heroTextColor} />
                     </Pressable>
                   </View>
                 </>
@@ -548,8 +762,8 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                       Alert.alert("更多操作", "可以在这里管理与作者的关系。", [
                         { text: "取消", style: "cancel" },
                         {
-                          text: author.viewer_has_blocked_author ? "解除拉黑" : "拉黑",
-                          style: "destructive",
+                          text: author.viewer_has_blocked_author ? "恢复查看" : "不再看她",
+                          style: author.viewer_has_blocked_author ? "default" : "destructive",
                           onPress: () => blockMutation.mutate(),
                         },
                       ]);
@@ -560,25 +774,26 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                 </>
               )}
             </View>
+            ) : null}
 
-            <View style={[styles.heroRow, shouldCompactSelfProfile && styles.compactHeroRow]}>
+            <Animated.View style={[styles.heroRow, shouldCompactSelfProfile && styles.compactHeroRow, pullProfileInfoStyle]}>
               <Image
                 source={author.avatar_url ? { uri: resolveAssetUrl(author.avatar_url) } : defaultAvatar}
                 style={[styles.avatar, shouldCompactSelfProfile && styles.compactAvatar, { backgroundColor: colors.surfaceAlt }]}
               />
               <View style={[styles.heroText, shouldCompactSelfProfile && styles.compactHeroText]}>
-                <Text style={[styles.authorName, shouldCompactSelfProfile && styles.compactAuthorName, { color: colors.text }]}>{author.username}</Text>
-                <Text style={[styles.authorMeta, shouldCompactSelfProfile && styles.compactAuthorMeta, { color: colors.subtext }]}>
+                <Text style={[styles.authorName, shouldCompactSelfProfile && styles.compactAuthorName, { color: heroTextColor }]}>{author.username}</Text>
+                <Text style={[styles.authorMeta, shouldCompactSelfProfile && styles.compactAuthorMeta, { color: heroSubtextColor }]}>
                   {isMerchantSelfProfile ? "商家焕甲号" : "焕甲号"}：{author.uid}
                 </Text>
-                <Text style={[styles.authorMeta, shouldCompactSelfProfile && styles.compactAuthorMeta, { color: colors.subtext }]}>
+                <Text style={[styles.authorMeta, shouldCompactSelfProfile && styles.compactAuthorMeta, { color: heroSubtextColor }]}>
                   IP：{author.city}
                 </Text>
               </View>
-            </View>
+            </Animated.View>
 
             {author.is_mine ? (
-              <View style={[styles.selfSummaryRow, shouldCompactSelfProfile && styles.compactSelfSummaryRow]}>
+              <Animated.View style={[styles.selfSummaryRow, shouldCompactSelfProfile && styles.compactSelfSummaryRow, pullProfileInfoStyle]}>
                 <View style={[styles.compactStatsRow, shouldCompactSelfProfile && styles.tightCompactStatsRow]}>
                   {selfStats.map((item) => (
                     <Pressable
@@ -588,11 +803,11 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                       disabled={!item.onPress}
                     >
                       <Text
-                        style={[styles.compactStatText, shouldCompactSelfProfile && styles.tightCompactStatText, { color: colors.text }]}
+                        style={[styles.compactStatText, shouldCompactSelfProfile && styles.tightCompactStatText, { color: heroTextColor }]}
                         numberOfLines={1}
                       >
                         <Text style={[styles.compactStatValue, shouldCompactSelfProfile && styles.tightCompactStatValue]}>{item.value}</Text>
-                        <Text style={[styles.compactStatLabel, shouldCompactSelfProfile && styles.tightCompactStatLabel, { color: colors.subtext }]}>
+                        <Text style={[styles.compactStatLabel, shouldCompactSelfProfile && styles.tightCompactStatLabel, { color: heroSubtextColor }]}>
                           {" "}
                           {item.label}
                         </Text>
@@ -601,23 +816,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                   ))}
                 </View>
 
-                <View style={[styles.selfActionRow, shouldCompactSelfProfile && styles.tightSelfActionRow]}>
-                  <Pressable
-                    style={[styles.compactEditButton, shouldCompactSelfProfile && styles.tightCompactEditButton, { backgroundColor: colors.accent }]}
-                    onPress={() => navigation.navigate("ProfileEdit")}
-                  >
-                    <Text style={[styles.compactEditButtonText, shouldCompactSelfProfile && styles.tightCompactEditButtonText]}>
-                      {isMerchantSelfProfile ? "编辑商户信息" : "编辑资料"}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.settingsIconButton, shouldCompactSelfProfile && styles.tightSettingsIconButton, { backgroundColor: colors.accentSoft }]}
-                    onPress={() => navigation.navigate("ProfileSettings")}
-                  >
-                    <Ionicons name="settings-outline" size={shouldCompactSelfProfile ? 18 : 20} color={colors.accent} />
-                  </Pressable>
-                </View>
-              </View>
+              </Animated.View>
             ) : (
               <View style={styles.statsRow}>
                 <StatBlock value={author.following_count} label="关注" color={colors.text} subtextColor={colors.subtext} onPress={() => openFollowList("following")} />
@@ -627,29 +826,51 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
             )}
 
             {bioText ? (
-              <View style={[styles.bioWrap, shouldCompactSelfProfile && styles.compactBioWrap]}>
-                <Text style={[styles.bio, shouldCompactSelfProfile && styles.compactBio, { color: colors.text }]}>
+              <Animated.View style={[styles.bioWrap, shouldCompactSelfProfile && styles.compactBioWrap, pullProfileInfoStyle]}>
+                <Text style={[styles.bio, shouldCompactSelfProfile && styles.compactBio, { color: heroTextColor }]}>
                   {bioText}
                 </Text>
-              </View>
+              </Animated.View>
             ) : null}
 
             {author.has_blocked_viewer ? (
               <View style={[styles.noticeBanner, { backgroundColor: colors.dangerSoft }]}>
-                <Text style={[styles.noticeBannerText, { color: colors.dangerText }]}>对方已将您拉黑</Text>
+                <Text style={[styles.noticeBannerText, { color: colors.dangerText }]}>对方已设置不再看你</Text>
               </View>
             ) : null}
 
             {author.viewer_has_blocked_author ? (
               <View style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}>
-                <Text style={[styles.noticeBannerText, { color: colors.subtext }]}>你已拉黑对方，解除后才能继续私信</Text>
+                <Text style={[styles.noticeBannerText, { color: colors.subtext }]}>你已设置不再看她，恢复后才能继续私信</Text>
               </View>
+            ) : null}
+
+            {authorShopDetail ? (
+              <Pressable
+                style={[styles.merchantShopCard, { backgroundColor: colors.background, borderColor: colors.border }]}
+                onPress={() => navigation.navigate("MarketShopDetail", { shop: authorShopDetail, entryEdge: "right" })}
+              >
+                <View style={[styles.merchantShopIcon, { backgroundColor: colors.accentSoft }]}>
+                  <Ionicons name="storefront-outline" size={20} color={colors.accent} />
+                </View>
+                <View style={styles.merchantShopInfo}>
+                  <Text style={[styles.merchantShopTitle, { color: colors.text }]} numberOfLines={1}>
+                    {authorShopDetail.name}
+                  </Text>
+                  <Text style={[styles.merchantShopMeta, { color: colors.subtext }]} numberOfLines={1}>
+                    {[authorShopDetail.city, authorShopDetail.address].filter(Boolean).join(" · ") || "平台入驻商家"}
+                  </Text>
+                </View>
+                <View style={[styles.merchantShopAction, { backgroundColor: colors.accent }]}>
+                  <Text style={styles.merchantShopActionText}>进入店铺</Text>
+                </View>
+              </Pressable>
             ) : null}
 
             {!author.is_mine ? (
               <View style={styles.profileActions}>
                 <>
-                  {!isMerchantViewer ? (
+                  {canFollowAuthor ? (
                     <PrimaryButton
                       label={author.is_following ? "已关注" : "关注"}
                       onPress={() => {
@@ -658,15 +879,16 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                           return;
                         }
                         if (author.has_blocked_viewer || author.viewer_has_blocked_author) return;
-                        followMutation.mutate();
+                        followMutation.mutate({ targetId: author.id, isFollowing: author.is_following });
                       }}
                       loading={followMutation.isPending}
                       disabled={author.has_blocked_viewer || author.viewer_has_blocked_author}
+                      variant={author.is_following ? "ghost" : "filled"}
                       style={{ flex: 1 }}
                     />
                   ) : null}
                   <PrimaryButton
-                    label={author.has_blocked_viewer ? "无法私信" : author.viewer_has_blocked_author ? "已拉黑" : "发私信"}
+                    label={author.has_blocked_viewer ? "无法私信" : author.viewer_has_blocked_author ? "不再看她" : "发私信"}
                     onPress={() => {
                       if (!currentUser) {
                         navigation.navigate("Login");
@@ -679,6 +901,19 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                     disabled={dmDisabled}
                     style={{ flex: 1 }}
                   />
+                  {canBookMerchant ? (
+                    <PrimaryButton
+                      label="预约门店"
+                      onPress={() => {
+                        if (!currentUser) {
+                          navigation.navigate("Login");
+                          return;
+                        }
+                        setBookingVisible(true);
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                  ) : null}
                 </>
               </View>
             ) : null}
@@ -711,16 +946,33 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
             ) : null}
 
             {profileTabs.length > 1 ? (
-              <View style={[styles.profileTabBar, { borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.profileTabBar,
+                  shouldCompactSelfProfile && styles.selfProfileTabBar,
+                  {
+                    backgroundColor: shouldCompactSelfProfile ? selfPanelBackground : undefined,
+                    borderColor: shouldCompactSelfProfile ? selfPanelBorder : colors.border,
+                  },
+                ]}
+              >
                 {profileTabs.map((item) => {
                   const active = activeContentTab === item.key;
+                  const tabActiveColor = shouldCompactSelfProfile ? selfTabActiveColor : colors.text;
+                  const tabInactiveColor = shouldCompactSelfProfile ? selfTabInactiveColor : colors.subtext;
                   return (
-                    <Pressable key={item.key} style={styles.profileTabButton} onPress={() => setActiveContentTab(item.key)}>
+                    <Pressable
+                      key={item.key}
+                      style={[styles.profileTabButton, shouldCompactSelfProfile && styles.selfProfileTabButton]}
+                      onPress={() => setActiveContentTab(item.key)}
+                    >
                       <View style={styles.profileTabLabelRow}>
-                        {item.locked ? <Ionicons name="lock-closed-outline" size={13} color={active ? colors.text : colors.subtext} /> : null}
-                        <Text style={[styles.profileTabText, { color: active ? colors.text : colors.subtext }]}>
+                        {item.locked ? <Ionicons name="lock-closed-outline" size={13} color={active ? tabActiveColor : tabInactiveColor} /> : null}
+                        <Text style={[styles.profileTabText, { color: active ? tabActiveColor : tabInactiveColor }]}>
                           {item.label}
-                          <Text style={[styles.profileTabCount, { color: active ? colors.text : colors.subtext }]}> {item.count}</Text>
+                          {!author.is_mine ? (
+                            <Text style={[styles.profileTabCount, { color: active ? tabActiveColor : tabInactiveColor }]}> {item.count}</Text>
+                          ) : null}
                         </Text>
                       </View>
                       {active ? <View style={[styles.profileTabUnderline, { backgroundColor: colors.accent }]} /> : null}
@@ -733,9 +985,63 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                 <Text style={[styles.sectionTitle, shouldCompactSelfProfile && styles.compactSectionTitle, { color: colors.text }]}>作品</Text>
               </View>
             )}
+            {author.is_mine && activeContentTab === "posts" ? (
+              <View style={[styles.postVisibilityBar, { backgroundColor: selfPanelBackground, borderColor: selfPanelBorder }]}>
+                {[
+                  { key: "public" as const, label: "公开", count: publicPosts.length },
+                  { key: "private" as const, label: "私密", count: privatePosts.length },
+                ].map((item) => {
+                  const active = postVisibilityTab === item.key;
+                  return (
+                    <Pressable key={item.key} style={styles.postVisibilityButton} onPress={() => setPostVisibilityTab(item.key)}>
+                      <View style={styles.postVisibilityLabelRow}>
+                        {item.key === "private" ? (
+                          <Ionicons name="lock-closed-outline" size={13} color={active ? selfTabActiveColor : selfTabInactiveColor} />
+                        ) : null}
+                        <Text style={[styles.postVisibilityText, { color: active ? selfTabActiveColor : selfTabInactiveColor }]}>
+                          {item.label} {item.count}
+                        </Text>
+                      </View>
+                      {active ? <View style={[styles.postVisibilityUnderline, { backgroundColor: colors.accent }]} /> : null}
+                    </Pressable>
+                  );
+              })}
+              </View>
+            ) : null}
+          </View>
+  );
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <FlatList
+        key={`author-content-${activeContentTab}-${listIsTwoColumns ? "grid" : "list"}`}
+        style={styles.contentList}
+        data={listData}
+        keyExtractor={(item) => ("comment_id" in item ? item.comment_id : item.id)}
+        numColumns={listIsTwoColumns ? 2 : 1}
+        columnWrapperStyle={listIsTwoColumns ? styles.columnWrap : undefined}
+        refreshControl={
+          asProfileTab && author.is_mine ? (
+            <RefreshControl
+              refreshing={isPullRefreshing}
+              onRefresh={handleRefresh}
+              tintColor="transparent"
+              colors={["transparent"]}
+              progressBackgroundColor="transparent"
+            />
+          ) : undefined
+        }
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: profilePullY } } }], { useNativeDriver: false })}
+        scrollEventThrottle={16}
+        bounces
+        alwaysBounceVertical={Boolean(asProfileTab && author.is_mine)}
+        contentContainerStyle={[styles.list, shouldCompactSelfProfile && styles.compactList]}
+        ListHeaderComponent={profileHeader}
+        ListEmptyComponent={
+          <View style={[shouldCompactSelfProfile && styles.selfEmptyWrap, { backgroundColor: shouldCompactSelfProfile ? (isDarkMode ? colors.background : colors.surface) : "transparent" }]}>
+            <Text style={[styles.empty, { color: colors.subtext }]}>{emptyText}</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={[styles.empty, { color: colors.subtext }]}>{emptyText}</Text>}
         renderItem={({ item }) => {
           if ("comment_id" in item) {
             return (
@@ -906,6 +1212,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
           );
         }}
       />
+      {selfFloatingTopBar}
 
       {asProfileTab && author.is_mine && isPullRefreshing ? (
         <View style={styles.profileRefreshIndicatorWrap} pointerEvents="none">
@@ -969,13 +1276,20 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
         </KeyboardAvoidingView>
       </Modal>
 
-      {isMerchantSelfProfile ? (
-        <MerchantSideDrawer
-          visible={drawerMounted}
-          onClose={closeDrawer}
-          onAction={handleMerchantDrawerAction}
-        />
+      {asProfileTab && author.is_mine && currentUser?.role === "merchant" ? (
+        <MerchantSideDrawer visible={drawerMounted} onClose={closeDrawer} onAction={handleMerchantDrawerAction} />
       ) : null}
+      {asProfileTab && author.is_mine && currentUser?.role !== "merchant" ? (
+        <ConsumerSideDrawer visible={drawerMounted} onClose={closeDrawer} onAction={handleConsumerDrawerAction} />
+      ) : null}
+      <BookingSheet
+        visible={bookingVisible}
+        onClose={() => setBookingVisible(false)}
+        shopId={author.shop_id}
+        shopName={author.shop_name ?? author.username}
+        shopCity={author.shop_city ?? author.city}
+        onSuccess={() => Alert.alert("预约已提交", "商家会在预约列表里处理你的门店预约。")}
+      />
       <ShareSheet visible={shareVisible} onClose={() => setShareVisible(false)} />
     </SafeAreaView>
   );
@@ -985,6 +1299,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   loadingText: { fontSize: 15 },
+  contentList: { flex: 1 },
   list: { paddingBottom: 120, paddingHorizontal: 14, gap: 14 },
   compactList: { paddingHorizontal: 10, gap: 10 },
   headerCard: {
@@ -994,13 +1309,30 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   compactHeaderCard: {
-    borderRadius: 24,
-    padding: 14,
-    marginBottom: 8,
+    borderRadius: 0,
+    paddingHorizontal: 22,
+    paddingTop: 76,
+    paddingBottom: 14,
+    marginBottom: 0,
+    minHeight: PROFILE_HEADER_HEIGHT,
   },
   headerBackdrop: {
     ...StyleSheet.absoluteFillObject,
     opacity: 0.72,
+  },
+  profileBackgroundImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    height: PROFILE_HEADER_HEIGHT,
+  },
+  profileBackgroundOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: PROFILE_HEADER_HEIGHT,
+    backgroundColor: "rgba(0,0,0,0.48)",
   },
   topBar: {
     flexDirection: "row",
@@ -1009,7 +1341,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   compactTopBar: {
-    marginBottom: 12,
+    marginBottom: 20,
   },
   topButton: {
     width: 40,
@@ -1023,10 +1355,67 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
   },
+  profileGlassButton: {
+    backgroundColor: "rgba(20,20,24,0.28)",
+  },
+  pullCenterAvatarWrap: {
+    position: "absolute",
+    top: 58,
+    left: 0,
+    right: 0,
+    zIndex: 4,
+    alignItems: "center",
+  },
+  pullCenterAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.72)",
+  },
   topRightActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
+  },
+  topEditPill: {
+    height: 34,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.24)",
+  },
+  topEditPillText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  floatingTopBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 12,
+    minHeight: 62,
+    paddingHorizontal: 22,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  floatingCenterAvatarWrap: {
+    position: "absolute",
+    top: 14,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  floatingCenterAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.72)",
   },
   heroRow: {
     flexDirection: "row",
@@ -1034,8 +1423,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   compactHeroRow: {
-    gap: 12,
-    alignItems: "flex-start",
+    gap: 14,
+    alignItems: "center",
   },
   avatar: {
     width: 96,
@@ -1043,16 +1432,16 @@ const styles = StyleSheet.create({
     borderRadius: 48,
   },
   compactAvatar: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
   },
   heroText: {
     flex: 1,
     gap: 6,
   },
   compactHeroText: {
-    gap: 3,
+    gap: 2,
     paddingTop: 2,
   },
   authorName: {
@@ -1067,8 +1456,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   compactAuthorMeta: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
   },
   statsRow: {
     flexDirection: "row",
@@ -1085,9 +1474,10 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   compactSelfSummaryRow: {
-    gap: 8,
-    marginTop: 14,
-    marginBottom: 10,
+    justifyContent: "flex-start",
+    gap: 0,
+    marginTop: 22,
+    marginBottom: 12,
   },
   compactStatsRow: {
     flex: 1,
@@ -1098,35 +1488,36 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   tightCompactStatsRow: {
-    gap: 6,
+    flex: 0,
+    gap: 20,
     paddingRight: 2,
   },
   compactStatItem: {
     flexShrink: 1,
   },
   tightCompactStatItem: {
-    maxWidth: 54,
+    maxWidth: 94,
   },
   compactStatText: {
     fontSize: 13,
     fontWeight: "600",
   },
   tightCompactStatText: {
-    fontSize: 11,
+    fontSize: 13,
   },
   compactStatValue: {
     fontSize: 16,
     fontWeight: "800",
   },
   tightCompactStatValue: {
-    fontSize: 14,
+    fontSize: 22,
   },
   compactStatLabel: {
     fontSize: 12,
     fontWeight: "500",
   },
   tightCompactStatLabel: {
-    fontSize: 10,
+    fontSize: 14,
   },
   selfActionRow: {
     flexDirection: "row",
@@ -1178,10 +1569,11 @@ const styles = StyleSheet.create({
   },
   compactBioWrap: {
     marginTop: 0,
+    marginBottom: 10,
   },
   compactBio: {
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 21,
   },
   profileActions: {
     flexDirection: "row",
@@ -1262,6 +1654,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  merchantShopCard: {
+    marginTop: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  merchantShopIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  merchantShopInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  merchantShopTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+  },
+  merchantShopMeta: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  merchantShopAction: {
+    height: 34,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  merchantShopActionText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
   sectionHeader: {
     marginTop: 24,
   },
@@ -1282,12 +1714,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
+  selfProfileTabBar: {
+    marginHorizontal: -26,
+    paddingLeft: 26,
+    borderTopWidth: 0,
+    backgroundColor: "rgba(8,8,12,0.68)",
+    justifyContent: "flex-start",
+    gap: 30,
+  },
   profileTabButton: {
     flex: 1,
     alignItems: "center",
     paddingTop: 14,
     paddingBottom: 12,
     position: "relative",
+  },
+  selfProfileTabButton: {
+    flex: 0,
+    alignItems: "flex-start",
+    paddingHorizontal: 0,
+    minWidth: 54,
   },
   profileTabLabelRow: {
     flexDirection: "row",
@@ -1305,6 +1751,37 @@ const styles = StyleSheet.create({
   },
   profileTabUnderline: {
     position: "absolute",
+    bottom: 0,
+    width: 28,
+    height: 3,
+    borderRadius: 999,
+  },
+  postVisibilityBar: {
+    marginHorizontal: -26,
+    paddingLeft: 26,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 26,
+    backgroundColor: "rgba(8,8,12,0.86)",
+  },
+  postVisibilityButton: {
+    position: "relative",
+    paddingBottom: 6,
+  },
+  postVisibilityLabelRow: {
+    minHeight: 22,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  postVisibilityText: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  postVisibilityUnderline: {
+    position: "absolute",
+    left: 0,
     bottom: 0,
     width: 28,
     height: 3,
@@ -1333,6 +1810,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 15,
     paddingTop: 40,
+  },
+  selfEmptyWrap: {
+    minHeight: 360,
+    alignItems: "center",
+    justifyContent: "flex-start",
   },
   columnWrap: {
     justifyContent: "space-between",

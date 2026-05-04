@@ -80,6 +80,11 @@ export const api = {
       body: JSON.stringify({ city }),
     }),
   getSavedHandPhotos: () => request<{ items: UserHandPhoto[] }>("/users/me/hand-photos"),
+  uploadSavedHandPhoto: async (imageUri: string) => {
+    const form = new FormData();
+    form.append("image", { uri: imageUri, name: "hand.jpg", type: "image/jpeg" } as never);
+    return request<UserHandPhoto>("/users/me/hand-photos", { method: "POST", body: form });
+  },
   updateMe: async (payload: { username?: string; birthday?: string; bio?: string; avatarUri?: string }) => {
     const form = new FormData();
     if (payload.username !== undefined) form.append("username", payload.username);
@@ -102,7 +107,10 @@ export const api = {
   },
   getHot: () => request<NailStyleListResponse>("/nails/hot?page=1&page_size=20"),
   getDiscover: () => request<NailStyleListResponse>("/nails/discover?page=1&page_size=20"),
+  getDefaultGalleryStyles: () => request<NailStyleListResponse>("/nails/discover?page=1&page_size=30"),
+  getShopStyles: (shopId: string) => request<NailStyleListResponse>(`/nails/by-shop/${shopId}?page=1&page_size=30`),
   searchStyles: (query: string) => request<NailStyleListResponse>(`/nails/search?query=${encodeURIComponent(query)}&page=1&page_size=20`),
+  searchUsers: (query: string) => request<{ items: UserSummary[] }>(`/users/search?query=${encodeURIComponent(query)}&limit=30`),
   getFollowingStyles: () => request<NailStyleListResponse>("/nails/following?page=1&page_size=20"),
   getLatest: () => request<NailStyleListResponse>("/nails/latest?page=1&page_size=20"),
   getLocalStyles: (city: string) => request<NailStyleListResponse>(`/nails/local?city=${encodeURIComponent(city)}&page=1&page_size=20`),
@@ -131,12 +139,20 @@ export const api = {
       body: JSON.stringify({ style_id: styleId }),
     }),
   removeFavorite: (styleId: string) => request<{ message: string }>(`/favorites/${styleId}`, { method: "DELETE" }),
-  createPost: async (payload: { title: string; description: string; tags: string; imageUri: string; shopId?: string | null }) => {
+  createPost: async (payload: {
+    title: string;
+    description: string;
+    tags: string;
+    imageUri: string;
+    shopId?: string | null;
+    verifiedBookingId?: string | null;
+  }) => {
     const form = new FormData();
     form.append("title", payload.title);
     form.append("description", payload.description);
     form.append("tags", payload.tags);
     if (payload.shopId) form.append("shop_id", payload.shopId);
+    if (payload.verifiedBookingId) form.append("verified_booking_id", payload.verifiedBookingId);
     form.append("image", { uri: payload.imageUri, name: "post.jpg", type: "image/jpeg" } as never);
     return request<UserPost>("/posts", { method: "POST", body: form });
   },
@@ -153,7 +169,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
-  createBooking: (payload: { style_id: string; shop_id?: string | null; appointment_time: string; contact_phone: string; note?: string | null }) =>
+  createBooking: (payload: { shop_id: string; style_id?: string | null; appointment_time: string; contact_phone: string; note?: string | null }) =>
     request<Booking>("/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -176,7 +192,7 @@ export const api = {
   getUserFollowers: (userId: string) => request<{ items: UserSummary[] }>(`/users/${userId}/followers`),
   getBlockedUsers: () => request<{ items: UserSummary[] }>("/users/me/blocks"),
   getNearbyShops: (params: {
-    keyword?: string | null;
+    place?: string | null;
     city: string;
     region?: string | null;
     lat?: number | null;
@@ -185,7 +201,7 @@ export const api = {
     view?: "list" | "map";
   }) => {
     const search = new URLSearchParams();
-    if (params.keyword) search.set("keyword", params.keyword);
+    if (params.place) search.set("place", params.place);
     search.set("city", params.city);
     if (params.region) search.set("region", params.region);
     if (params.lat !== undefined && params.lat !== null) search.set("lat", String(params.lat));
@@ -196,6 +212,7 @@ export const api = {
   },
   getMessageInbox: () => request<MessageInboxResponse>("/messages/inbox"),
   getStrangerMessages: () => request<{ items: MessageInboxThread[] }>("/messages/strangers"),
+  markAllMessagesRead: () => request<{ updated: number }>("/messages/read-all", { method: "POST" }),
   getConversation: (userId: string) => request<DirectMessageThread>(`/messages/conversations/${userId}`),
   sendMessage: (userId: string, content: string) =>
     request<DirectMessage>(`/messages/conversations/${userId}`, {
@@ -203,6 +220,24 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
     }),
+  sendStyleMessage: (userId: string, styleId: string, content = "") =>
+    request<DirectMessage>(`/messages/conversations/${userId}/styles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ style_id: styleId, content }),
+    }),
+  sendBookingInviteMessage: (userId: string, shopId?: string | null, content = "") =>
+    request<DirectMessage>(`/messages/conversations/${userId}/booking-invites`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shop_id: shopId ?? null, content }),
+    }),
+  sendImageMessage: async (userId: string, imageUri: string, content?: string) => {
+    const form = new FormData();
+    if (content?.trim()) form.append("content", content.trim());
+    form.append("image", { uri: imageUri, name: "message.jpg", type: "image/jpeg" } as never);
+    return request<DirectMessage>(`/messages/conversations/${userId}/images`, { method: "POST", body: form });
+  },
   updateMyPost: (postId: string, payload: { title?: string; description?: string; tags?: string[]; is_hidden?: boolean }) =>
     request<UserPost>(`/posts/${postId}`, {
       method: "PATCH",
@@ -239,7 +274,7 @@ export const api = {
     } else if (payload.handImageUri) {
       form.append("hand_image", { uri: payload.handImageUri, name: "hand.jpg", type: "image/jpeg" } as never);
     }
-    return request<{ job_id: string; status: string }>("/tryon/jobs", { method: "POST", body: form });
+    return request<{ job_id: string; status: string; stage?: string }>("/tryon/jobs", { method: "POST", body: form });
   },
   getTryOnJob: (jobId: string) => request<TryOnJob>(`/tryon/jobs/${jobId}`),
   getTryOnHistory: () => request<{ items: TryOnHistoryItem[] }>("/tryon/jobs"),

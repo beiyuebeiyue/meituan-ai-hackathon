@@ -48,8 +48,8 @@ BookingStatus = Literal["pending", "accepted", "rejected", "completed", "cancell
 
 
 class BookingCreateRequest(BaseModel):
-    style_id: str
-    shop_id: str | None = None
+    shop_id: str = Field(min_length=1, max_length=36)
+    style_id: str | None = Field(default=None, max_length=36)
     appointment_time: str = Field(min_length=1, max_length=80)
     contact_phone: str = Field(min_length=5, max_length=40)
     note: str | None = Field(default=None, max_length=500)
@@ -61,7 +61,7 @@ class BookingStatusUpdateRequest(BaseModel):
 
 class BookingRead(BaseModel):
     id: str
-    style_id: str
+    style_id: str | None = None
     style_title: str
     style_image_url: str
     shop_id: str

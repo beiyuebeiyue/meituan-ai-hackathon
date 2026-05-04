@@ -4,12 +4,14 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.dependencies import get_current_user
+from app.models.booking import Booking
+from app.models.merchant_shop import MerchantShop
 from app.models.user import User
 from app.routers.helpers import serialize_post
 from app.schemas.events import StyleEventInput
 from app.schemas.posts import UserPostListResponse, UserPostRead, UserPostUpdateRequest
 from app.services.event_service import EventService
-from app.services.merchant_service import MerchantShopService, require_merchant
+from app.services.merchant_service import MerchantShopService
 from app.services.post_service import PostService
 from app.services.style_service import StyleService
 from app.utils.files import public_url_for_path, relative_to_base, save_user_upload_file, user_upload_dir
@@ -28,12 +30,31 @@ def create_post(
     description: str = Form(default=""),
     tags: str = Form(default=""),
     shop_id: str | None = Form(default=None),
+    verified_booking_id: str | None = Form(default=None),
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> UserPostRead:
-    require_merchant(user)
-    shop = shop_service.get_owned_shop(db, user, shop_id) if shop_id else shop_service.get_default_shop(db, user)
+    shop = None
+    verified_booking = None
+    if user.role == "merchant":
+        if verified_booking_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="商家发布不能绑定消费订单")
+        shop = shop_service.get_owned_shop(db, user, shop_id) if shop_id else shop_service.get_default_shop(db, user)
+    else:
+        if shop_id and not verified_booking_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="绑定门店需要选择已完成订单")
+        if verified_booking_id:
+            verified_booking = db.get(Booking, verified_booking_id)
+            if verified_booking is None or verified_booking.user_id != user.id:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订单不存在")
+            if verified_booking.status != "completed":
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="只有已完成订单才能绑定真实消费")
+            if shop_id and shop_id != verified_booking.shop_id:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="选择的门店与订单不一致")
+            shop = db.get(MerchantShop, verified_booking.shop_id)
+            if shop is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订单门店不存在")
     settings = get_settings()
     saved_path, _ = save_user_upload_file(image, user_upload_dir(settings.upload_path, "posts", user.uid), user.uid)
     tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
@@ -45,7 +66,8 @@ def create_post(
         image_url=public_url_for_path(saved_path),
         local_image_path=relative_to_base(saved_path),
         tags=tag_list,
-        shop_id=shop.id,
+        shop_id=shop.id if shop is not None else None,
+        verified_booking_id=verified_booking.id if verified_booking is not None else None,
     )
     style = style_service.create_style_from_post(db, user, post)
     event_service.record_style_events(

@@ -5,15 +5,8 @@ import { api, resolveAssetUrl } from "../api/client";
 import { RequireLogin } from "../components/RequireLogin";
 import { Booking } from "../types/api";
 import { useAuthStore } from "../store/useAuthStore";
+import { bookingStatusLabel, getBookingStatusTextColor } from "../utils/bookingStatus";
 import { useThemeColors } from "../utils/theme";
-
-const statusLabel: Record<Booking["status"], string> = {
-  pending: "待处理",
-  accepted: "已接受",
-  rejected: "已拒绝",
-  completed: "已完成",
-  cancelled: "已取消",
-};
 
 export function MerchantBookingsScreen({ navigation }: any) {
   const colors = useThemeColors();
@@ -40,11 +33,19 @@ export function MerchantBookingsScreen({ navigation }: any) {
         {query.data?.items.length ? (
           query.data.items.map((item) => (
             <View key={item.id} style={[styles.card, { backgroundColor: colors.surface }]}>
-              <Image source={{ uri: resolveAssetUrl(item.style_image_url) }} style={[styles.image, { backgroundColor: colors.surfaceAlt }]} />
+              {item.style_image_url ? (
+                <Image source={{ uri: resolveAssetUrl(item.style_image_url) }} style={[styles.image, { backgroundColor: colors.surfaceAlt }]} />
+              ) : (
+                <View style={[styles.image, styles.placeholderImage, { backgroundColor: colors.surfaceAlt }]}>
+                  <Ionicons name="storefront-outline" size={26} color={colors.subtext} />
+                </View>
+              )}
               <View style={styles.body}>
                 <View style={styles.rowBetween}>
                   <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>{item.style_title}</Text>
-                  <Text style={[styles.status, { color: colors.accent }]}>{statusLabel[item.status]}</Text>
+                  <Text style={[styles.status, { color: getBookingStatusTextColor(item.status, colors) }]}>
+                    {bookingStatusLabel[item.status]}
+                  </Text>
                 </View>
                 <Text style={[styles.meta, { color: colors.subtext }]}>用户：{item.user_name} · {item.contact_phone}</Text>
                 <Text style={[styles.meta, { color: colors.subtext }]}>时间：{item.appointment_time}</Text>
@@ -83,6 +84,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: "900" },
   card: { borderRadius: 20, padding: 12, flexDirection: "row", gap: 12 },
   image: { width: 86, height: 86, borderRadius: 14 },
+  placeholderImage: { alignItems: "center", justifyContent: "center" },
   body: { flex: 1, gap: 6 },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
   cardTitle: { flex: 1, fontSize: 16, fontWeight: "800" },

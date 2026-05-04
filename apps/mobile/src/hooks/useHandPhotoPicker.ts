@@ -18,11 +18,12 @@ type UseHandPhotoPickerOptions = {
 
 export function useHandPhotoPicker({ enabled = true, limit = 5, onHandReady }: UseHandPhotoPickerOptions) {
   const token = useAuthStore((state) => state.token);
+  const user = useAuthStore((state) => state.user);
 
   const savedHandsQuery = useQuery({
-    queryKey: ["saved-hand-photos"],
+    queryKey: ["saved-hand-photos", user?.id ?? "anonymous"],
     queryFn: api.getSavedHandPhotos,
-    enabled: !!token && enabled,
+    enabled: !!token && !!user && enabled,
   });
 
   const recentHandPhotos = (savedHandsQuery.data?.items ?? []).slice(0, limit);

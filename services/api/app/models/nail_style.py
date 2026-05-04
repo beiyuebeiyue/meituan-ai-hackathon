@@ -12,6 +12,11 @@ class NailStyle(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     shop_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("merchant_shops.id", ondelete="SET NULL"), nullable=True)
+    verified_booking_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("bookings.id", ondelete="SET NULL", use_alter=True, name="fk_nail_styles_verified_booking_id"),
+        nullable=True,
+    )
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     image_url: Mapped[str] = mapped_column(String(512), nullable=False)
     local_image_path: Mapped[str] = mapped_column(String(512), nullable=False)
@@ -25,6 +30,7 @@ class NailStyle(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_trending: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     shop = relationship("MerchantShop", back_populates="styles")
+    verified_booking = relationship("Booking", foreign_keys=[verified_booking_id])
     favorites = relationship("UserFavorite", back_populates="style", cascade="all, delete-orphan")
     likes = relationship("UserStyleLike", back_populates="style", cascade="all, delete-orphan")
     views = relationship("UserStyleView", back_populates="style", cascade="all, delete-orphan")

@@ -100,6 +100,8 @@ def sync_runtime_schema() -> None:
             post_columns = {column["name"] for column in inspector.get_columns("user_posts")}
             if "shop_id" not in post_columns:
                 connection.execute(text("ALTER TABLE user_posts ADD COLUMN shop_id VARCHAR(36)"))
+            if "verified_booking_id" not in post_columns:
+                connection.execute(text("ALTER TABLE user_posts ADD COLUMN verified_booking_id VARCHAR(36)"))
             if "is_hidden" not in post_columns:
                 connection.execute(text("ALTER TABLE user_posts ADD COLUMN is_hidden BOOLEAN DEFAULT FALSE"))
             connection.execute(text("UPDATE user_posts SET is_hidden = FALSE WHERE is_hidden IS NULL"))
@@ -108,17 +110,33 @@ def sync_runtime_schema() -> None:
             style_columns = {column["name"] for column in inspector.get_columns("nail_styles")}
             if "shop_id" not in style_columns:
                 connection.execute(text("ALTER TABLE nail_styles ADD COLUMN shop_id VARCHAR(36)"))
+            if "verified_booking_id" not in style_columns:
+                connection.execute(text("ALTER TABLE nail_styles ADD COLUMN verified_booking_id VARCHAR(36)"))
 
         if "direct_messages" in table_names:
             message_columns = {column["name"] for column in inspector.get_columns("direct_messages")}
             if "read_at" not in message_columns:
                 connection.execute(text("ALTER TABLE direct_messages ADD COLUMN read_at TIMESTAMP"))
+            if "image_url" not in message_columns:
+                connection.execute(text("ALTER TABLE direct_messages ADD COLUMN image_url VARCHAR(500)"))
+            if "local_image_path" not in message_columns:
+                connection.execute(text("ALTER TABLE direct_messages ADD COLUMN local_image_path VARCHAR(500)"))
+            if "shared_style_id" not in message_columns:
+                connection.execute(text("ALTER TABLE direct_messages ADD COLUMN shared_style_id VARCHAR(36)"))
+            if "booking_invite_shop_id" not in message_columns:
+                connection.execute(text("ALTER TABLE direct_messages ADD COLUMN booking_invite_shop_id VARCHAR(36)"))
 
         if "tryon_jobs" in table_names:
             tryon_columns = {column["name"] for column in inspector.get_columns("tryon_jobs")}
             if "stage" not in tryon_columns:
                 connection.execute(text("ALTER TABLE tryon_jobs ADD COLUMN stage VARCHAR(30) DEFAULT 'pending'"))
             connection.execute(text("UPDATE tryon_jobs SET stage = status WHERE stage IS NULL OR stage = ''"))
+
+        if "bookings" in table_names:
+            booking_columns = {column["name"]: column for column in inspector.get_columns("bookings")}
+            style_column = booking_columns.get("style_id")
+            if style_column and not style_column.get("nullable", True) and database.engine.dialect.name == "postgresql":
+                connection.execute(text("ALTER TABLE bookings ALTER COLUMN style_id DROP NOT NULL"))
 
 
 def get_db() -> Generator[Session, None, None]:

@@ -40,6 +40,7 @@ class PostService:
         local_image_path: str,
         tags: list[str],
         shop_id: str | None = None,
+        verified_booking_id: str | None = None,
     ) -> UserPost:
         now = utcnow()
         post = UserPost(
@@ -50,6 +51,7 @@ class PostService:
             image_url=image_url,
             local_image_path=local_image_path,
             tags_json=tags,
+            verified_booking_id=verified_booking_id,
             created_at=now,
             updated_at=now,
         )
