@@ -1,0 +1,20 @@
+{
+  "source_notes_dir": "data/xhs/raw/20260505_013220/notes",
+  "output_dir": "data/rag/nail_rag_mvp_300",
+  "limit": 300,
+  "record_count": 300,
+  "records_with_local_images": 39,
+  "image_url_count": 1404,
+  "local_image_count": 318,
+  "error_count": 0,
+  "tag_generation": "xhs_topics plus rule_based_nail_keywords",
+  "caption_generation": "rule_based_mvp",
+  "files": {
+    "manifest": "data/rag/nail_rag_mvp_300/manifest.json",
+    "notes_json": "data/rag/nail_rag_mvp_300/notes.json",
+    "notes_jsonl": "data/rag/nail_rag_mvp_300/notes.jsonl",
+    "notes_csv": "data/rag/nail_rag_mvp_300/notes.csv",
+    "embedding_inputs": "data/rag/nail_rag_mvp_300/embedding_inputs.jsonl",
+    "errors": "data/rag/nail_rag_mvp_300/errors.json"
+  }
+}

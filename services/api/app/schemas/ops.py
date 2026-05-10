@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -29,22 +30,6 @@ class OpsReportRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class OverviewSeriesItem(BaseModel):
-    date: date
-    impressions: int
-    clicks: int
-    ctr: float
-
-
-class OverviewMetricsResponse(BaseModel):
-    report_date: date
-    homepage_impressions: int
-    homepage_clicks: int
-    homepage_ctr: float
-    fastest_rising_styles: list[dict[str, object]]
-    series: list[OverviewSeriesItem]
-
-
 class PerformanceMetricsResponse(BaseModel):
     report_date: date
     top_clicked_styles: list[dict[str, object]]
@@ -63,3 +48,157 @@ class JobLogRead(BaseModel):
     finished_at: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class OpsLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class OpsTokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class OpsMetricPair(BaseModel):
+    total: int
+    today: int
+
+
+class OpsDashboardMetrics(BaseModel):
+    users: OpsMetricPair
+    merchants: OpsMetricPair
+    images: OpsMetricPair
+    likes: OpsMetricPair
+    collects: OpsMetricPair
+    shares: OpsMetricPair
+    tryon_users: OpsMetricPair
+    bookings: OpsMetricPair
+    completed_bookings: OpsMetricPair
+    revenue: OpsMetricPair
+
+
+class OpsPopularNail(BaseModel):
+    note_id: str
+    keyword: str
+    title: str
+    desc: str
+    tag_list: list[str]
+    image_list: list[str]
+    liked_count: int
+    collected_count: int
+    share_count: int
+
+
+class OpsDashboardResponse(BaseModel):
+    report_date: date
+    timezone: str
+    metrics: OpsDashboardMetrics
+    popular_nails: list[OpsPopularNail]
+
+
+OpsChatRole = Literal["user", "assistant"]
+
+
+class OpsChatMessage(BaseModel):
+    role: OpsChatRole
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class OpsChatRequest(BaseModel):
+    messages: list[OpsChatMessage] = Field(min_length=1, max_length=20)
+
+
+class OpsChatResponse(BaseModel):
+    reply: str
+    model: str
+
+
+class OpsUserListItem(BaseModel):
+    id: str
+    uid: int
+    username: str
+    phone: str | None = None
+    avatar_url: str | None = None
+    last_login_ip_location: str | None = None
+    role: str
+    created_at: datetime
+    booking_count: int = 0
+    tryon_count: int = 0
+    like_count: int = 0
+    collect_count: int = 0
+
+
+class OpsUserListResponse(BaseModel):
+    items: list[OpsUserListItem]
+    total: int
+
+
+class OpsMerchantListItem(BaseModel):
+    id: str
+    merchant_user_id: str
+    merchant_name: str
+    merchant_phone: str | None = None
+    name: str
+    city: str
+    address: str
+    contact_phone: str | None = None
+    created_at: datetime
+    booking_count: int = 0
+    completed_booking_count: int = 0
+
+
+class OpsMerchantListResponse(BaseModel):
+    items: list[OpsMerchantListItem]
+    total: int
+
+
+class OpsMerchantUserListItem(BaseModel):
+    id: str
+    uid: int
+    username: str
+    phone: str | None = None
+    avatar_url: str | None = None
+    last_login_ip_location: str | None = None
+    role: str
+    created_at: datetime
+    shop_count: int = 0
+    booking_count: int = 0
+    completed_booking_count: int = 0
+
+
+class OpsMerchantUserListResponse(BaseModel):
+    items: list[OpsMerchantUserListItem]
+    total: int
+
+
+OpsCouponTargetType = Literal["user"]
+
+
+class OpsCouponGrantCreate(BaseModel):
+    target_type: OpsCouponTargetType
+    target_id: str = Field(min_length=1, max_length=36)
+    coupon_name: str = Field(min_length=1, max_length=120)
+    amount: int = Field(gt=0)
+    valid_from: date | None = None
+    valid_until: date | None = None
+    note: str = Field(default="", max_length=500)
+
+
+class OpsCouponGrantRead(BaseModel):
+    id: str
+    target_type: OpsCouponTargetType
+    target_id: str
+    target_name: str
+    coupon_name: str
+    amount: int
+    valid_from: date | None = None
+    valid_until: date | None = None
+    note: str
+    created_by: str
+    created_at: datetime
+
+
+class OpsCouponGrantListResponse(BaseModel):
+    items: list[OpsCouponGrantRead]
+    total: int

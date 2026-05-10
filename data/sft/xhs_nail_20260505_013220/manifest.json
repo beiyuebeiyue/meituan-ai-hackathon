@@ -1,0 +1,23 @@
+{
+  "source_notes_dir": "data/xhs/raw/20260505_013220/notes",
+  "output_dir": "data/sft/xhs_nail_20260505_013220",
+  "note_count": 368,
+  "image_record_count": 1647,
+  "local_image_count": 217,
+  "downloaded_count": 0,
+  "existing_count": 217,
+  "download_error_count": 0,
+  "missing_url_count": 0,
+  "not_downloaded_count": 1430,
+  "invalid_file_count": 0,
+  "files": {
+    "manifest": "data/sft/xhs_nail_20260505_013220/manifest.json",
+    "notes": "data/sft/xhs_nail_20260505_013220/notes.jsonl",
+    "image_text_mapping": "data/sft/xhs_nail_20260505_013220/image_text_mapping.jsonl",
+    "image_text_mapping_json": "data/sft/xhs_nail_20260505_013220/image_text_mapping.json",
+    "sft_records": "data/sft/xhs_nail_20260505_013220/sft_records.jsonl",
+    "invalid_files": "data/sft/xhs_nail_20260505_013220/invalid_files.json",
+    "texts_dir": "data/sft/xhs_nail_20260505_013220/texts",
+    "images_dir": "data/sft/xhs_nail_20260505_013220/images"
+  }
+}

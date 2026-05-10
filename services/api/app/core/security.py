@@ -29,6 +29,14 @@ def create_access_token(subject: str) -> str:
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
 
 
+def create_ops_access_token() -> str:
+    settings = get_settings()
+    expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
+    expire = datetime.now(timezone.utc) + expires_delta
+    payload: dict[str, Any] = {"sub": "ops-admin", "scope": "ops", "exp": expire}
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
 def decode_access_token(token: str) -> dict[str, Any]:
     settings = get_settings()
     try:

@@ -9,7 +9,14 @@ from app.models.nail_style import NailStyle
 from app.models.style_event_daily import StyleEventDaily
 
 
+def _ops_headers(client) -> dict[str, str]:
+    response = client.post("/api/v1/ops/auth/login", json={"username": "admin", "password": "admin"})
+    assert response.status_code == 200
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
 def test_ops_report_generate_and_save(client, db_session, image_factory):
+    headers = _ops_headers(client)
     settings = get_settings()
     today = datetime.now(ZoneInfo(settings.ops_report_timezone)).date()
     style_a = NailStyle(
@@ -49,7 +56,7 @@ def test_ops_report_generate_and_save(client, db_session, image_factory):
     )
     db_session.commit()
 
-    generated = client.post("/api/v1/ops/reports/generate")
+    generated = client.post("/api/v1/ops/reports/generate", headers=headers)
     assert generated.status_code == 200
     payload = generated.json()
     assert payload["report_json"]["metrics"]["homepage_impressions"] == 300
@@ -57,7 +64,7 @@ def test_ops_report_generate_and_save(client, db_session, image_factory):
     assert payload["report_json"]["high_impression_low_ctr"][0]["title"] == "贴钻节日"
     assert payload["markdown_content"].startswith("# 焕甲运营日报")
 
-    saved = client.post("/api/v1/ops/reports/save", json=payload)
+    saved = client.post("/api/v1/ops/reports/save", json=payload, headers=headers)
     assert saved.status_code == 200
     report = saved.json()
     assert Path(report["local_file_path"]).exists()

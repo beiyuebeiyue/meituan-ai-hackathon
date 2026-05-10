@@ -43,7 +43,7 @@ class MerchantShopService:
                 db,
                 user,
                 name=user.username,
-                city=user.location_city or "深圳",
+                city="深圳",
                 address="深圳市南山区",
                 latitude=22.5431,
                 longitude=114.0579,
@@ -115,8 +115,6 @@ class MerchantShopService:
         if admin_user is None:
             return None
         admin_user.role = "merchant"
-        if not admin_user.location_city:
-            admin_user.location_city = "深圳"
         db.add(admin_user)
         db.flush()
 

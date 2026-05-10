@@ -21,7 +21,6 @@ from app.schemas.users import (
     UserBrowseHistoryRead,
     UserHandPhotoListResponse,
     UserHandPhotoRead,
-    UserLocationUpdateRequest,
     UserListResponse,
     UserPrivacyRead,
     UserPrivacyUpdateRequest,
@@ -66,7 +65,7 @@ def serialize_user_summary(db: Session, target: User, viewer: User | None) -> Us
         username=target.username,
         avatar_url=target.avatar_url,
         bio=target.bio,
-        city=target.location_city or "广东",
+        ip_location=target.last_login_ip_location or "未知",
         is_shop=target.role == "merchant",
         is_following=bool(viewer and viewer.id != target.id and follow_service.is_following(db, viewer.id, target.id)),
     )
@@ -223,24 +222,6 @@ def update_me(
     return serialize_user_read(user)
 
 
-@router.patch("/me/location", response_model=UserRead)
-def update_my_location(
-    payload: UserLocationUpdateRequest,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
-) -> UserRead:
-    city = payload.city.strip()
-    if not city:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="属地不能为空")
-    if len(city) > 80:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="属地不能超过80个字符")
-    user.location_city = city
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return serialize_user_read(user)
-
-
 @router.get("/me/privacy", response_model=UserPrivacyRead)
 def get_my_privacy(user: User = Depends(get_current_user)) -> UserPrivacyRead:
     return UserPrivacyRead(
@@ -310,7 +291,7 @@ def search_users(
     conditions = [
         User.username.ilike(pattern),
         User.bio.ilike(pattern),
-        User.location_city.ilike(pattern),
+        User.last_login_ip_location.ilike(pattern),
     ]
     if keyword.isdigit():
         conditions.append(cast(User.uid, String).ilike(f"{keyword}%"))
@@ -466,7 +447,7 @@ def get_author_profile(
         username=author.username,
         avatar_url=author.avatar_url,
         bio=author.bio,
-        city=author.location_city or "广东",
+        ip_location=author.last_login_ip_location or "未知",
         follower_count=follower_count,
         following_count=following_count,
         published_count=len(styles),

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from statistics import median
 from zoneinfo import ZoneInfo
 
@@ -13,7 +13,7 @@ from app.core.config import get_settings
 from app.models.nail_style import NailStyle
 from app.models.ops_report import OpsReport
 from app.models.style_event_daily import StyleEventDaily
-from app.schemas.ops import OverviewMetricsResponse, OverviewSeriesItem, PerformanceMetricsResponse, ReportGenerateResponse
+from app.schemas.ops import PerformanceMetricsResponse, ReportGenerateResponse
 from app.services.job_log_service import JobLogService
 from app.services.trend_service import TrendService
 from app.utils.markdown import render_daily_report_markdown
@@ -127,50 +127,6 @@ class ReportService:
 
     def get_history(self, db: Session, limit: int = 30) -> list[OpsReport]:
         return list(db.scalars(select(OpsReport).order_by(OpsReport.report_date.desc()).limit(limit)))
-
-    def get_overview_metrics(self, db: Session, report_date: date | None = None) -> OverviewMetricsResponse:
-        target_date = report_date or datetime.now(ZoneInfo(self.settings.ops_report_timezone)).date()
-        rows = list(db.scalars(select(StyleEventDaily).where(StyleEventDaily.stat_date == target_date)))
-        total_impressions = sum(item.impressions for item in rows)
-        total_clicks = sum(item.clicks for item in rows)
-        ctr = total_clicks / total_impressions if total_impressions else 0.0
-        styles = {style.id: style for style in db.scalars(select(NailStyle))}
-        fastest = sorted(
-            [
-                {
-                    "style_id": row.style_id,
-                    "title": styles[row.style_id].title,
-                    "image_url": styles[row.style_id].image_url,
-                    "delta_score": round(row.clicks * 0.7 + row.favorites * 1.5 + row.tryons * 2.0, 2),
-                }
-                for row in rows
-                if row.style_id in styles
-            ],
-            key=lambda item: item["delta_score"],
-            reverse=True,
-        )[:5]
-        series = []
-        for offset in range(6, -1, -1):
-            day = target_date - timedelta(days=offset)
-            day_rows = list(db.scalars(select(StyleEventDaily).where(StyleEventDaily.stat_date == day)))
-            day_impressions = sum(item.impressions for item in day_rows)
-            day_clicks = sum(item.clicks for item in day_rows)
-            series.append(
-                OverviewSeriesItem(
-                    date=day,
-                    impressions=day_impressions,
-                    clicks=day_clicks,
-                    ctr=day_clicks / day_impressions if day_impressions else 0.0,
-                )
-            )
-        return OverviewMetricsResponse(
-            report_date=target_date,
-            homepage_impressions=total_impressions,
-            homepage_clicks=total_clicks,
-            homepage_ctr=ctr,
-            fastest_rising_styles=fastest,
-            series=series,
-        )
 
     def get_performance_metrics(self, db: Session, report_date: date | None = None) -> PerformanceMetricsResponse:
         generated = self.generate_report(db, report_date)

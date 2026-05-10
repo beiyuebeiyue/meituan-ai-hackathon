@@ -11,14 +11,13 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "users"
 
     uid: Mapped[int] = mapped_column(Integer, unique=True, index=True, nullable=False)
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     phone: Mapped[str | None] = mapped_column(String(20), unique=True, index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     username: Mapped[str] = mapped_column(String(80), unique=True, index=True, nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     birthday: Mapped[str | None] = mapped_column(String(20), nullable=True)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
-    location_city: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    last_login_ip_location: Mapped[str | None] = mapped_column(String(120), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="consumer", nullable=False)
 
     browse_histories = relationship("UserBrowseHistory", back_populates="user", cascade="all, delete-orphan")

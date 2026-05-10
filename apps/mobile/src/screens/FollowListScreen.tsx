@@ -70,9 +70,9 @@ export function FollowListScreen() {
 
   const getSubtitle = (item: UserSummary) => {
     if (displayTab === "followers") {
-      return `粉丝 · IP：${item.city || "广东"}`;
+      return `粉丝 · IP：${item.ip_location || "未知"}`;
     }
-    return item.is_following ? `已关注 · IP：${item.city || "广东"}` : `IP：${item.city || "广东"}`;
+    return item.is_following ? `已关注 · IP：${item.ip_location || "未知"}` : `IP：${item.ip_location || "未知"}`;
   };
 
   const renderUser = ({ item }: { item: UserSummary }) => {

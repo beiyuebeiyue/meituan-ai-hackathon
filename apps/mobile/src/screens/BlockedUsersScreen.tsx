@@ -36,7 +36,7 @@ export function BlockedUsersScreen() {
           {item.username}
         </Text>
         <Text style={[styles.meta, { color: colors.subtext }]} numberOfLines={1}>
-          焕甲号：{item.uid} · IP：{item.city}
+          焕甲号：{item.uid} · IP：{item.ip_location || "未知"}
         </Text>
       </View>
       <Pressable

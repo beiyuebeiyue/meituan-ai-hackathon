@@ -73,12 +73,6 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     }),
-  updateMyLocation: (city: string) =>
-    request<User>("/users/me/location", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ city }),
-    }),
   getSavedHandPhotos: () => request<{ items: UserHandPhoto[] }>("/users/me/hand-photos"),
   uploadSavedHandPhoto: async (imageUri: string) => {
     const form = new FormData();

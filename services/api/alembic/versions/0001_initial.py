@@ -18,17 +18,23 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "users",
-        sa.Column("email", sa.String(length=255), nullable=False),
+        sa.Column("uid", sa.Integer(), nullable=False),
+        sa.Column("phone", sa.String(length=20), nullable=True),
         sa.Column("password_hash", sa.String(length=255), nullable=False),
         sa.Column("username", sa.String(length=80), nullable=False),
         sa.Column("avatar_url", sa.String(length=512), nullable=True),
+        sa.Column("birthday", sa.String(length=20), nullable=True),
+        sa.Column("bio", sa.Text(), nullable=True),
+        sa.Column("last_login_ip_location", sa.String(length=120), nullable=True),
+        sa.Column("role", sa.String(length=20), nullable=False),
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("email"),
     )
-    op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)
+    op.create_index("ix_users_phone", "users", ["phone"], unique=True)
+    op.create_index("ix_users_uid", "users", ["uid"], unique=True)
+    op.create_index("ix_users_username", "users", ["username"], unique=True)
 
     op.create_table(
         "nail_styles",
@@ -164,5 +170,7 @@ def downgrade() -> None:
     op.drop_table("trend_snapshots")
     op.drop_table("ops_reports")
     op.drop_table("nail_styles")
-    op.drop_index(op.f("ix_users_email"), table_name="users")
+    op.drop_index("ix_users_username", table_name="users")
+    op.drop_index("ix_users_uid", table_name="users")
+    op.drop_index("ix_users_phone", table_name="users")
     op.drop_table("users")

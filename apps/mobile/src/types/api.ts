@@ -1,13 +1,12 @@
 export type User = {
   id: string;
   uid: number;
-  email: string;
   phone?: string | null;
   username: string;
   avatar_url?: string | null;
   birthday?: string | null;
   bio?: string | null;
-  location_city?: string | null;
+  last_login_ip_location?: string | null;
   role: "consumer" | "merchant";
   is_shop: boolean;
   show_following_public: boolean;
@@ -30,7 +29,7 @@ export type UserSummary = {
   username: string;
   avatar_url?: string | null;
   bio?: string | null;
-  city: string;
+  ip_location: string;
   is_shop: boolean;
   is_following: boolean;
 };
@@ -188,7 +187,7 @@ export type AuthorProfile = {
   username: string;
   avatar_url?: string | null;
   bio?: string | null;
-  city: string;
+  ip_location: string;
   follower_count: number;
   following_count: number;
   published_count: number;

@@ -178,7 +178,7 @@ export function BrowseSearchScreen() {
             {item.username}
           </Text>
           <Text style={[styles.userMeta, { color: colors.subtext }]} numberOfLines={1}>
-            {item.is_shop ? "商家" : "用户"} · IP {item.city || "广东"} · 焕甲号 {item.uid}
+            {item.is_shop ? "商家" : "用户"} · IP {item.ip_location || "未知"} · 焕甲号 {item.uid}
           </Text>
           {item.bio ? (
             <Text style={[styles.userBio, { color: colors.subtext }]} numberOfLines={1}>

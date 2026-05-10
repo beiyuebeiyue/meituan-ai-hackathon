@@ -71,7 +71,7 @@ export function MerchantMarketDataScreen({ navigation }: any) {
             {shop?.name ?? user.username}
           </Text>
           <Text style={[styles.shopMeta, { color: colors.subtext }]} numberOfLines={1}>
-            {shop?.city ?? user.location_city ?? "城市待完善"} · {shop?.address || "地址待完善"}
+            {shop?.city ?? "城市待完善"} · {shop?.address || "地址待完善"}
           </Text>
         </View>
       </View>

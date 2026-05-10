@@ -1,0 +1,311 @@
+from __future__ import annotations
+
+import json
+from datetime import date, datetime, time, timezone
+from zoneinfo import ZoneInfo
+
+from fastapi import HTTPException, status
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session
+
+from app.core.config import get_settings
+from app.models.booking import Booking
+from app.models.direct_message import DirectMessage
+from app.models.merchant_shop import MerchantShop
+from app.models.nail_style import NailStyle
+from app.models.ops_coupon_grant import OpsCouponGrant
+from app.models.tryon_job import TryOnJob
+from app.models.user import User
+from app.models.user_favorite import UserFavorite
+from app.models.user_hand_photo import UserHandPhoto
+from app.models.user_post import UserPost
+from app.models.user_style_like import UserStyleLike
+from app.schemas.ops import (
+    OpsCouponGrantCreate,
+    OpsCouponGrantRead,
+    OpsDashboardMetrics,
+    OpsDashboardResponse,
+    OpsMerchantListItem,
+    OpsMerchantListResponse,
+    OpsMerchantUserListItem,
+    OpsMerchantUserListResponse,
+    OpsMetricPair,
+    OpsPopularNail,
+    OpsUserListItem,
+    OpsUserListResponse,
+)
+
+ORDER_PRICE = 100
+
+
+class OpsAdminService:
+    def _today_window(self) -> tuple[datetime, datetime, date, str]:
+        settings = get_settings()
+        tz_name = settings.ops_report_timezone
+        local_today = datetime.now(ZoneInfo(tz_name)).date()
+        local_start = datetime.combine(local_today, time.min, tzinfo=ZoneInfo(tz_name))
+        local_end = datetime.combine(local_today, time.max, tzinfo=ZoneInfo(tz_name))
+        return local_start.astimezone(timezone.utc), local_end.astimezone(timezone.utc), local_today, tz_name
+
+    def _count(self, db: Session, statement) -> int:
+        return int(db.scalar(statement) or 0)
+
+    def _today_count(self, db: Session, model, start: datetime, end: datetime, *criteria) -> int:
+        return self._count(
+            db,
+            select(func.count(model.id)).where(model.created_at >= start, model.created_at <= end, *criteria),
+        )
+
+    def _metric(self, total: int, today: int) -> OpsMetricPair:
+        return OpsMetricPair(total=total, today=today)
+
+    def dashboard(self, db: Session) -> OpsDashboardResponse:
+        start, end, report_date, tz_name = self._today_window()
+
+        user_total = self._count(db, select(func.count(User.id)).where(User.role == "consumer"))
+        user_today = self._today_count(db, User, start, end, User.role == "consumer")
+
+        merchant_total = self._count(db, select(func.count(MerchantShop.id)))
+        merchant_today = self._today_count(db, MerchantShop, start, end)
+
+        images_total = sum(
+            [
+                self._count(db, select(func.count(NailStyle.id))),
+                self._count(db, select(func.count(UserPost.id))),
+                self._count(db, select(func.count(UserHandPhoto.id))),
+                self._count(db, select(func.count(TryOnJob.id)).where(TryOnJob.result_image_path.is_not(None))),
+            ]
+        )
+        images_today = sum(
+            [
+                self._today_count(db, NailStyle, start, end),
+                self._today_count(db, UserPost, start, end),
+                self._today_count(db, UserHandPhoto, start, end),
+                self._today_count(db, TryOnJob, start, end, TryOnJob.result_image_path.is_not(None)),
+            ]
+        )
+
+        likes_total = self._count(db, select(func.count(UserStyleLike.id)))
+        likes_today = self._today_count(db, UserStyleLike, start, end)
+        collects_total = self._count(db, select(func.count(UserFavorite.id)))
+        collects_today = self._today_count(db, UserFavorite, start, end)
+        shares_total = self._count(db, select(func.count(DirectMessage.id)).where(DirectMessage.shared_style_id.is_not(None)))
+        shares_today = self._today_count(db, DirectMessage, start, end, DirectMessage.shared_style_id.is_not(None))
+
+        tryon_users_total = self._count(db, select(func.count(func.distinct(TryOnJob.user_id))))
+        tryon_users_today = self._count(
+            db,
+            select(func.count(func.distinct(TryOnJob.user_id))).where(TryOnJob.created_at >= start, TryOnJob.created_at <= end),
+        )
+
+        bookings_total = self._count(db, select(func.count(Booking.id)))
+        bookings_today = self._today_count(db, Booking, start, end)
+        completed_total = self._count(db, select(func.count(Booking.id)).where(Booking.status == "completed"))
+        completed_today = self._count(
+            db,
+            select(func.count(Booking.id)).where(
+                Booking.status == "completed",
+                Booking.updated_at >= start,
+                Booking.updated_at <= end,
+            ),
+        )
+
+        metrics = OpsDashboardMetrics(
+            users=self._metric(user_total, user_today),
+            merchants=self._metric(merchant_total, merchant_today),
+            images=self._metric(images_total, images_today),
+            likes=self._metric(likes_total, likes_today),
+            collects=self._metric(collects_total, collects_today),
+            shares=self._metric(shares_total, shares_today),
+            tryon_users=self._metric(tryon_users_total, tryon_users_today),
+            bookings=self._metric(bookings_total, bookings_today),
+            completed_bookings=self._metric(completed_total, completed_today),
+            revenue=self._metric(completed_total * ORDER_PRICE, completed_today * ORDER_PRICE),
+        )
+        return OpsDashboardResponse(
+            report_date=report_date,
+            timezone=tz_name,
+            metrics=metrics,
+            popular_nails=self.popular_nails(report_date),
+        )
+
+    def popular_nails(self, report_date: date) -> list[OpsPopularNail]:
+        settings = get_settings()
+        date_key = report_date.strftime("%Y%m%d")
+        digest_path = settings.xhs_crawler_assets_path / date_key / "xhs_note_digest.json"
+        if not digest_path.exists():
+            return []
+        payload = json.loads(digest_path.read_text(encoding="utf-8"))
+        return [OpsPopularNail(**item) for item in payload.get("notes", [])]
+
+    def list_users(self, db: Session, query: str = "", limit: int = 50, offset: int = 0) -> OpsUserListResponse:
+        statement = select(User).where(User.role == "consumer")
+        count_statement = select(func.count(User.id)).where(User.role == "consumer")
+        if query:
+            pattern = f"%{query}%"
+            filter_clause = or_(User.username.ilike(pattern), User.phone.ilike(pattern))
+            statement = statement.where(filter_clause)
+            count_statement = count_statement.where(filter_clause)
+        total = self._count(db, count_statement)
+        users = list(db.scalars(statement.order_by(User.created_at.desc()).offset(offset).limit(limit)))
+        return OpsUserListResponse(items=[self._user_item(db, user) for user in users], total=total)
+
+    def get_user(self, db: Session, user_id: str) -> OpsUserListItem:
+        user = db.get(User, user_id)
+        if user is None or user.role != "consumer":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        return self._user_item(db, user)
+
+    def _user_item(self, db: Session, user: User) -> OpsUserListItem:
+        return OpsUserListItem(
+            id=user.id,
+            uid=user.uid,
+            username=user.username,
+            phone=user.phone,
+            avatar_url=user.avatar_url,
+            last_login_ip_location=user.last_login_ip_location,
+            role=user.role,
+            created_at=user.created_at,
+            booking_count=self._count(db, select(func.count(Booking.id)).where(Booking.user_id == user.id)),
+            tryon_count=self._count(db, select(func.count(TryOnJob.id)).where(TryOnJob.user_id == user.id)),
+            like_count=self._count(db, select(func.count(UserStyleLike.id)).where(UserStyleLike.user_id == user.id)),
+            collect_count=self._count(db, select(func.count(UserFavorite.id)).where(UserFavorite.user_id == user.id)),
+        )
+
+    def list_merchants(
+        self,
+        db: Session,
+        query: str = "",
+        city: str = "",
+        limit: int = 50,
+        offset: int = 0,
+    ) -> OpsMerchantListResponse:
+        statement = select(MerchantShop).join(User, MerchantShop.merchant_user_id == User.id)
+        count_statement = select(func.count(MerchantShop.id)).join(User, MerchantShop.merchant_user_id == User.id)
+        if city:
+            statement = statement.where(MerchantShop.city == city)
+            count_statement = count_statement.where(MerchantShop.city == city)
+        if query:
+            pattern = f"%{query}%"
+            filter_clause = or_(
+                MerchantShop.name.ilike(pattern),
+                MerchantShop.city.ilike(pattern),
+                MerchantShop.contact_phone.ilike(pattern),
+                User.username.ilike(pattern),
+                User.phone.ilike(pattern),
+            )
+            statement = statement.where(filter_clause)
+            count_statement = count_statement.where(filter_clause)
+        total = self._count(db, count_statement)
+        shops = list(db.scalars(statement.order_by(MerchantShop.created_at.desc()).offset(offset).limit(limit)))
+        return OpsMerchantListResponse(items=[self._merchant_item(db, shop) for shop in shops], total=total)
+
+    def list_merchant_cities(self, db: Session) -> list[str]:
+        cities = db.scalars(select(func.distinct(MerchantShop.city)).where(MerchantShop.city != "").order_by(MerchantShop.city))
+        return [city for city in cities if city]
+
+    def get_merchant(self, db: Session, shop_id: str) -> OpsMerchantListItem:
+        shop = db.get(MerchantShop, shop_id)
+        if shop is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商家不存在")
+        return self._merchant_item(db, shop)
+
+    def _merchant_item(self, db: Session, shop: MerchantShop) -> OpsMerchantListItem:
+        merchant = shop.merchant
+        return OpsMerchantListItem(
+            id=shop.id,
+            merchant_user_id=shop.merchant_user_id,
+            merchant_name=merchant.username if merchant else "商家",
+            merchant_phone=merchant.phone if merchant else None,
+            name=shop.name,
+            city=shop.city,
+            address=shop.address,
+            contact_phone=shop.contact_phone,
+            created_at=shop.created_at,
+            booking_count=self._count(db, select(func.count(Booking.id)).where(Booking.shop_id == shop.id)),
+            completed_booking_count=self._count(
+                db,
+                select(func.count(Booking.id)).where(Booking.shop_id == shop.id, Booking.status == "completed"),
+            ),
+        )
+
+    def list_merchant_users(self, db: Session, query: str = "", limit: int = 50, offset: int = 0) -> OpsMerchantUserListResponse:
+        statement = select(User).where(User.role == "merchant")
+        count_statement = select(func.count(User.id)).where(User.role == "merchant")
+        if query:
+            pattern = f"%{query}%"
+            filter_clause = or_(User.username.ilike(pattern), User.phone.ilike(pattern))
+            statement = statement.where(filter_clause)
+            count_statement = count_statement.where(filter_clause)
+        total = self._count(db, count_statement)
+        users = list(db.scalars(statement.order_by(User.created_at.desc()).offset(offset).limit(limit)))
+        return OpsMerchantUserListResponse(items=[self._merchant_user_item(db, user) for user in users], total=total)
+
+    def get_merchant_user(self, db: Session, user_id: str) -> OpsMerchantUserListItem:
+        user = db.get(User, user_id)
+        if user is None or user.role != "merchant":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商家用户不存在")
+        return self._merchant_user_item(db, user)
+
+    def _merchant_user_item(self, db: Session, user: User) -> OpsMerchantUserListItem:
+        return OpsMerchantUserListItem(
+            id=user.id,
+            uid=user.uid,
+            username=user.username,
+            phone=user.phone,
+            avatar_url=user.avatar_url,
+            last_login_ip_location=user.last_login_ip_location,
+            role=user.role,
+            created_at=user.created_at,
+            shop_count=self._count(db, select(func.count(MerchantShop.id)).where(MerchantShop.merchant_user_id == user.id)),
+            booking_count=self._count(db, select(func.count(Booking.id)).where(Booking.merchant_user_id == user.id)),
+            completed_booking_count=self._count(
+                db,
+                select(func.count(Booking.id)).where(Booking.merchant_user_id == user.id, Booking.status == "completed"),
+            ),
+        )
+
+    def create_coupon(self, db: Session, payload: OpsCouponGrantCreate, created_by: str) -> OpsCouponGrantRead:
+        self._target_name(db, payload.target_type, payload.target_id)
+        grant = OpsCouponGrant(
+            target_type=payload.target_type,
+            target_id=payload.target_id,
+            coupon_name=payload.coupon_name.strip(),
+            amount=payload.amount,
+            valid_from=payload.valid_from,
+            valid_until=payload.valid_until,
+            note=payload.note.strip(),
+            created_by=created_by,
+        )
+        db.add(grant)
+        db.commit()
+        db.refresh(grant)
+        return self._coupon_item(db, grant)
+
+    def list_coupons(self, db: Session, limit: int = 50, offset: int = 0) -> dict[str, object]:
+        total = self._count(db, select(func.count(OpsCouponGrant.id)))
+        grants = list(db.scalars(select(OpsCouponGrant).order_by(OpsCouponGrant.created_at.desc()).offset(offset).limit(limit)))
+        return {"items": [self._coupon_item(db, grant) for grant in grants], "total": total}
+
+    def _coupon_item(self, db: Session, grant: OpsCouponGrant) -> OpsCouponGrantRead:
+        return OpsCouponGrantRead(
+            id=grant.id,
+            target_type=grant.target_type,  # type: ignore[arg-type]
+            target_id=grant.target_id,
+            target_name=self._target_name(db, grant.target_type, grant.target_id),
+            coupon_name=grant.coupon_name,
+            amount=grant.amount,
+            valid_from=grant.valid_from,
+            valid_until=grant.valid_until,
+            note=grant.note,
+            created_by=grant.created_by,
+            created_at=grant.created_at,
+        )
+
+    def _target_name(self, db: Session, target_type: str, target_id: str) -> str:
+        if target_type == "user":
+            user = db.get(User, target_id)
+            if user is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+            return user.username
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="优惠券目标类型不合法")

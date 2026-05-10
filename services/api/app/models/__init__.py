@@ -4,6 +4,7 @@ from app.models.image_processing_artifact import ImageProcessingArtifact
 from app.models.job_log import JobLog
 from app.models.merchant_shop import MerchantShop
 from app.models.nail_style import NailStyle
+from app.models.ops_coupon_grant import OpsCouponGrant
 from app.models.ops_report import OpsReport
 from app.models.style_comment import StyleComment
 from app.models.style_event_daily import StyleEventDaily
@@ -26,6 +27,7 @@ __all__ = [
     "JobLog",
     "MerchantShop",
     "NailStyle",
+    "OpsCouponGrant",
     "OpsReport",
     "StyleComment",
     "StyleEventDaily",

@@ -32,6 +32,7 @@ def app_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("REPORT_DIR", str(report_dir))
     monkeypatch.setenv("SEED_XLSX_PATH", str(ROOT / "命题三美甲评测数据（对外版）.xlsx"))
     monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.setenv("LONGCAT_API_KEY", "")
 
     from app.core.config import get_settings
     from app.core.db import Base, database

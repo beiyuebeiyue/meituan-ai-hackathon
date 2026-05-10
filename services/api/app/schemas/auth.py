@@ -22,8 +22,6 @@ class LoginRequest(BaseModel):
         if isinstance(value, dict) and value.get("phone") is None:
             if value.get("identifier") is not None:
                 value = {**value, "phone": value["identifier"]}
-            elif value.get("email") is not None:
-                value = {**value, "phone": value["email"]}
         return value
 
 

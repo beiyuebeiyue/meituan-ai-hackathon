@@ -1,0 +1,18 @@
+{
+  "source_dataset": "data/sft/xhs_nail_20260505_013220",
+  "output_dir": "data/sft/nailAI_sft",
+  "filter": "local image exists and structured tags is non-empty",
+  "note_count": 48,
+  "sft_record_count": 199,
+  "image_count": 199,
+  "files": {
+    "manifest": "data/sft/nailAI_sft/manifest.json",
+    "sft_records": "data/sft/nailAI_sft/sft_records.jsonl",
+    "image_text_mapping": "data/sft/nailAI_sft/image_text_mapping.jsonl",
+    "image_text_mapping_json": "data/sft/nailAI_sft/image_text_mapping.json",
+    "notes": "data/sft/nailAI_sft/notes.jsonl",
+    "notes_csv": "data/sft/nailAI_sft/notes.csv",
+    "images_dir": "data/sft/nailAI_sft/images",
+    "texts_dir": "data/sft/nailAI_sft/texts"
+  }
+}

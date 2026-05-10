@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -43,62 +42,6 @@ const FEED_HEART_ACTIVE_COLOR = "#ff7a8a";
 const FEED_HEART_INACTIVE_COLOR = "#d0d0d5";
 const PROFILE_HEADER_HEIGHT = Math.min(330, Math.max(300, Math.round(Dimensions.get("window").height * 0.34)));
 
-const REGION_NAME_MAP: Record<string, string> = {
-  Guangdong: "广东",
-  "Guangdong Province": "广东",
-  Beijing: "北京",
-  Shanghai: "上海",
-  Tianjin: "天津",
-  Chongqing: "重庆",
-  Zhejiang: "浙江",
-  Jiangsu: "江苏",
-  Fujian: "福建",
-  Shandong: "山东",
-  Henan: "河南",
-  Hebei: "河北",
-  Hunan: "湖南",
-  Hubei: "湖北",
-  Sichuan: "四川",
-  Yunnan: "云南",
-  Guizhou: "贵州",
-  Jiangxi: "江西",
-  Anhui: "安徽",
-  Shanxi: "山西",
-  Shaanxi: "陕西",
-  Liaoning: "辽宁",
-  Jilin: "吉林",
-  Heilongjiang: "黑龙江",
-  Hainan: "海南",
-  Gansu: "甘肃",
-  Qinghai: "青海",
-  Taiwan: "台湾",
-  Xinjiang: "新疆",
-  Tibet: "西藏",
-  "Inner Mongolia": "内蒙古",
-  Ningxia: "宁夏",
-  Guangxi: "广西",
-  "Hong Kong": "香港",
-  Macau: "澳门",
-};
-
-function normalizeLocationLabel(value?: string | null) {
-  if (!value) return null;
-  const raw = value.trim();
-  if (!raw) return null;
-  const mapped = REGION_NAME_MAP[raw] ?? raw;
-  return mapped.replace(/特别行政区$/, "").replace(/自治区$/, "").replace(/维吾尔$/, "").replace(/省$/, "").replace(/市$/, "");
-}
-
-function resolveProfileLocationLabel(address?: Location.LocationGeocodedAddress | null) {
-  return (
-    normalizeLocationLabel(address?.region) ??
-    normalizeLocationLabel(address?.city) ??
-    normalizeLocationLabel(address?.subregion) ??
-    normalizeLocationLabel(address?.district) ??
-    normalizeLocationLabel(address?.country)
-  );
-}
-
 const selfShortcutActions = [
   { key: "browse-history", icon: "time-outline", title: "浏览记录", subtitle: "看过的美甲" },
   { key: "hand-photos", icon: "hand-left-outline", title: "手图管理", subtitle: "管理本地手图" },
@@ -116,7 +59,7 @@ type AuthorProfileScreenProps = {
 
 function buildAuthorShopDetail(author: AuthorProfile): NearbyShop | null {
   if (!author.shop_id) return null;
-  const city = author.shop_city || author.city || "深圳";
+  const city = author.shop_city || "深圳";
   return {
     id: author.shop_id,
     platform_shop_id: author.shop_id,
@@ -181,11 +124,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const token = useAuthStore((state) => state.token);
   const hydrated = useAuthStore((state) => state.hydrated);
   const currentUser = useAuthStore((state) => state.user);
-  const setCurrentUser = useAuthStore((state) => state.setUser);
   const authScope = !hydrated ? "booting" : token ? "authed" : "anon";
   const [drawerMounted, setDrawerMounted] = useState(false);
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
-  const [locationSyncAttempted, setLocationSyncAttempted] = useState(false);
   const [editingPost, setEditingPost] = useState<AuthorPost | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
@@ -359,45 +300,6 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
       void queryClient.invalidateQueries({ queryKey: ["style"] });
     },
   });
-
-  const locationMutation = useMutation({
-    mutationFn: (city: string) => api.updateMyLocation(city),
-    onSuccess: (user) => {
-      setCurrentUser(user);
-      void queryClient.invalidateQueries({ queryKey: ["me"] });
-      void queryClient.invalidateQueries({ queryKey: ["author-profile", resolvedAuthorId] });
-    },
-  });
-
-  useEffect(() => {
-    if (!hydrated || !token || !asProfileTab || !query.data?.is_mine || locationSyncAttempted) return;
-    setLocationSyncAttempted(true);
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status !== "granted" || cancelled) return;
-        const position = await Location.getCurrentPositionAsync({});
-        if (cancelled) return;
-        const geocoded = await Location.reverseGeocodeAsync({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-        if (cancelled) return;
-        const nextCity = resolveProfileLocationLabel(geocoded[0]);
-        if (nextCity && nextCity !== query.data?.city) {
-          locationMutation.mutate(nextCity);
-        }
-      } catch {
-        // 定位失败时保留上一次属地，不阻塞个人主页展示。
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [asProfileTab, hydrated, locationMutation, locationSyncAttempted, query.data?.city, query.data?.is_mine, token]);
 
   const blockMutation = useMutation({
     mutationFn: async () => {
@@ -787,7 +689,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                   {isMerchantSelfProfile ? "商家焕甲号" : "焕甲号"}：{author.uid}
                 </Text>
                 <Text style={[styles.authorMeta, shouldCompactSelfProfile && styles.compactAuthorMeta, { color: heroSubtextColor }]}>
-                  IP：{author.city}
+                  IP：{author.ip_location}
                 </Text>
               </View>
             </Animated.View>
@@ -1287,7 +1189,7 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
         onClose={() => setBookingVisible(false)}
         shopId={author.shop_id}
         shopName={author.shop_name ?? author.username}
-        shopCity={author.shop_city ?? author.city}
+        shopCity={author.shop_city ?? "深圳"}
         onSuccess={() => Alert.alert("预约已提交", "商家会在预约列表里处理你的门店预约。")}
       />
       <ShareSheet visible={shareVisible} onClose={() => setShareVisible(false)} />

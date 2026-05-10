@@ -1,0 +1,13 @@
+.git
+.venv
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/node_modules
+**/dist
+**/tsconfig.tsbuildinfo
+data
+*.ipynb
+*.jpg
+*.jpeg
+*.png

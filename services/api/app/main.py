@@ -43,6 +43,11 @@ def create_app() -> FastAPI:
         StaticFiles(directory=str(settings.base_dir / "data")),
         name="files",
     )
+    app.mount(
+        "/openclaw-assets",
+        StaticFiles(directory=str(settings.xhs_crawler_assets_path), check_dir=False),
+        name="openclaw-assets",
+    )
 
     from app.routers import (
         admin,
@@ -56,7 +61,7 @@ def create_app() -> FastAPI:
         merchant,
         messages,
         nails,
-        ops_reports,
+        ops_admin,
         posts,
         trend,
         tryon,
@@ -75,7 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(ai_recommend.router, prefix=settings.api_prefix)
     app.include_router(tryon.router, prefix=settings.api_prefix)
     app.include_router(events.router, prefix=settings.api_prefix)
-    app.include_router(ops_reports.router, prefix=settings.api_prefix)
+    app.include_router(ops_admin.router, prefix=settings.api_prefix)
     app.include_router(jobs.router, prefix=settings.api_prefix)
     app.include_router(trend.router, prefix=settings.api_prefix)
     app.include_router(admin.router, prefix=settings.api_prefix)

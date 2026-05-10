@@ -20,10 +20,6 @@ DEFAULT_ADMIN_AVATAR_FILENAME = "p0.png"
 
 
 class AuthService:
-    @staticmethod
-    def _internal_email_for_phone(phone: str) -> str:
-        return f"user_{phone}@nailtry.local"
-
     def _ensure_default_admin_avatar(self) -> str:
         settings = get_settings()
         target_path = settings.upload_path / "avatars" / "0" / DEFAULT_ADMIN_AVATAR_FILENAME
@@ -43,15 +39,7 @@ class AuthService:
         return public_url_for_path(target_path)
 
     def _apply_demo_consumer_identity(self, db: Session, user: User | None = None) -> bool:
-        internal_email = self._internal_email_for_phone(DEMO_CONSUMER_PHONE)
-        demo_user = user or db.scalar(
-            select(User).where(
-                or_(
-                    User.phone == DEMO_CONSUMER_PHONE,
-                    User.email == internal_email,
-                )
-            )
-        )
+        demo_user = user or db.scalar(select(User).where(User.phone == DEMO_CONSUMER_PHONE))
         if demo_user is None:
             return False
 
@@ -66,9 +54,6 @@ class AuthService:
             demo_user.uid = DEMO_CONSUMER_UID
             changed = True
 
-        if demo_user.email != internal_email:
-            demo_user.email = internal_email
-            changed = True
         if demo_user.phone != DEMO_CONSUMER_PHONE:
             demo_user.phone = DEMO_CONSUMER_PHONE
             changed = True
@@ -95,9 +80,17 @@ class AuthService:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="用户编号已满")
         return next_uid
 
+    def _record_login_ip_location(self, db: Session, user: User, ip_location: str | None) -> None:
+        location = (ip_location or "").strip() or "未知"
+        if user.last_login_ip_location == location:
+            return
+        user.last_login_ip_location = location
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
     def ensure_user_uids(self, db: Session) -> None:
         settings = get_settings()
-        internal_email = self._internal_email_for_phone(settings.default_admin_phone)
         users = list(db.scalars(select(User).order_by(User.created_at.asc(), User.id.asc())).all())
         if not users:
             return
@@ -108,7 +101,7 @@ class AuthService:
                 for item in users
                 if item.uid == 0
                 or item.phone == settings.default_admin_phone
-                or item.email == internal_email
+                or item.username == settings.default_admin_username
             ),
             None,
         )
@@ -147,7 +140,7 @@ class AuthService:
             db.add_all(users)
             db.commit()
 
-    def register(self, db: Session, payload: RegisterRequest) -> tuple[User, str]:
+    def register(self, db: Session, payload: RegisterRequest, ip_location: str | None = None) -> tuple[User, str]:
         phone = payload.phone.strip()
         existing_phone = db.scalar(select(User).where(User.phone == phone))
         if existing_phone is not None:
@@ -157,10 +150,10 @@ class AuthService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已被占用")
         user = User(
             uid=self._next_uid(db),
-            email=self._internal_email_for_phone(phone),
             phone=phone,
             username=payload.username.strip(),
             password_hash=get_password_hash(payload.password),
+            last_login_ip_location=(ip_location or "").strip() or "未知",
             role="consumer",
         )
         db.add(user)
@@ -170,15 +163,7 @@ class AuthService:
 
     def ensure_demo_consumer(self, db: Session) -> User:
         settings = get_settings()
-        internal_email = self._internal_email_for_phone(DEMO_CONSUMER_PHONE)
-        user = db.scalar(
-            select(User).where(
-                or_(
-                    User.phone == DEMO_CONSUMER_PHONE,
-                    User.email == internal_email,
-                )
-            )
-        )
+        user = db.scalar(select(User).where(User.phone == DEMO_CONSUMER_PHONE))
         if user is None:
             occupied_user = db.scalar(select(User).where(User.uid == DEMO_CONSUMER_UID))
             if occupied_user is not None:
@@ -186,7 +171,6 @@ class AuthService:
                 db.flush()
             user = User(
                 uid=DEMO_CONSUMER_UID,
-                email=internal_email,
                 phone=DEMO_CONSUMER_PHONE,
                 username=DEMO_CONSUMER_USERNAME,
                 password_hash=get_password_hash(settings.default_admin_password),
@@ -197,7 +181,6 @@ class AuthService:
             db.refresh(user)
             return user
 
-        user.email = internal_email
         user.phone = DEMO_CONSUMER_PHONE
         user.username = DEMO_CONSUMER_USERNAME
         user.password_hash = get_password_hash(settings.default_admin_password)
@@ -208,7 +191,7 @@ class AuthService:
         db.refresh(user)
         return user
 
-    def login(self, db: Session, payload: LoginRequest) -> tuple[User, str]:
+    def login(self, db: Session, payload: LoginRequest, ip_location: str | None = None) -> tuple[User, str]:
         phone = payload.phone.strip()
         settings = get_settings()
         if (
@@ -217,6 +200,7 @@ class AuthService:
             and payload.password == settings.default_admin_password
         ):
             user = self.ensure_demo_consumer(db)
+            self._record_login_ip_location(db, user, ip_location)
             return user, create_access_token(user.id)
 
         user = db.scalar(select(User).where(User.phone == phone))
@@ -232,6 +216,7 @@ class AuthService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="当前账号身份与登录入口不匹配",
             )
+        self._record_login_ip_location(db, user, ip_location)
         return user, create_access_token(user.id)
 
     def ensure_default_admin(self, db: Session) -> User | None:
@@ -239,7 +224,6 @@ class AuthService:
         if not settings.default_admin_enabled:
             return None
 
-        internal_email = self._internal_email_for_phone(settings.default_admin_phone)
         avatar_url = self._ensure_default_admin_avatar()
         existing = db.scalar(
             select(User).where(
@@ -247,14 +231,12 @@ class AuthService:
                     User.uid == 0,
                     User.phone == settings.default_admin_phone,
                     User.username == settings.default_admin_username,
-                    User.email == internal_email,
                 )
             )
         )
         if existing is None:
             existing = User(
                 uid=0,
-                email=internal_email,
                 phone=settings.default_admin_phone,
                 username=settings.default_admin_username,
                 avatar_url=avatar_url,
@@ -269,7 +251,6 @@ class AuthService:
             return existing
 
         existing.uid = 0
-        existing.email = internal_email
         existing.phone = settings.default_admin_phone
         existing.username = settings.default_admin_username
         existing.avatar_url = avatar_url

@@ -387,20 +387,29 @@ def test_profile_bio_can_be_cleared(client):
     assert profile_response.json()["bio"] == ""
 
 
-def test_author_profile_uses_user_location_city(client):
-    headers, user = _register_and_login(client, phone="13910000024", username="location-user")
-
-    update_response = client.patch(
-        "/api/v1/users/me/location",
-        headers=headers,
-        json={"city": "上海"},
+def test_author_profile_uses_last_login_ip_location(client):
+    register_response = client.post(
+        "/api/v1/auth/register",
+        headers={"x-geo-province": "%E5%B9%BF%E4%B8%9C", "x-geo-city": "%E6%B7%B1%E5%9C%B3"},
+        json={"phone": "13910000024", "password": "pass123456", "username": "location-user"},
     )
-    assert update_response.status_code == 200
-    assert update_response.json()["location_city"] == "上海"
+    assert register_response.status_code == 200
+    assert register_response.json()["user"]["last_login_ip_location"] == "广东深圳"
 
+    login_response = client.post(
+        "/api/v1/auth/login",
+        headers={"x-ip-location": "%E4%B8%8A%E6%B5%B7"},
+        json={"phone": "13910000024", "password": "pass123456"},
+    )
+    assert login_response.status_code == 200
+    user = login_response.json()["user"]
+    assert user["last_login_ip_location"] == "上海"
+    assert "location_city" not in user
+
+    headers = {"Authorization": f"Bearer {login_response.json()['access_token']}"}
     profile_response = client.get(f"/api/v1/users/{user['id']}/author-profile", headers=headers)
     assert profile_response.status_code == 200
-    assert profile_response.json()["city"] == "上海"
+    assert profile_response.json()["ip_location"] == "上海"
 
 
 def test_follow_lists_are_public_for_social_profiles(client, db_session):

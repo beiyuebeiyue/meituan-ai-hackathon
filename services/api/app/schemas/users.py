@@ -9,13 +9,12 @@ from app.schemas.posts import AuthorPostRead
 class UserRead(BaseModel):
     id: str
     uid: int
-    email: str
     phone: str | None = None
     username: str
     avatar_url: str | None = None
     birthday: str | None = None
     bio: str | None = None
-    location_city: str | None = None
+    last_login_ip_location: str | None = None
     role: str = "consumer"
     is_shop: bool = False
     show_following_public: bool = False
@@ -74,10 +73,6 @@ class MyStyleCommentListResponse(BaseModel):
     items: list[MyStyleCommentItem]
 
 
-class UserLocationUpdateRequest(BaseModel):
-    city: str
-
-
 class UserPrivacyRead(BaseModel):
     show_following_public: bool
     show_followers_public: bool
@@ -98,7 +93,7 @@ class UserSummaryRead(BaseModel):
     username: str
     avatar_url: str | None = None
     bio: str | None = None
-    city: str
+    ip_location: str
     is_shop: bool = False
     is_following: bool = False
 
@@ -115,7 +110,7 @@ class AuthorProfileRead(BaseModel):
     username: str
     avatar_url: str | None = None
     bio: str | None = None
-    city: str
+    ip_location: str
     follower_count: int
     following_count: int
     published_count: int

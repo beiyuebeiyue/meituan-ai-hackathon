@@ -4,9 +4,11 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+ROOT_DIR = Path(__file__).resolve().parents[4]
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=(ROOT_DIR / ".env", ".env"), env_file_encoding="utf-8", extra="ignore")
 
     app_env: str = "development"
     app_host: str = "0.0.0.0"
@@ -22,7 +24,11 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 10080
 
     openai_api_key: str = ""
+    openai_text_model: str = "gpt-5.2"
     openai_image_model: str = "gpt-image-2"
+    longcat_api_key: str = ""
+    longcat_base_url: str = "https://api.longcat.chat/openai"
+    longcat_model: str = "LongCat-Flash-Chat-2602-Exp"
     image_pipeline_version: str = "mediapipe-sam31-v1"
     image_provider_config_hash: str = ""
     remote_gpu_tryon_url: str = ""
@@ -33,6 +39,8 @@ class Settings(BaseSettings):
     default_admin_phone: str = "13886722666"
     default_admin_username: str = "keke"
     default_admin_password: str = "admin@123456"
+    ops_admin_username: str = "admin"
+    ops_admin_password: str = "admin"
     default_admin_bio: str = (
         "谢谢关注!\n"
         "大家有对我不满的地方都可以提出来，尽情发言，一会就给你们全删了。"
@@ -58,7 +66,7 @@ class Settings(BaseSettings):
 
     @property
     def base_dir(self) -> Path:
-        return Path(__file__).resolve().parents[4]
+        return ROOT_DIR
 
     def resolve_path(self, value: str) -> Path:
         path = Path(value)
@@ -85,6 +93,10 @@ class Settings(BaseSettings):
     @property
     def report_path(self) -> Path:
         return self.resolve_path(self.report_dir)
+
+    @property
+    def xhs_crawler_assets_path(self) -> Path:
+        return self.base_dir / ".openclaw" / "skills" / "xhs-popular-nail-posts-crawler" / "assets"
 
     @property
     def seed_xlsx(self) -> Path:

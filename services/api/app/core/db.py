@@ -87,10 +87,14 @@ def sync_runtime_schema() -> None:
             connection.execute(text("ALTER TABLE users ADD COLUMN birthday VARCHAR(20)"))
         if "bio" not in user_columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN bio TEXT"))
-        if "location_city" not in user_columns:
-            connection.execute(text("ALTER TABLE users ADD COLUMN location_city VARCHAR(80)"))
+        if "last_login_ip_location" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN last_login_ip_location VARCHAR(120)"))
+        if "location_city" in user_columns:
+            connection.execute(text("ALTER TABLE users DROP COLUMN location_city"))
         if "role" not in user_columns:
             connection.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'consumer'"))
+        if "email" in user_columns and database.engine.dialect.name == "postgresql":
+            connection.execute(text("ALTER TABLE users ALTER COLUMN email DROP NOT NULL"))
         connection.execute(text("UPDATE users SET role = 'consumer' WHERE role IS NULL OR role = ''"))
         connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_uid ON users (uid)"))
         connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_phone ON users (phone)"))
