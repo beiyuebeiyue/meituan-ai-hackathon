@@ -118,6 +118,26 @@ export type OpsMerchantUser = {
   completed_booking_count: number;
 };
 
+export type OpsPost = {
+  id: string;
+  author_user_id: string;
+  author_uid: number;
+  author_name: string;
+  author_role: string;
+  title: string;
+  description: string;
+  image_url: string;
+  local_image_path: string;
+  tags: string[];
+  is_hidden: boolean;
+  shop_id?: string | null;
+  shop_name?: string | null;
+  shop_city?: string | null;
+  verified_booking_id?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ListResponse<T> = {
   items: T[];
   total: number;
@@ -161,6 +181,14 @@ export type OpsReport = {
   created_at: string;
 };
 
+export type OpsMarkdownReport = {
+  report_date: string;
+  date_key: string;
+  markdown_content: string;
+  local_file_path: string;
+  created_at: string;
+};
+
 export type ReportGenerateResponse = {
   report_date: string;
   markdown_content: string;
@@ -175,6 +203,49 @@ export type PerformanceMetrics = {
   high_impression_low_ctr: Array<Record<string, unknown>>;
   low_impression_high_ctr: Array<Record<string, unknown>>;
 };
+
+const XHS_REPORT_FILE = "xhs_daily_nail_report.md";
+
+function shanghaiDateKey(value: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}${part("month")}${part("day")}`;
+}
+
+function dateKeyToReportDate(dateKey: string): string {
+  return `${dateKey.slice(0, 4)}-${dateKey.slice(4, 6)}-${dateKey.slice(6, 8)}`;
+}
+
+function xhsReportUrl(dateKey: string, fileName: string): string {
+  return `${API_ORIGIN}/xhs-daily-report-assets/${dateKey}/${fileName}`;
+}
+
+async function fetchXhsMarkdownReport(dateKey: string, fileName: string): Promise<OpsMarkdownReport | null> {
+  const url = xhsReportUrl(dateKey, fileName);
+  const response = await fetch(url, { cache: "no-store" });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  return {
+    report_date: dateKeyToReportDate(dateKey),
+    date_key: dateKey,
+    markdown_content: await response.text(),
+    local_file_path: url,
+    created_at: response.headers.get("last-modified") ?? new Date().toISOString(),
+  };
+}
+
+async function fetchXhsMarkdownReportHistory(fileName: string, limit = 30): Promise<OpsMarkdownReport[]> {
+  const dayMs = 24 * 60 * 60 * 1000;
+  const reports = await Promise.all(
+    Array.from({ length: limit }, (_, index) => fetchXhsMarkdownReport(shanghaiDateKey(new Date(Date.now() - index * dayMs)), fileName)),
+  );
+  return reports.filter((item): item is OpsMarkdownReport => Boolean(item));
+}
 
 export const api = {
   login: (username: string, password: string) =>
@@ -198,6 +269,9 @@ export const api = {
       `/ops/merchant-users?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`,
     ),
   getMerchantUser: (id: string) => request<OpsMerchantUser>(`/ops/merchant-users/${id}`),
+  getPosts: (query = "", limit = 50, offset = 0) =>
+    request<ListResponse<OpsPost>>(`/ops/posts?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`),
+  getPost: (id: string) => request<OpsPost>(`/ops/posts/${id}`),
   createCouponGrant: (payload: CouponGrantPayload) =>
     request<CouponGrant>("/ops/coupons/grants", { method: "POST", body: JSON.stringify(payload) }),
   getCouponGrants: (limit = 50, offset = 0) => request<ListResponse<CouponGrant>>(`/ops/coupons/grants?limit=${limit}&offset=${offset}`),
@@ -207,7 +281,8 @@ export const api = {
   saveReport: (payload: ReportGenerateResponse) =>
     request<OpsReport>("/ops/reports/save", { method: "POST", body: JSON.stringify(payload) }),
   getTodayReport: () => request<OpsReport | null>("/ops/reports/today"),
-  getReportHistory: () => request<OpsReport[]>("/ops/reports/history"),
+  getTodayXhsNailReport: () => fetchXhsMarkdownReport(shanghaiDateKey(new Date()), XHS_REPORT_FILE),
+  getXhsNailReportHistory: () => fetchXhsMarkdownReportHistory(XHS_REPORT_FILE),
   getPerformance: () => request<PerformanceMetrics>("/ops/metrics/performance"),
 };
 

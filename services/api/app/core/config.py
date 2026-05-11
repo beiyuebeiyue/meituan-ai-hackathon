@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     default_admin_password: str = "admin@123456"
     ops_admin_username: str = "admin"
     ops_admin_password: str = "admin"
+    ops_ai_provider: str = "openclaw"
     default_admin_bio: str = (
         "谢谢关注!\n"
         "大家有对我不满的地方都可以提出来，尽情发言，一会就给你们全删了。"
@@ -54,11 +55,15 @@ class Settings(BaseSettings):
     tryon_artifact_dir: str = "./data/tryon_artifacts"
     seed_dir: str = "./data/seed"
     report_dir: str = "./data/reports"
+    xhs_daily_report_assets_dir: str = ".openclaw/skills/xhs-daily-nail-report/assets"
+    nail_rag_dir: str = "./data/rag/nail_rag_mvp_300"
     public_files_prefix: str = "/files"
 
     openclaw_enabled: bool = True
-    openclaw_skill_name: str = "nail_ops_strategy"
-    openclaw_base_url: str = "http://openclaw:3000"
+    openclaw_skill_name: str = "xhs-daily-nail-report"
+    openclaw_base_url: str = "http://host.docker.internal:18789"
+    openclaw_model: str = "openclaw/default"
+    openclaw_gateway_token: str = ""
     ops_report_timezone: str = "Asia/Shanghai"
 
     allow_mock_image_edit_fallback: bool = True
@@ -97,6 +102,14 @@ class Settings(BaseSettings):
     @property
     def xhs_crawler_assets_path(self) -> Path:
         return self.base_dir / ".openclaw" / "skills" / "xhs-popular-nail-posts-crawler" / "assets"
+
+    @property
+    def xhs_daily_report_assets_path(self) -> Path:
+        return self.resolve_path(self.xhs_daily_report_assets_dir)
+
+    @property
+    def nail_rag_path(self) -> Path:
+        return self.resolve_path(self.nail_rag_dir)
 
     @property
     def seed_xlsx(self) -> Path:

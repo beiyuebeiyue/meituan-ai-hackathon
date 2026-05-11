@@ -13,6 +13,7 @@
     "@refinedev/core": "^5.0.12",
     "@refinedev/react-router": "^2.0.4",
     "antd": "^5.29.3",
+    "echarts": "^6.0.0",
     "lottie-react": "^2.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

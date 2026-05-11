@@ -40,10 +40,11 @@ const navItems = [
       { key: "/users", label: "用户" },
       { key: "/merchant-users", label: "商家用户" },
       { key: "/merchants", label: "门店" },
+      { key: "/posts", label: "帖子" },
     ],
   },
   { key: "/coupons", icon: <TagsOutlined />, label: "发券记录" },
-  { key: "/reports", icon: <ReadOutlined />, label: "日报" },
+  { key: "/reports", icon: <ReadOutlined />, label: "运营日报" },
   {
     key: "profile",
     icon: <UserOutlined />,

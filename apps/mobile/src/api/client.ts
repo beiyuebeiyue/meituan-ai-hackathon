@@ -1,6 +1,8 @@
 import { Platform } from "react-native";
 import { useAuthStore } from "../store/useAuthStore";
 import {
+  AIChatMessage,
+  AIChatResponse,
   AuthResponse,
   AuthorProfile,
   Booking,
@@ -258,6 +260,12 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query_text: queryText, limit: 5 }),
+    }),
+  chat: (messages: AIChatMessage[]) =>
+    request<AIChatResponse>("/ai/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
     }),
   createTryOnJob: async (payload: { styleId: string; promptText: string; handImageUri?: string | null; savedHandPhotoId?: string | null }) => {
     const form = new FormData();

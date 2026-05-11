@@ -208,6 +208,25 @@ node_modules/
 web-build/
 dist/
 coverage/
+apps/*/tsconfig.tsbuildinfo
+
+# Project-local OpenClaw runtime state and secrets
+.openclaw/openclaw.json
+.openclaw/openclaw.json.bak*
+.openclaw/openclaw.json.last-good
+.openclaw/state/
+.openclaw/logs/
+.openclaw/tmp/
+.openclaw/gateway.pid
+.openclaw/workspace/
+.openclaw/skills/*/assets/
+.openclaw/skills/*/spaces/
+
+# Project runtime data
+data/uploads/
+data/reports/
+data/tryon_results/
+data/tryon_artifacts/
 
 # OS
 .DS_Store
@@ -218,3 +237,5 @@ marimo/_lsp/
 __marimo__/
 
 *.xlsx
+*.ipynb
+data/sft/packages/

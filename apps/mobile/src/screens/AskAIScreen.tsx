@@ -28,14 +28,13 @@ import { useTryOnLauncher } from "../hooks/useTryOnLauncher";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useAskAIStore } from "../store/useAskAIStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { RecommendationResponse } from "../types/api";
+import { AIChatMessage, RecommendationResponse } from "../types/api";
 import {
   ASK_AGENT_EXAMPLES,
   ASK_AGENT_FILTERS,
   AskIntent,
   buildRecommendationQuery,
   getAgentHandPrompt,
-  getAgentLead,
   getAgentResultPrompt,
   inferAskIntent,
 } from "../utils/askAgent";
@@ -175,6 +174,7 @@ export function AskAIScreen() {
   const token = useAuthStore((state) => state.token);
 
   const [askedQuery, setAskedQuery] = useState("");
+  const [chatMessages, setChatMessages] = useState<AIChatMessage[]>([]);
   const [intent, setIntent] = useState<AskIntent | null>(null);
   const [assistantLine, setAssistantLine] = useState("想看热门款、适合你的款式，或者直接挑一款先试戴，都可以问我。");
   const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
@@ -185,22 +185,28 @@ export function AskAIScreen() {
   const [composerHeight, setComposerHeight] = useState(158);
   const today = useMemo(formatPromptBoardDate, []);
 
+  const chatMutation = useMutation({
+    mutationFn: (messages: AIChatMessage[]) => api.chat(messages),
+    onSuccess: (data, messages) => {
+      setAssistantLine(data.reply);
+      setChatMessages([...messages, { role: "assistant" as const, content: data.reply }].slice(-12));
+    },
+    onError: () => {
+      setAssistantLine("我暂时没连上小嘉大模型，但仍会先按图库帮你挑适合试戴的款式。");
+    },
+  });
+
   const recommendMutation = useMutation({
     mutationFn: ({ queryText, nextIntent }: { queryText: string; nextIntent: AskIntent }) => api.recommend(queryText),
-    onSuccess: (data, variables) => {
+    onSuccess: (data) => {
       setRecommendations(data.items);
       setNeedsHandFor(null);
-      if (variables.nextIntent === "hand_match") {
-        setAssistantLine("我先结合你选的手图挑了几款适合先试的美甲，你想先上手哪一款？");
-      } else if (variables.nextIntent === "hot_find") {
-        setAssistantLine("先把热度和上手效果都不错的几款摆给你，你可以直接挑一款试到手上。");
-      } else {
-        setAssistantLine("按你的描述先挑了这几款真实可试戴的美甲，你想先试哪一张？");
-      }
     },
     onError: () => {
       setRecommendations([]);
-      setAssistantLine("这次没顺利找到结果，换个说法或者换个关键词再问我一次。");
+      if (!chatMutation.isPending) {
+        setAssistantLine("这次没顺利找到结果，换个说法或者换个关键词再问我一次。");
+      }
     },
   });
 
@@ -312,6 +318,7 @@ export function AskAIScreen() {
     setTryOnFeedback("idle");
     setQueuedTryOnStyleId(null);
     recommendMutation.reset();
+    chatMutation.reset();
     queryClient.removeQueries({ queryKey: ["ask-ai-job"] });
 
     if (nextIntent === "hand_match" && !hasHandSelection) {
@@ -321,7 +328,10 @@ export function AskAIScreen() {
     }
 
     setNeedsHandFor(null);
-    setAssistantLine(getAgentLead(nextIntent));
+    setAssistantLine("我先理解你的需求，再从图库里挑适合的款式。");
+    const nextMessages: AIChatMessage[] = [...chatMessages, { role: "user" as const, content: query }].slice(-12);
+    setChatMessages(nextMessages);
+    chatMutation.mutate(nextMessages);
     recommendMutation.mutate({ queryText: buildRecommendationQuery(nextIntent, query), nextIntent });
   };
 
@@ -444,7 +454,10 @@ export function AskAIScreen() {
               <Ionicons name="sparkles" size={18} color={colors.accent} />
             </View>
             <View style={{ flex: 1, gap: 6 }}>
-              <Text style={[styles.assistantTitle, { color: colors.text }]}>小嘉助手</Text>
+              <View style={styles.assistantTitleRow}>
+                <Text style={[styles.assistantTitle, { color: colors.text }]}>{chatMutation.isPending ? "小嘉正在想" : "小嘉助手"}</Text>
+                {chatMutation.isPending ? <ActivityIndicator size="small" color={colors.accent} /> : null}
+              </View>
               <Text style={[styles.assistantText, { color: colors.subtext }]}>{assistantLine}</Text>
             </View>
           </View>
@@ -791,6 +804,11 @@ const styles = StyleSheet.create({
   assistantTitle: {
     fontSize: 17,
     fontWeight: "700",
+  },
+  assistantTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   assistantText: {
     fontSize: 14,

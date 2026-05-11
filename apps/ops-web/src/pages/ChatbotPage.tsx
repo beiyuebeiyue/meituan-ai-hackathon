@@ -4,114 +4,18 @@ import Lottie from "lottie-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, ChatMessage } from "../api/client";
 import catTypingAnimation from "../assets/lottie/cat-typing.json";
-
-type Conversation = {
-  id: string;
-  title: string;
-  updated_at: string;
-  messages: ChatMessage[];
-};
-
-const STORAGE_KEY = "ops_xiaojia_conversations";
-
-const starterMessage: ChatMessage = {
-  role: "assistant",
-  content: "你好，我是运营小嘉。可以帮你查看营收、用户增长、热门美甲、发券记录和日报总结。",
-};
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function dayOffsetIso(offset: number) {
-  const date = new Date();
-  date.setDate(date.getDate() + offset);
-  return date.toISOString();
-}
-
-function makeId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function seedConversations(): Conversation[] {
-  return [
-    {
-      id: makeId(),
-      title: "昨天的营收情况？",
-      updated_at: nowIso(),
-      messages: [
-        { role: "user", content: "昨天的营收情况？" },
-        {
-          role: "assistant",
-          content: "昨天完成预约 23 单，按 100 元/单估算营收为 ¥2,300。完成单主要集中在下午和晚间，建议今天继续关注高转化门店的预约承接。",
-        },
-      ],
-    },
-    {
-      id: makeId(),
-      title: "最近的用户增长情况",
-      updated_at: dayOffsetIso(-1),
-      messages: [
-        { role: "user", content: "最近的用户增长情况怎么样？" },
-        {
-          role: "assistant",
-          content: "最近新增用户保持上升，新增主要来自热门美甲内容曝光和 AI 焕手入口。建议把新用户按是否完成 AI 焕手、是否收藏款式继续分层观察。",
-        },
-      ],
-    },
-    {
-      id: makeId(),
-      title: "总结一下上周的周报",
-      updated_at: dayOffsetIso(-6),
-      messages: [
-        { role: "user", content: "总结一下上周的周报" },
-        {
-          role: "assistant",
-          content: "上周核心指标是用户增长、AI 焕手使用和预约完成率。热门美甲内容带来更多浏览，发券记录可继续和预约转化一起看，判断优惠券是否真正推动下单。",
-        },
-      ],
-    },
-  ];
-}
-
-function loadConversations(): Conversation[] {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) {
-    const seeded = seedConversations();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
-    return seeded;
-  }
-  try {
-    const parsed = JSON.parse(raw) as Conversation[];
-    return Array.isArray(parsed) ? parsed : seedConversations();
-  } catch {
-    return seedConversations();
-  }
-}
-
-function saveConversations(items: Conversation[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
-function groupLabel(value: string) {
-  const date = new Date(value);
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === today.toDateString()) return "今天";
-  if (date.toDateString() === yesterday.toDateString()) return "昨天";
-  return "更早";
-}
-
-function isBlankNewConversation(item: Conversation) {
-  return (
-    item.title === "新对话" &&
-    item.messages.length === 1 &&
-    item.messages[0].role === starterMessage.role &&
-    item.messages[0].content === starterMessage.content
-  );
-}
+import {
+  createOrReuseBlankConversation,
+  getSavedActiveConversationId,
+  groupLabel,
+  isBlankNewConversation,
+  loadConversations,
+  nowIso,
+  saveActiveConversationId,
+  saveConversations,
+  sortConversations,
+  type XiaojiaConversation,
+} from "../utils/xiaojiaConversations";
 
 function XiaojiaMascot({ className = "" }: { className?: string }) {
   return (
@@ -127,8 +31,8 @@ function XiaojiaMascot({ className = "" }: { className?: string }) {
 
 export function ChatbotPage() {
   const { message } = App.useApp();
-  const [conversations, setConversations] = useState<Conversation[]>(() => loadConversations());
-  const [activeId, setActiveId] = useState(() => loadConversations()[0]?.id ?? "");
+  const [conversations, setConversations] = useState<XiaojiaConversation[]>(() => loadConversations());
+  const [activeId, setActiveIdState] = useState(() => getSavedActiveConversationId(loadConversations()));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [waitingDots, setWaitingDots] = useState(".");
@@ -139,7 +43,7 @@ export function ChatbotPage() {
   const visibleMessages = isBlankConversation ? [] : activeConversation?.messages ?? [];
 
   const groupedConversations = useMemo(() => {
-    const groups: Record<string, Conversation[]> = { 今天: [], 昨天: [], 更早: [] };
+    const groups: Record<string, XiaojiaConversation[]> = { 今天: [], 昨天: [], 更早: [] };
     conversations.forEach((item) => groups[groupLabel(item.updated_at)].push(item));
     return groups;
   }, [conversations]);
@@ -147,6 +51,10 @@ export function ChatbotPage() {
   useEffect(() => {
     saveConversations(conversations);
   }, [conversations]);
+
+  useEffect(() => {
+    saveActiveConversationId(activeId);
+  }, [activeId]);
 
   useEffect(() => {
     if (!loading) {
@@ -166,29 +74,20 @@ export function ChatbotPage() {
     });
   }, [activeId, activeConversation?.messages, loading, waitingDots]);
 
-  function updateConversations(next: Conversation[]) {
-    const sorted = [...next].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  function selectConversation(id: string) {
+    setActiveIdState(id);
+    saveActiveConversationId(id);
+  }
+
+  function updateConversations(next: XiaojiaConversation[], nextActiveId = activeId) {
+    const sorted = sortConversations(next);
     setConversations(sorted);
-    if (!sorted.some((item) => item.id === activeId)) {
-      setActiveId(sorted[0]?.id ?? "");
-    }
+    selectConversation(sorted.some((item) => item.id === nextActiveId) ? nextActiveId : (sorted[0]?.id ?? ""));
   }
 
   function createConversation() {
-    const existing = conversations.find(isBlankNewConversation);
-    if (existing) {
-      setActiveId(existing.id);
-      setInput("");
-      return;
-    }
-    const next: Conversation = {
-      id: makeId(),
-      title: "新对话",
-      updated_at: nowIso(),
-      messages: [starterMessage],
-    };
-    setConversations((current) => [next, ...current]);
-    setActiveId(next.id);
+    const { conversation, conversations: next } = createOrReuseBlankConversation(conversations);
+    updateConversations(next, conversation.id);
     setInput("");
   }
 
@@ -270,9 +169,9 @@ export function ChatbotPage() {
                     tabIndex={0}
                     key={item.id}
                     className={`chatbot-history-item${item.id === activeConversation?.id ? " is-active" : ""}`}
-                    onClick={() => setActiveId(item.id)}
+                    onClick={() => selectConversation(item.id)}
                     onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") setActiveId(item.id);
+                      if (event.key === "Enter" || event.key === " ") selectConversation(item.id);
                     }}
                   >
                     <span className="chatbot-history-title">{item.title}</span>

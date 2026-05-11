@@ -2,11 +2,14 @@
 import os
 import subprocess
 import time
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from scripts.utils import load_json, note_id, save_json, save_text
 
 SLEEP_SECONDS = 0
+SHANGHAI_TZ = ZoneInfo("Asia/Shanghai")
 
 
 def keyword_by_note_id(summary):
@@ -25,6 +28,10 @@ def count_value(value):
     return int(text)
 
 
+def publish_date(value):
+    return datetime.fromtimestamp(int(value) / 1000, SHANGHAI_TZ).strftime("%Y-%m-%d")
+
+
 def digest_note(read_path, keyword):
     read_json = load_json(read_path)
     item = read_json["data"]["items"][0]
@@ -34,10 +41,14 @@ def digest_note(read_path, keyword):
     return {
         "note_id": read_path.stem,
         "keyword": keyword,
+        "time": note_card["time"],
+        "publish_date": publish_date(note_card["time"]),
+        "user_name": note_card["user"]["nickname"],
         "title": note_card["title"],
         "desc": note_card["desc"],
         "tag_list": [tag["name"] for tag in note_card["tag_list"]],
         "image_list": [image["url_default"] for image in note_card["image_list"]],
+        "standard_nail_image": "",
         "liked_count": count_value(interact["liked_count"]),
         "collected_count": count_value(interact["collected_count"]),
         "share_count": count_value(interact["share_count"]),

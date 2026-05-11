@@ -30,6 +30,14 @@ class OpsReportRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class OpsMarkdownReportRead(BaseModel):
+    report_date: date
+    date_key: str
+    markdown_content: str
+    local_file_path: str
+    created_at: datetime
+
+
 class PerformanceMetricsResponse(BaseModel):
     report_date: date
     top_clicked_styles: list[dict[str, object]]
@@ -169,6 +177,31 @@ class OpsMerchantUserListItem(BaseModel):
 
 class OpsMerchantUserListResponse(BaseModel):
     items: list[OpsMerchantUserListItem]
+    total: int
+
+
+class OpsPostListItem(BaseModel):
+    id: str
+    author_user_id: str
+    author_uid: int
+    author_name: str
+    author_role: str
+    title: str
+    description: str
+    image_url: str
+    local_image_path: str
+    tags: list[str]
+    is_hidden: bool
+    shop_id: str | None = None
+    shop_name: str | None = None
+    shop_city: str | None = None
+    verified_booking_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class OpsPostListResponse(BaseModel):
+    items: list[OpsPostListItem]
     total: int
 
 

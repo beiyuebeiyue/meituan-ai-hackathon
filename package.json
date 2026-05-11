@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "openclaw": "^2026.5.7"
+  },
+  "scripts": {
+    "openclaw": "openclaw",
+    "openclaw:ops": "OPENCLAW_STATE_DIR=.openclaw/state OPENCLAW_CONFIG_PATH=.openclaw/openclaw.json openclaw",
+    "ops": "bash scripts/start_ops.sh"
+  }
+}

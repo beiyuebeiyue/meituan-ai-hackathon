@@ -5,7 +5,7 @@ from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -30,13 +30,12 @@ from app.schemas.ops import (
     OpsMerchantUserListItem,
     OpsMerchantUserListResponse,
     OpsMetricPair,
+    OpsPostListItem,
+    OpsPostListResponse,
     OpsPopularNail,
     OpsUserListItem,
     OpsUserListResponse,
 )
-
-ORDER_PRICE = 100
-
 
 class OpsAdminService:
     def _today_window(self) -> tuple[datetime, datetime, date, str]:
@@ -58,6 +57,10 @@ class OpsAdminService:
 
     def _metric(self, total: int, today: int) -> OpsMetricPair:
         return OpsMetricPair(total=total, today=today)
+
+    def _revenue_yuan(self, db: Session, *criteria) -> int:
+        amount_cents = int(db.scalar(select(func.coalesce(func.sum(Booking.amount_cents), 0)).where(*criteria)) or 0)
+        return amount_cents // 100
 
     def dashboard(self, db: Session) -> OpsDashboardResponse:
         start, end, report_date, tz_name = self._today_window()
@@ -109,6 +112,13 @@ class OpsAdminService:
                 Booking.updated_at <= end,
             ),
         )
+        revenue_total = self._revenue_yuan(db, Booking.status == "completed")
+        revenue_today = self._revenue_yuan(
+            db,
+            Booking.status == "completed",
+            Booking.updated_at >= start,
+            Booking.updated_at <= end,
+        )
 
         metrics = OpsDashboardMetrics(
             users=self._metric(user_total, user_today),
@@ -120,7 +130,7 @@ class OpsAdminService:
             tryon_users=self._metric(tryon_users_total, tryon_users_today),
             bookings=self._metric(bookings_total, bookings_today),
             completed_bookings=self._metric(completed_total, completed_today),
-            revenue=self._metric(completed_total * ORDER_PRICE, completed_today * ORDER_PRICE),
+            revenue=self._metric(revenue_total, revenue_today),
         )
         return OpsDashboardResponse(
             report_date=report_date,
@@ -263,6 +273,59 @@ class OpsAdminService:
                 db,
                 select(func.count(Booking.id)).where(Booking.merchant_user_id == user.id, Booking.status == "completed"),
             ),
+        )
+
+    def list_posts(self, db: Session, query: str = "", limit: int = 50, offset: int = 0) -> OpsPostListResponse:
+        statement = select(UserPost).join(User, UserPost.user_id == User.id).outerjoin(MerchantShop, UserPost.shop_id == MerchantShop.id)
+        count_statement = select(func.count(UserPost.id)).join(User, UserPost.user_id == User.id).outerjoin(
+            MerchantShop,
+            UserPost.shop_id == MerchantShop.id,
+        )
+        if query:
+            pattern = f"%{query}%"
+            filter_clause = or_(
+                UserPost.title.ilike(pattern),
+                UserPost.description.ilike(pattern),
+                cast(UserPost.tags_json, String).ilike(pattern),
+                User.username.ilike(pattern),
+                User.phone.ilike(pattern),
+                MerchantShop.name.ilike(pattern),
+                MerchantShop.city.ilike(pattern),
+            )
+            statement = statement.where(filter_clause)
+            count_statement = count_statement.where(filter_clause)
+
+        total = self._count(db, count_statement)
+        posts = list(db.scalars(statement.order_by(UserPost.created_at.desc()).offset(offset).limit(limit)))
+        return OpsPostListResponse(items=[self._post_item(post) for post in posts], total=total)
+
+    def get_post(self, db: Session, post_id: str) -> OpsPostListItem:
+        post = db.get(UserPost, post_id)
+        if post is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="帖子不存在")
+        return self._post_item(post)
+
+    def _post_item(self, post: UserPost) -> OpsPostListItem:
+        user = post.user
+        shop = post.shop
+        return OpsPostListItem(
+            id=post.id,
+            author_user_id=post.user_id,
+            author_uid=user.uid if user else 0,
+            author_name=user.username if user else "未知用户",
+            author_role=user.role if user else "",
+            title=post.title,
+            description=post.description,
+            image_url=post.image_url,
+            local_image_path=post.local_image_path,
+            tags=post.tags_json or [],
+            is_hidden=post.is_hidden,
+            shop_id=post.shop_id,
+            shop_name=shop.name if shop else None,
+            shop_city=shop.city if shop else None,
+            verified_booking_id=post.verified_booking_id,
+            created_at=post.created_at,
+            updated_at=post.updated_at,
         )
 
     def create_coupon(self, db: Session, payload: OpsCouponGrantCreate, created_by: str) -> OpsCouponGrantRead:

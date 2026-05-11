@@ -4,11 +4,19 @@ import Lottie from "lottie-react";
 import { useEffect, useRef, useState } from "react";
 import { api, ChatMessage } from "../api/client";
 import catTypingAnimation from "../assets/lottie/cat-typing.json";
-
-const starter: ChatMessage = {
-  role: "assistant",
-  content: "我可以帮你看运营数据、热门美甲、用户商家情况和发券记录。",
-};
+import {
+  CONVERSATIONS_CHANGED_EVENT,
+  createOrReuseBlankConversation,
+  getSavedActiveConversationId,
+  isBlankNewConversation,
+  loadConversations,
+  nowIso,
+  saveActiveConversationId,
+  saveConversations,
+  sortConversations,
+  starterMessage,
+  type XiaojiaConversation,
+} from "../utils/xiaojiaConversations";
 
 const commands = [
   { command: "/clear", title: "清空当前窗口", description: "清除当前聊天内容" },
@@ -19,12 +27,29 @@ const commands = [
 export function OpsChatWidget() {
   const { message } = App.useApp();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([starter]);
+  const [conversations, setConversations] = useState<XiaojiaConversation[]>(() => loadConversations());
+  const [activeId, setActiveIdState] = useState(() => getSavedActiveConversationId(loadConversations()));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [waitingDots, setWaitingDots] = useState(".");
   const messagesRef = useRef<HTMLDivElement>(null);
   const commandOpen = input.trim().startsWith("/");
+  const activeConversation = conversations.find((item) => item.id === activeId) ?? conversations[0];
+  const messages = activeConversation?.messages ?? [];
+
+  useEffect(() => {
+    const syncConversations = () => {
+      const next = loadConversations();
+      setConversations(next);
+      setActiveIdState(getSavedActiveConversationId(next));
+    };
+    window.addEventListener(CONVERSATIONS_CHANGED_EVENT, syncConversations);
+    window.addEventListener("storage", syncConversations);
+    return () => {
+      window.removeEventListener(CONVERSATIONS_CHANGED_EVENT, syncConversations);
+      window.removeEventListener("storage", syncConversations);
+    };
+  }, []);
 
   useEffect(() => {
     if (!loading) {
@@ -45,8 +70,50 @@ export function OpsChatWidget() {
     });
   }, [messages, loading, waitingDots, open]);
 
+  function selectConversation(id: string) {
+    setActiveIdState(id);
+    saveActiveConversationId(id);
+  }
+
+  function updateConversations(next: XiaojiaConversation[], nextActiveId: string) {
+    const sorted = sortConversations(next);
+    setConversations(sorted);
+    saveConversations(sorted);
+    selectConversation(sorted.some((item) => item.id === nextActiveId) ? nextActiveId : (sorted[0]?.id ?? ""));
+  }
+
+  function replaceConversation(
+    source: XiaojiaConversation[],
+    conversation: XiaojiaConversation,
+    nextMessages: ChatMessage[],
+    title?: string,
+  ) {
+    const next = source.map((item) =>
+      item.id === conversation.id
+        ? {
+            ...item,
+            title: title ?? item.title,
+            updated_at: nowIso(),
+            messages: nextMessages,
+          }
+        : item,
+    );
+    updateConversations(next, conversation.id);
+    return next;
+  }
+
+  function getActiveOrCreateBlank() {
+    if (activeConversation) {
+      return { conversation: activeConversation, conversations };
+    }
+    const { conversation, conversations: next } = createOrReuseBlankConversation(conversations);
+    updateConversations(next, conversation.id);
+    return { conversation, conversations: next };
+  }
+
   function startNewConversation() {
-    setMessages([starter]);
+    const { conversation, conversations: next } = createOrReuseBlankConversation(conversations);
+    updateConversations(next, conversation.id);
     setInput("");
     setLoading(false);
   }
@@ -54,7 +121,8 @@ export function OpsChatWidget() {
   function runCommand(content: string) {
     const command = content.toLowerCase();
     if (command === "clear" || command === "/clear") {
-      setMessages([]);
+      const { conversation, conversations: source } = getActiveOrCreateBlank();
+      replaceConversation(source, conversation, [starterMessage], "新对话");
       setInput("");
       return true;
     }
@@ -63,11 +131,14 @@ export function OpsChatWidget() {
       return true;
     }
     if (command === "help" || command === "/help") {
-      setMessages([
-        ...messages,
+      const { conversation, conversations: source } = getActiveOrCreateBlank();
+      const baseMessages = isBlankNewConversation(conversation) ? [] : conversation.messages;
+      const nextMessages: ChatMessage[] = [
+        ...baseMessages,
         { role: "user", content },
         { role: "assistant", content: "可用命令：clear 清空当前窗口，new 开启新对话，help 查看命令。" },
-      ]);
+      ];
+      replaceConversation(source, conversation, nextMessages, conversation.title === "新对话" ? "查看命令" : conversation.title);
       setInput("");
       return true;
     }
@@ -78,13 +149,16 @@ export function OpsChatWidget() {
     const content = input.trim();
     if (!content || loading) return;
     if (runCommand(content)) return;
-    const nextMessages: ChatMessage[] = [...messages, { role: "user", content }];
-    setMessages(nextMessages);
+    const { conversation, conversations: source } = getActiveOrCreateBlank();
+    const baseMessages = isBlankNewConversation(conversation) ? [] : conversation.messages;
+    const nextMessages: ChatMessage[] = [...baseMessages, { role: "user", content }];
+    const nextTitle = conversation.title === "新对话" ? content.slice(0, 24) : conversation.title;
+    const optimisticConversations = replaceConversation(source, conversation, nextMessages, nextTitle);
     setInput("");
     setLoading(true);
     try {
-      const response = await api.chat(nextMessages);
-      setMessages([...nextMessages, { role: "assistant", content: response.reply }]);
+      const response = await api.chat(nextMessages.slice(-20));
+      replaceConversation(optimisticConversations, conversation, [...nextMessages, { role: "assistant", content: response.reply }], nextTitle);
     } catch (error) {
       message.error(error instanceof Error ? error.message : "运营小嘉暂不可用");
     } finally {

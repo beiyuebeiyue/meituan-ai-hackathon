@@ -13,7 +13,7 @@ from app.core.config import get_settings
 from app.models.nail_style import NailStyle
 from app.models.ops_report import OpsReport
 from app.models.style_event_daily import StyleEventDaily
-from app.schemas.ops import PerformanceMetricsResponse, ReportGenerateResponse
+from app.schemas.ops import OpsMarkdownReportRead, PerformanceMetricsResponse, ReportGenerateResponse
 from app.services.job_log_service import JobLogService
 from app.services.trend_service import TrendService
 from app.utils.markdown import render_daily_report_markdown
@@ -125,8 +125,29 @@ class ReportService:
         target_date = datetime.now(ZoneInfo(self.settings.ops_report_timezone)).date()
         return db.scalar(select(OpsReport).where(OpsReport.report_date == target_date))
 
-    def get_history(self, db: Session, limit: int = 30) -> list[OpsReport]:
-        return list(db.scalars(select(OpsReport).order_by(OpsReport.report_date.desc()).limit(limit)))
+    def get_today_xhs_nail_report(self) -> OpsMarkdownReportRead | None:
+        settings = get_settings()
+        target_date = datetime.now(ZoneInfo(settings.ops_report_timezone)).date()
+        return self.get_xhs_nail_report(target_date)
+
+    def get_xhs_nail_report(self, report_date: date) -> OpsMarkdownReportRead | None:
+        settings = get_settings()
+        report_path = settings.xhs_daily_report_assets_path / report_date.strftime("%Y%m%d") / "xhs_daily_nail_report.md"
+        if not report_path.exists():
+            return None
+        return self._markdown_report(report_path, settings.ops_report_timezone)
+
+    def get_xhs_nail_report_history(self, limit: int = 30) -> list[OpsMarkdownReportRead]:
+        settings = get_settings()
+        root = settings.xhs_daily_report_assets_path
+        if not root.exists():
+            return []
+        reports = []
+        for report_path in sorted(root.glob("[0-9]" * 8 + "/xhs_daily_nail_report.md"), reverse=True):
+            reports.append(self._markdown_report(report_path, settings.ops_report_timezone))
+            if len(reports) >= limit:
+                break
+        return reports
 
     def get_performance_metrics(self, db: Session, report_date: date | None = None) -> PerformanceMetricsResponse:
         generated = self.generate_report(db, report_date)
@@ -136,6 +157,17 @@ class ReportService:
             top_exposed_styles=generated.report_json["top_exposed_styles"],  # type: ignore[index]
             high_impression_low_ctr=generated.report_json["high_impression_low_ctr"],  # type: ignore[index]
             low_impression_high_ctr=generated.report_json["low_impression_high_ctr"],  # type: ignore[index]
+        )
+
+    def _markdown_report(self, report_path, timezone_name: str) -> OpsMarkdownReportRead:
+        report_date = datetime.strptime(report_path.parent.name, "%Y%m%d").date()
+        created_at = datetime.fromtimestamp(report_path.stat().st_mtime, ZoneInfo(timezone_name))
+        return OpsMarkdownReportRead(
+            report_date=report_date,
+            date_key=report_path.parent.name,
+            markdown_content=report_path.read_text(encoding="utf-8"),
+            local_file_path=str(report_path),
+            created_at=created_at,
         )
 
     @staticmethod

@@ -11,6 +11,20 @@ services:
   redis:
     image: redis:7-alpine
 
+  openclaw:
+    build:
+      context: .
+      dockerfile: services/openclaw/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OPENCLAW_STATE_DIR: /workspace/.openclaw/state
+      OPENCLAW_CONFIG_PATH: /workspace/.openclaw/openclaw.json
+    ports:
+      - "127.0.0.1:18798:18798"
+    volumes:
+      - ./.openclaw:/workspace/.openclaw
+
   api:
     build:
       context: .
@@ -20,9 +34,12 @@ services:
     depends_on:
       - postgres
       - redis
+      - openclaw
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
+      - ./services/api/app:/workspace/services/api/app
+      - ./.openclaw:/workspace/.openclaw
       - ./data:/workspace/data
       - ./命题三美甲评测数据（对外版）.xlsx:/workspace/命题三美甲评测数据（对外版）.xlsx
 

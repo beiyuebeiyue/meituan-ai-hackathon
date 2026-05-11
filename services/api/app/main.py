@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import mimetypes
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
 from app.core.db import database, init_db
+
+mimetypes.add_type("image/webp", ".webp")
 
 
 def create_app() -> FastAPI:
@@ -47,6 +51,11 @@ def create_app() -> FastAPI:
         "/openclaw-assets",
         StaticFiles(directory=str(settings.xhs_crawler_assets_path), check_dir=False),
         name="openclaw-assets",
+    )
+    app.mount(
+        "/xhs-daily-report-assets",
+        StaticFiles(directory=str(settings.xhs_daily_report_assets_path), check_dir=False),
+        name="xhs-daily-report-assets",
     )
 
     from app.routers import (

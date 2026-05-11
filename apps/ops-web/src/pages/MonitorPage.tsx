@@ -1,6 +1,10 @@
 import { App, Card, Col, Empty, Row, Space, Spin, Tag, Typography } from "antd";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MapChart } from "echarts/charts";
+import { GeoComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
+import * as echarts from "echarts/core";
+import { CanvasRenderer } from "echarts/renderers";
 import {
   Area,
   AreaChart,
@@ -8,19 +12,22 @@ import {
   Tooltip,
 } from "recharts";
 import { api, OpsDashboard, PopularNail } from "../api/client";
+import chinaGeoJson from "../assets/geo/china.json";
+
+echarts.use([CanvasRenderer, GeoComponent, MapChart, TooltipComponent, VisualMapComponent]);
+echarts.registerMap("china", chinaGeoJson as Parameters<typeof echarts.registerMap>[1]);
 
 const pieColors = ["#1677ff", "#52c41a", "#722ed1", "#faad14", "#13c2c2", "#eb2f96"];
-const cityMarkers = [
-  { name: "北京", x: 452, y: 154, value: 74 },
-  { name: "上海", x: 530, y: 242, value: 82 },
-  { name: "广州", x: 438, y: 338, value: 92 },
-  { name: "深圳", x: 454, y: 356, value: 96 },
-  { name: "成都", x: 316, y: 268, value: 68 },
-  { name: "杭州", x: 506, y: 258, value: 78 },
-  { name: "武汉", x: 420, y: 252, value: 64 },
-  { name: "西安", x: 360, y: 214, value: 58 },
-  { name: "重庆", x: 344, y: 288, value: 62 },
-  { name: "郑州", x: 408, y: 208, value: 46 },
+const provinceHeat = [
+  { name: "北京市", value: 74 },
+  { name: "上海市", value: 82 },
+  { name: "广东省", value: 96 },
+  { name: "四川省", value: 68 },
+  { name: "浙江省", value: 78 },
+  { name: "湖北省", value: 64 },
+  { name: "陕西省", value: 58 },
+  { name: "重庆市", value: 62 },
+  { name: "河南省", value: 46 },
 ];
 
 function formatNumber(value: number) {
@@ -74,15 +81,13 @@ function tagDistribution(notes: PopularNail[]) {
 
 function monitorValues(dashboard: OpsDashboard) {
   const todayRevenue = dashboard.metrics.revenue.today || dashboard.metrics.revenue.total;
-  const completed = dashboard.metrics.completed_bookings.total;
-  const bookings = dashboard.metrics.bookings.total;
-  const targetRate = bookings ? Math.min(100, Math.round((completed / bookings) * 100)) : 78;
+  const targetRate = 12;
   return {
     todayRevenue,
     targetRate,
     perSecond: Math.max(1, Math.round(todayRevenue / 3600)),
     verifyRate: Math.max(35, targetRate),
-    resourceRate: Math.max(20, 100 - Math.round((dashboard.metrics.tryon_users.today / Math.max(dashboard.metrics.users.total, 1)) * 100)),
+    resourceRate: 87,
   };
 }
 
@@ -207,30 +212,71 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 function ChinaHeatMap() {
+  const chartRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!chartRef.current) return undefined;
+
+    const chart = echarts.init(chartRef.current);
+    chart.setOption({
+      tooltip: {
+        trigger: "item",
+        borderWidth: 0,
+        formatter: (params: { componentSubType?: string; name?: string; value?: unknown }) => {
+          return params.name ? `${params.name}<br/>业务热度：${params.value ?? 0}` : "";
+        },
+      },
+      visualMap: {
+        show: false,
+        min: 0,
+        max: 100,
+        inRange: {
+          color: ["#eef4ff", "#d9e7ff", "#9ab8ff", "#8b5cf6"],
+        },
+      },
+      geo: {
+        map: "china",
+        roam: false,
+        zoom: 1.2,
+        layoutCenter: ["50%", "54%"],
+        layoutSize: "92%",
+        itemStyle: {
+          areaColor: "#eef2f7",
+          borderColor: "#d8e0ea",
+          borderWidth: 1,
+        },
+        emphasis: {
+          itemStyle: {
+            areaColor: "#dbeafe",
+          },
+          label: {
+            show: false,
+            color: "#2563eb",
+          },
+        },
+      },
+      series: [
+        {
+          type: "map",
+          map: "china",
+          geoIndex: 0,
+          selectedMode: false,
+          data: provinceHeat,
+        },
+      ],
+    });
+
+    const resize = () => chart.resize();
+    window.addEventListener("resize", resize);
+    return () => {
+      window.removeEventListener("resize", resize);
+      chart.dispose();
+    };
+  }, []);
+
   return (
     <div className="china-map-wrap">
-      <svg viewBox="0 0 760 460" role="img" aria-label="中国业务热力分布">
-        <path
-          className="china-map-shape"
-          d="M135 172 L180 130 L246 140 L280 104 L350 112 L392 86 L442 118 L502 104 L570 142 L626 188 L615 252 L660 312 L610 352 L542 342 L502 386 L442 366 L398 394 L324 372 L294 318 L226 306 L188 260 L146 238 Z"
-        />
-        <path
-          className="china-map-shape china-map-island"
-          d="M562 380 C590 388 606 408 596 430 C570 430 548 416 548 392 Z"
-        />
-        <path className="china-map-shape china-map-island" d="M612 352 C628 356 638 368 632 382 C614 382 604 372 606 360 Z" />
-        <path className="china-map-border" d="M248 142 L276 214 L336 260 L396 250 L458 292 L520 248 L572 268" />
-        <path className="china-map-border" d="M354 116 L366 188 L430 206 L502 174" />
-        {cityMarkers.map((item) => (
-          <g key={item.name}>
-            <circle className="china-map-pulse" cx={item.x} cy={item.y} r={item.value / 4} />
-            <circle className="china-map-dot" cx={item.x} cy={item.y} r={Math.max(6, item.value / 12)} />
-            <text x={item.x + 10} y={item.y - 8} className="china-map-label">
-              {item.name}
-            </text>
-          </g>
-        ))}
-      </svg>
+      <div ref={chartRef} className="china-map-chart" role="img" aria-label="中国业务热力分布" />
       <div className="china-map-legend">
         <Tag color="purple">高热度</Tag>
         <Tag color="blue">交易活跃</Tag>

@@ -123,6 +123,16 @@ export type RecommendationResponse = {
   }>;
 };
 
+export type AIChatMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export type AIChatResponse = {
+  reply: string;
+  model: string;
+};
+
 export type TryOnJob = {
   job_id: string;
   status: "pending" | "processing" | "succeeded" | "failed";
@@ -267,6 +277,7 @@ export type Booking = {
   user_name: string;
   appointment_time: string;
   contact_phone: string;
+  amount_cents: number;
   status: BookingStatus;
   note?: string | null;
   created_at: string;

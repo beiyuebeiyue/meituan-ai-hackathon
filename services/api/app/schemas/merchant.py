@@ -73,6 +73,7 @@ class BookingRead(BaseModel):
     user_name: str
     appointment_time: str
     contact_phone: str
+    amount_cents: int
     status: BookingStatus
     note: str | None = None
     created_at: datetime

@@ -17,11 +17,31 @@ class OpsChatService:
     def chat(self, db: Session, messages: list[OpsChatMessage]) -> OpsChatResponse:
         settings = get_settings()
         dashboard = self.ops_admin.dashboard(db).model_dump(mode="json")
-        if settings.longcat_api_key:
+        provider = settings.ops_ai_provider.lower()
+        if provider == "openclaw":
+            return self._openclaw_reply(dashboard, messages)
+        if provider == "longcat" and settings.longcat_api_key:
             return self._longcat_reply(dashboard, messages)
-        if settings.openai_api_key:
+        if provider == "openai" and settings.openai_api_key:
             return self._openai_reply(dashboard, messages)
         return OpsChatResponse(reply=self._local_reply(dashboard, messages[-1].content), model="local-ops-summary")
+
+    def _openclaw_reply(self, dashboard: dict[str, object], messages: list[OpsChatMessage]) -> OpsChatResponse:
+        settings = get_settings()
+        try:
+            from openai import OpenAI
+
+            client = OpenAI(api_key=settings.openclaw_gateway_token or "openclaw-local", base_url=self._openclaw_openai_base_url())
+            response = client.chat.completions.create(
+                model=settings.openclaw_model,
+                messages=self._chat_messages(dashboard, messages),
+                max_tokens=1000,
+                temperature=0.3,
+            )
+            content = response.choices[0].message.content or ""
+            return OpsChatResponse(reply=content.strip(), model=settings.openclaw_model)
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="OpenClaw Gateway 暂不可用") from exc
 
     def _longcat_reply(self, dashboard: dict[str, object], messages: list[OpsChatMessage]) -> OpsChatResponse:
         settings = get_settings()
@@ -60,6 +80,13 @@ class OpsChatService:
             {"role": "system", "content": self._system_prompt(dashboard)},
             *[message.model_dump() for message in messages[-12:]],
         ]
+
+    @staticmethod
+    def _openclaw_openai_base_url() -> str:
+        base_url = get_settings().openclaw_base_url.rstrip("/")
+        if base_url.endswith("/v1"):
+            return base_url
+        return f"{base_url}/v1"
 
     @staticmethod
     def _system_prompt(dashboard: dict[str, object]) -> str:

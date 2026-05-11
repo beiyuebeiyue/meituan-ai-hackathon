@@ -138,6 +138,9 @@ def sync_runtime_schema() -> None:
 
         if "bookings" in table_names:
             booking_columns = {column["name"]: column for column in inspector.get_columns("bookings")}
+            if "amount_cents" not in booking_columns:
+                connection.execute(text("ALTER TABLE bookings ADD COLUMN amount_cents INTEGER DEFAULT 10000 NOT NULL"))
+            connection.execute(text("UPDATE bookings SET amount_cents = 10000 WHERE amount_cents IS NULL OR amount_cents <= 0"))
             style_column = booking_columns.get("style_id")
             if style_column and not style_column.get("nullable", True) and database.engine.dialect.name == "postgresql":
                 connection.execute(text("ALTER TABLE bookings ALTER COLUMN style_id DROP NOT NULL"))

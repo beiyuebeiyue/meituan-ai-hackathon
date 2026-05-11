@@ -32,7 +32,10 @@ description: 当用户要爬取、采集、归档或补全小红书/Xiaohongshu/
         └── images/
             └── <note_id>/
                 ├── <note_id>_01.webp
-                └── <note_id>_02.webp
+                ├── <note_id>_02.webp
+                ├── result.json
+                └── masks/
+                    └── <note_id>_01_mask.webp
 ```
 
 - `assets/` 是该 skill 的固定产物根目录。
@@ -42,6 +45,8 @@ description: 当用户要爬取、采集、归档或补全小红书/Xiaohongshu/
 - `read/` 保存所有 `xhs read` 原始详情结果。
 - `xhs_note_digest.json` 保存从详情结果提取出的轻量字段，便于快速查看。
 - `images/<note_id>/` 保存从详情结果下载的图片。
+- `images/<note_id>/result.json` 保存该笔记图片的指甲分割结果。
+- `images/<note_id>/masks/` 保存该笔记图片对应的 mask 图。
 
 ## 运行前
 
@@ -160,6 +165,16 @@ python3 -m scripts.download_note_images
 
 如果任一笔记图片下载失败，立即停止并报告失败项，不要静默跳过。
 
+### Step 6: 指甲分割
+
+图片下载完成后，使用本地 `spaces/nail_yolo26/best.pt` 对 `$IMAGES_DIR/<note_id>/` 下的图片做 batch 指甲分割。
+
+```bash
+NAIL_SEG_BATCH_SIZE=8 ../../../.venv/bin/python -m scripts.segment_nail_images
+```
+
+每个 note 文件夹会生成 `result.json`。如果任一图片识别到指甲，`has_nail` 写为 `yes`，并列出每张图片的文件名和指甲数量；如果所有图片都没有识别到指甲，`has_nail` 写为 `no`。`standard_nail_image` 保存最后一张 `nail_count == 5` 的图片文件名，没有则为空字符串。同一文件夹下还会创建 `masks/`，保存识别到指甲的图片 mask。分割完成后，同步把 `standard_nail_image` 写入 `$RUN_ROOT/xhs_note_digest.json`；digest 中保存本地图片路径，没有则为空字符串。
+
 ## Helper Scripts
 
 可执行 Python helper 从 skill 目录以 `python3 -m scripts.<module>` 调用。
@@ -169,6 +184,9 @@ python3 -m scripts.download_note_images
 - `scripts.build_xhs_note_registry`: 将当前 summary 合并到 `$REGISTRY_PATH`。
 - `scripts.read_note_details`: 通过当前 run summary 定位 raw JSON，读取笔记 id 与 token，将笔记详情 JSON 写到 `$RUN_ROOT/read/`，并生成 `$RUN_ROOT/xhs_note_digest.json`。
 - `scripts.download_note_images`: 从 `$RUN_ROOT/read/` 提取图片 URL，下载到 `$IMAGES_DIR/<note_id>/`，并更新 digest 的 `image_list`。
+- `scripts.segment_nail_images`: 使用本地 clone 的 `spaces/nail_yolo26/best.pt` 做 batch 分割，生成 `result.json`、mask 图，并更新 digest 的 `standard_nail_image`。
+- `scripts.import_digest_standard_posts`: 输入日期，从 `assets/<YYYYmmdd>/xhs_note_digest.json` 创建/复用用户，并把存在的 `standard_nail_image` 以该用户身份导入为平台发布内容。
+- `scripts.generate_demo_bookings`: 输入日期，给当前 digest 对应的平台用户随机生成 `completed` 和 `rejected` 预约，用于运营后台演示。
 - `scripts.utils`: 共享 JSON 读写、原子写入和笔记 id 提取函数。
 
 ## Schemas
@@ -183,8 +201,10 @@ python3 -m scripts.download_note_images
 - `$RUN_ROOT/xhs_search_summary.json`: run-level summary。
 - `$REGISTRY_PATH`: 全局去重笔记 id registry。
 - `$RUN_ROOT/read/<note_id>.json`: `xhs read` raw 笔记详情 JSON。
-- `$RUN_ROOT/xhs_note_digest.json`: 从详情结果提取出的轻量笔记 JSON；图片下载完成后，`image_list` 为本地图片路径。
+- `$RUN_ROOT/xhs_note_digest.json`: 从详情结果提取出的轻量笔记 JSON；图片下载完成后，`image_list` 为本地图片路径；分割完成后，`standard_nail_image` 为本地图片路径。
 - `$IMAGES_DIR/<note_id>/*`: 从笔记详情下载的图片文件。
+- `$IMAGES_DIR/<note_id>/result.json`: 当前笔记图片的指甲识别结果。
+- `$IMAGES_DIR/<note_id>/masks/*`: 当前笔记图片的指甲 mask 图。
 
 ## Resume and Failure Handling
 

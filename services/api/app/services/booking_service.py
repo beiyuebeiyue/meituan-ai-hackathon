@@ -33,6 +33,7 @@ class BookingService:
             user_name=user.username if user else "用户",
             appointment_time=booking.appointment_time,
             contact_phone=booking.contact_phone,
+            amount_cents=booking.amount_cents,
             status=booking.status,  # type: ignore[arg-type]
             note=booking.note,
             created_at=booking.created_at,
@@ -70,6 +71,7 @@ class BookingService:
             style_id=style.id if style else None,
             appointment_time=appointment_time.strip(),
             contact_phone=contact_phone.strip(),
+            amount_cents=10_000,
             note=note.strip() if note else None,
             status="pending",
         )

@@ -19,6 +19,9 @@ from app.schemas.ops import (
     OpsMerchantListResponse,
     OpsMerchantUserListItem,
     OpsMerchantUserListResponse,
+    OpsMarkdownReportRead,
+    OpsPostListItem,
+    OpsPostListResponse,
     OpsReportRead,
     PerformanceMetricsResponse,
     ReportGenerateResponse,
@@ -99,13 +102,19 @@ def get_today_ops_report(
     return OpsReportRead.model_validate(report)
 
 
-@router.get("/reports/history", response_model=list[OpsReportRead])
-def get_ops_report_history(
+@router.get("/reports/xhs-nail/today", response_model=OpsMarkdownReportRead | None)
+def get_today_xhs_nail_report(
+    _ops_admin: str = Depends(require_ops_admin),
+) -> OpsMarkdownReportRead | None:
+    return report_service.get_today_xhs_nail_report()
+
+
+@router.get("/reports/xhs-nail/history", response_model=list[OpsMarkdownReportRead])
+def get_xhs_nail_report_history(
     limit: int = Query(default=30, ge=1, le=90),
     _ops_admin: str = Depends(require_ops_admin),
-    db: Session = Depends(get_db),
-) -> list[OpsReportRead]:
-    return [OpsReportRead.model_validate(report) for report in report_service.get_history(db, limit=limit)]
+) -> list[OpsMarkdownReportRead]:
+    return report_service.get_xhs_nail_report_history(limit=limit)
 
 
 @router.get("/metrics/performance", response_model=PerformanceMetricsResponse)
@@ -184,6 +193,26 @@ def get_ops_merchant_user(
     db: Session = Depends(get_db),
 ) -> OpsMerchantUserListItem:
     return ops_admin_service.get_merchant_user(db, user_id)
+
+
+@router.get("/posts", response_model=OpsPostListResponse)
+def list_ops_posts(
+    query: str = Query(default=""),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _ops_admin: str = Depends(require_ops_admin),
+    db: Session = Depends(get_db),
+) -> OpsPostListResponse:
+    return ops_admin_service.list_posts(db, query=query.strip(), limit=limit, offset=offset)
+
+
+@router.get("/posts/{post_id}", response_model=OpsPostListItem)
+def get_ops_post(
+    post_id: str,
+    _ops_admin: str = Depends(require_ops_admin),
+    db: Session = Depends(get_db),
+) -> OpsPostListItem:
+    return ops_admin_service.get_post(db, post_id)
 
 
 @router.post("/coupons/grants", response_model=OpsCouponGrantRead)
