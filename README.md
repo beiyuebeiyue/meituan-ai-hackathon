@@ -82,10 +82,30 @@ docker compose logs -f api
 
 ## 4. 初始化演示数据
 
+如果是第一次运行这个 demo，或 `data/seed` 下没有素材，先手动下载演示素材：
+
+```bash
+docker compose exec api python /workspace/scripts/download_seed_assets.py --xlsx /workspace/data/命题三美甲评测数据（对外版）.xlsx
+```
+
+这个脚本只读取 xlsx/xlsm 里的两类图片 URL：
+
+- `手图` sheet 的 `手图URL`
+- `款式图` sheet 的 `增强后款式图URL`
+
+下载产物会写入：
+
+```text
+data/seed/hands
+data/seed/nails
+```
+
+它只负责下载素材缓存，不写数据库，也不会生成 manifest。
+
 后端容器启动后，在仓库根目录执行：
 
 ```bash
-docker compose exec api python /workspace/scripts/seed_from_xlsx.py --xlsx /workspace/命题三美甲评测数据（对外版）.xlsx
+docker compose exec api python /workspace/scripts/seed_from_xlsx.py --xlsx /workspace/data/命题三美甲评测数据（对外版）.xlsx
 docker compose exec api python /workspace/scripts/enrich_style_metadata.py
 docker compose exec api python /workspace/scripts/generate_demo_metrics.py --days 7
 docker compose exec api python /workspace/scripts/generate_ops_report.py
@@ -93,10 +113,11 @@ docker compose exec api python /workspace/scripts/generate_ops_report.py
 
 说明：
 
-- 第一条会从 xlsx 导入首页美甲图和测试资产。
-- 第二条会补齐标题、标签、文案等展示字段。
-- 第三条会生成运营后台演示指标。
-- 第四条会生成今日运营日报。
+- `download_seed_assets.py` 仅首次或素材缺失时需要执行，用来准备本地图片缓存。
+- `seed_from_xlsx.py` 会从 xlsx 导入首页美甲图和测试资产到数据库。
+- `enrich_style_metadata.py` 会补齐标题、标签、文案等展示字段。
+- `generate_demo_metrics.py` 会生成运营后台演示指标。
+- `generate_ops_report.py` 会生成今日运营日报。
 
 如果只是重启服务，已经初始化过的数据不需要每次重新导入。
 

@@ -1,15 +1,18 @@
 export type AskIntent = "hot_find" | "hand_match" | "generic";
 
 const HOT_KEYWORDS = ["热门", "流行", "爆款", "最近火", "热度", "热卖", "火"];
-const HAND_MATCH_KEYWORDS = ["适合", "我的手", "我适合", "哪些美甲", "哪种美甲", "什么美甲", "手型", "肤色"];
+const HAND_MATCH_KEYWORDS = ["我的手", "我适合", "按我的手", "适合我本人", "手型", "肤色", "手图", "图搜图"];
 
 export const ASK_AGENT_EXAMPLES = [
   "帮我找几款最近热门的显白猫眼",
   "我的手适合哪些温柔裸粉美甲",
   "想看适合通勤的法式美甲",
+  "给我推荐绿色美甲",
+  "找几款短甲显白款",
+  "想看约会用的温柔猫眼",
+  "看看低调耐看的裸色美甲",
+  "推荐几款不挑肤色的奶白美甲",
 ];
-
-export const ASK_AGENT_FILTERS = ["热门显白", "温柔裸粉", "约会猫眼", "通勤法式", "适合我的手"];
 
 export function inferAskIntent(query: string): AskIntent {
   const normalized = query.trim();

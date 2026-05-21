@@ -67,6 +67,7 @@ export function CouponsPage() {
         columns={columns}
         dataSource={grants}
         loading={loading}
+        scroll={{ x: "max-content" }}
         pagination={{ total, pageSize: 50, showSizeChanger: false }}
       />
     </Space>

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os
+import time
 import urllib.request
 from pathlib import Path
 
@@ -16,7 +17,7 @@ def image_urls(read_json):
     return urls
 
 
-def download(url):
+def download(url, attempts=3):
     request = urllib.request.Request(
         url,
         headers={
@@ -24,8 +25,15 @@ def download(url):
             "Referer": "https://www.xiaohongshu.com/",
         },
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        return response.read()
+    last_error = None
+    for attempt in range(attempts):
+        try:
+            with urllib.request.urlopen(request, timeout=30) as response:
+                return response.read()
+        except TimeoutError as exc:
+            last_error = exc
+            time.sleep(1 + attempt)
+    raise last_error or TimeoutError("download timed out")
 
 
 read_dir = Path(os.environ["READ_DIR"])
@@ -42,9 +50,10 @@ for read_path in sorted(read_dir.glob("*.json")):
     saved = []
 
     for index, url in enumerate(image_urls(load_json(read_path)), start=1):
-        payload = download(url)
         output_path = note_dir / f"{note_id}_{index:02d}.webp"
-        save_bytes(output_path, payload)
+        if not output_path.exists():
+            payload = download(url)
+            save_bytes(output_path, payload)
         saved.append(f"{image_root}/images/{note_id}/{output_path.name}")
 
     digest_notes[note_id]["image_list"] = saved

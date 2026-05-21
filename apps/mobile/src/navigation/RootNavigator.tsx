@@ -2,8 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBarButtonProps, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import type { ComponentType } from "react";
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, type ComponentType } from "react";
+import { Animated, Easing, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { OverlayContent } from "../components/OverlayContent";
 import { SlideDirection, SlideOverlayScreen } from "../components/SlideOverlayScreen";
 import { WeeklyHotNailsModal } from "../components/WeeklyHotNailsModal";
@@ -152,17 +152,89 @@ function CenterTabButton({
   label: string;
   colors: ReturnType<typeof useThemeColors>;
 }) {
+  const selected = Boolean(props.accessibilityState?.selected);
+  const pressScale = useRef(new Animated.Value(1)).current;
+  const haloScale = useRef(new Animated.Value(1)).current;
+  const haloOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!selected) {
+      haloScale.stopAnimation();
+      haloOpacity.stopAnimation();
+      haloScale.setValue(1);
+      haloOpacity.setValue(0);
+      return;
+    }
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(haloScale, {
+            toValue: 1.32,
+            duration: 1100,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloOpacity, {
+            toValue: 0,
+            duration: 1100,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(haloScale, {
+            toValue: 1,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+          Animated.timing(haloOpacity, {
+            toValue: 0.28,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+    );
+    haloOpacity.setValue(0.28);
+    pulse.start();
+    return () => pulse.stop();
+  }, [haloOpacity, haloScale, selected]);
+
+  const animatePress = (toValue: number) => {
+    Animated.spring(pressScale, {
+      toValue,
+      damping: 12,
+      mass: 0.55,
+      stiffness: 260,
+      useNativeDriver: true,
+    }).start();
+  };
+
   return (
     <Pressable
       onPress={props.onPress}
+      onPressIn={() => animatePress(0.92)}
+      onPressOut={() => animatePress(1)}
       accessibilityState={props.accessibilityState}
       accessibilityLabel={props.accessibilityLabel}
       testID={props.testID}
       style={styles.askButton}
     >
-      <View style={[styles.askButtonInner, { backgroundColor: colors.accent, shadowColor: colors.accent }]}>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.askHalo,
+          {
+            backgroundColor: colors.accent,
+            opacity: haloOpacity,
+            transform: [{ scale: haloScale }],
+          },
+        ]}
+      />
+      <Animated.View style={[styles.askButtonInner, { backgroundColor: colors.accent, shadowColor: colors.accent, transform: [{ scale: pressScale }] }]}>
         <Ionicons name={icon} size={icon === "add" ? 30 : 25} color="white" />
-      </View>
+      </Animated.View>
       <Text style={[styles.askLabel, { color: colors.accent }]}>{label}</Text>
     </Pressable>
   );
@@ -323,6 +395,14 @@ const styles = StyleSheet.create({
   askButton: {
     alignItems: "center",
     marginTop: -18,
+    position: "relative",
+  },
+  askHalo: {
+    position: "absolute",
+    top: 0,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   askButtonInner: {
     width: 64,

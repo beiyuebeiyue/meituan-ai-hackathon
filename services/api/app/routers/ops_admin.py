@@ -11,6 +11,7 @@ from app.schemas.ops import (
     OpsCouponGrantCreate,
     OpsCouponGrantListResponse,
     OpsCouponGrantRead,
+    OpsAnalyticsOverviewResponse,
     OpsChatRequest,
     OpsChatResponse,
     OpsDashboardResponse,
@@ -31,6 +32,7 @@ from app.schemas.ops import (
     OpsUserListResponse,
 )
 from app.services.ops_admin_service import OpsAdminService
+from app.services.analytics_service import AnalyticsService
 from app.services.ops_chat_service import OpsChatService
 from app.services.report_service import ReportService
 
@@ -39,6 +41,7 @@ router = APIRouter(prefix="/ops", tags=["ops-admin"])
 ops_admin_service = OpsAdminService()
 ops_chat_service = OpsChatService()
 report_service = ReportService()
+analytics_service = AnalyticsService()
 
 
 @router.post("/auth/login", response_model=OpsTokenResponse)
@@ -55,6 +58,16 @@ def get_ops_dashboard(
     db: Session = Depends(get_db),
 ) -> OpsDashboardResponse:
     return ops_admin_service.dashboard(db)
+
+
+@router.get("/analytics/overview", response_model=OpsAnalyticsOverviewResponse)
+def get_ops_analytics_overview(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    _ops_admin: str = Depends(require_ops_admin),
+    db: Session = Depends(get_db),
+) -> OpsAnalyticsOverviewResponse:
+    return analytics_service.overview(db, start_date=start_date, end_date=end_date)
 
 
 @router.post("/ai/chat", response_model=OpsChatResponse)

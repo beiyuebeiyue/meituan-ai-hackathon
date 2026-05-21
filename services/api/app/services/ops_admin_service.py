@@ -142,8 +142,18 @@ class OpsAdminService:
     def popular_nails(self, report_date: date) -> list[OpsPopularNail]:
         settings = get_settings()
         date_key = report_date.strftime("%Y%m%d")
-        digest_path = settings.xhs_crawler_assets_path / date_key / "xhs_note_digest.json"
+        root = settings.xhs_crawler_assets_path
+        digest_path = root / date_key / "xhs_note_digest.json"
         if not digest_path.exists():
+            digest_path = next(
+                (
+                    path
+                    for path in sorted(root.glob("[0-9]" * 8 + "/xhs_note_digest.json"), reverse=True)
+                    if path.parent.name <= date_key
+                ),
+                None,
+            )
+        if digest_path is None:
             return []
         payload = json.loads(digest_path.read_text(encoding="utf-8"))
         return [OpsPopularNail(**item) for item in payload.get("notes", [])]

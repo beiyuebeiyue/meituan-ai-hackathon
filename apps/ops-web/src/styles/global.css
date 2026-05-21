@@ -11,6 +11,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   background: #f5f7fb;
   color: #172033;
 }
@@ -49,18 +50,19 @@ textarea {
 }
 
 .ops-brand-logo {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  color: #ffffff;
-  background: linear-gradient(135deg, #1677ff, #722ed1);
-  transform: rotate(45deg);
+  display: block;
+  width: 38px;
+  height: 26px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #f4f1ed;
 }
 
-.ops-brand-logo .anticon {
-  transform: rotate(-45deg);
+.ops-brand-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .ops-collapse {
@@ -93,6 +95,19 @@ textarea {
   border-bottom: 1px solid #e6eaf0;
   background: #ffffff;
   box-shadow: 0 1px 8px rgba(15, 23, 42, 0.03);
+}
+
+.ops-header-left,
+.ops-header-actions {
+  min-width: 0;
+}
+
+.ops-mobile-menu .ant-drawer-body {
+  padding: 8px;
+}
+
+.ops-mobile-menu .ant-menu {
+  border-inline-end: 0 !important;
 }
 
 .ops-content {
@@ -486,6 +501,57 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.analytics-section {
+  width: 100%;
+}
+
+.analytics-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.analytics-kpi-card {
+  min-height: 134px;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+}
+
+.analytics-kpi-value {
+  margin: 8px 0 6px;
+  color: #1f2329;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.analytics-funnel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 22px;
+}
+
+.analytics-funnel-step {
+  min-width: 0;
+}
+
+.analytics-funnel-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #1f2329;
+}
+
+.analytics-rank-thumb {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #eef2f7;
 }
 
 .monitor-page {
@@ -1019,13 +1085,19 @@ textarea {
 }
 
 .chatbot-page {
-  min-height: calc(100vh - 128px);
+  display: flex;
+  height: calc(100vh - 128px);
+  min-height: 520px;
+  overflow: hidden;
 }
 
 .chatbot-shell {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
-  min-height: calc(100vh - 128px);
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid #e6eaf0;
   border-radius: 8px;
@@ -1037,6 +1109,8 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-height: 0;
+  overflow: auto;
   padding: 16px 14px;
   border-right: 1px solid #edf0f5;
   background: #fbfcfe;
@@ -1083,6 +1157,7 @@ textarea {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   background: #ffffff;
 }
 
@@ -1109,11 +1184,12 @@ textarea {
 
 .chatbot-messages {
   display: flex;
-  flex: 1;
+  flex: 1 1 0;
   flex-direction: column;
   gap: 18px;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 54px 72px 24px;
 }
 
@@ -1150,7 +1226,7 @@ textarea {
 }
 
 .chatbot-message {
-  max-width: min(720px, 78%);
+  max-width: min(960px, 84%);
   padding: 12px 14px;
   border-radius: 8px;
   white-space: pre-wrap;
@@ -1179,7 +1255,8 @@ textarea {
 
 .chatbot-input-wrap {
   position: relative;
-  width: min(1120px, calc(100% - 96px));
+  flex: 0 0 auto;
+  width: min(1280px, calc(100% - 72px));
   min-height: 96px;
   margin: 0 auto 28px;
   padding: 0;
@@ -1210,7 +1287,9 @@ textarea {
   display: grid;
   grid-template-rows: minmax(260px, 1fr) auto;
   flex: 1;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
   padding: 24px 0 0;
 }
 
@@ -1465,5 +1544,402 @@ textarea {
     position: static;
     flex-wrap: wrap;
     padding-left: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ops-shell {
+    min-width: 0;
+  }
+
+  .ops-header {
+    height: 56px;
+    padding: 0 10px;
+  }
+
+  .ops-header-left {
+    gap: 4px;
+  }
+
+  .ops-header-left .ant-typography {
+    max-width: 112px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .ops-header-actions {
+    gap: 2px !important;
+  }
+
+  .ops-header-actions > .ant-btn:nth-child(-n + 3),
+  .ops-header-actions > .ant-typography {
+    display: none;
+  }
+
+  .ops-header-actions .ant-btn {
+    padding-inline: 8px;
+  }
+
+  .ops-content {
+    padding: 12px 10px 72px;
+  }
+
+  .page-title-row {
+    gap: 10px;
+  }
+
+  .page-title {
+    font-size: 20px !important;
+  }
+
+  .page-title-row > .ant-space-compact {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .page-title-row > .ant-space-compact .ant-input-affix-wrapper {
+    min-width: 190px;
+    flex: 1 0 190px;
+  }
+
+  .merchant-city-select {
+    min-width: 108px;
+  }
+
+  .ant-table-wrapper {
+    width: 100%;
+  }
+
+  .ant-table {
+    font-size: 12px;
+  }
+
+  .ant-table-cell {
+    padding: 8px 10px !important;
+  }
+
+  .ant-pagination {
+    row-gap: 6px;
+  }
+
+  .ant-drawer-content-wrapper {
+    max-width: 100vw !important;
+  }
+
+  .ant-drawer-body {
+    padding: 16px !important;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-page,
+  .monitor-page {
+    padding-bottom: 0;
+  }
+
+  .analysis-mode-row {
+    justify-content: flex-start;
+    margin-bottom: 0;
+  }
+
+  .analysis-stat-card {
+    min-height: 152px;
+  }
+
+  .analysis-stat-card .ant-card-body {
+    padding: 14px 16px 8px;
+  }
+
+  .analysis-stat-value {
+    font-size: 26px;
+  }
+
+  .analysis-growth-line {
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .analysis-card-toolbar {
+    padding: 0 14px 10px;
+  }
+
+  .analysis-period-actions {
+    width: 100%;
+    overflow-x: auto;
+    padding: 0;
+  }
+
+  .analysis-period-actions .ant-picker {
+    min-width: 240px;
+  }
+
+  .analysis-large-chart {
+    height: 260px;
+    padding: 18px 4px 18px 8px;
+  }
+
+  .analysis-rank-title {
+    margin: 4px 0 14px !important;
+  }
+
+  .analysis-rank-list {
+    gap: 12px;
+    padding: 0 8px 18px;
+  }
+
+  .analysis-search-metrics {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .analysis-search-table {
+    overflow-x: auto;
+  }
+
+  .analysis-search-head,
+  .analysis-search-row {
+    min-width: 360px;
+  }
+
+  .analysis-pie-row {
+    gap: 8px;
+  }
+
+  .monitor-map-card .ant-card-body {
+    min-height: 0;
+  }
+
+  .monitor-kpis {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .monitor-kpi-value {
+    margin-top: 4px;
+    font-size: 22px;
+  }
+
+  .china-map-wrap {
+    height: 310px;
+  }
+
+  .monitor-side-card,
+  .monitor-bottom-card {
+    min-height: 0;
+  }
+
+  .monitor-ring-row {
+    gap: 18px;
+    padding-top: 8px;
+  }
+
+  .monitor-ring {
+    width: 112px;
+    height: 112px;
+  }
+
+  .monitor-ring span {
+    width: 88px;
+    height: 88px;
+    font-size: 22px;
+  }
+
+  .monitor-word-cloud {
+    min-height: 160px;
+  }
+
+  .monitor-water-wrap {
+    min-height: 170px;
+  }
+
+  .monitor-water {
+    width: 124px;
+    height: 124px;
+  }
+
+  .monitor-water span {
+    font-size: 26px;
+  }
+
+  .reports-page .page-title-row {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .report-history-select {
+    width: 132px;
+  }
+
+  .markdown-preview,
+  .report-preview {
+    max-height: none;
+  }
+
+  .markdown-table {
+    min-width: 560px;
+  }
+
+  .ops-chat {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .ops-chat-panel {
+    width: calc(100vw - 24px);
+  }
+
+  .ops-chat-messages {
+    height: min(330px, 52vh);
+  }
+
+  .ops-command-list {
+    width: calc(100vw - 48px);
+  }
+
+  .chatbot-page {
+    height: calc(100dvh - 140px);
+    min-height: 440px;
+  }
+
+  .chatbot-shell {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .chatbot-history {
+    max-height: 142px;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .chatbot-history-item {
+    min-height: 38px;
+  }
+
+  .chatbot-thread-header {
+    min-height: 64px;
+    padding: 12px 14px;
+  }
+
+  .chatbot-thread-header h4 {
+    font-size: 16px !important;
+  }
+
+  .chatbot-messages {
+    gap: 12px;
+    padding: 18px 12px;
+  }
+
+  .chatbot-message-avatar {
+    width: 38px;
+    height: 34px;
+  }
+
+  .chatbot-message-mascot {
+    width: 46px;
+    height: 34px;
+    margin-left: -10px;
+  }
+
+  .chatbot-message {
+    max-width: calc(100% - 48px);
+    padding: 10px 12px;
+  }
+
+  .chatbot-blank-state {
+    grid-template-rows: minmax(180px, 1fr) auto;
+    padding-top: 12px;
+  }
+
+  .chatbot-welcome {
+    gap: 8px;
+  }
+
+  .chatbot-welcome h2 {
+    font-size: 22px !important;
+  }
+
+  .chatbot-welcome-mascot {
+    width: 48px;
+    height: 36px;
+  }
+
+  .chatbot-input-wrap {
+    width: calc(100% - 24px);
+    min-height: 84px;
+    margin-bottom: 14px;
+  }
+
+  .chatbot-input-wrap textarea {
+    min-height: 82px !important;
+    padding: 14px 92px 14px 14px;
+  }
+
+  .chatbot-input-actions {
+    right: 12px;
+    bottom: 12px;
+    gap: 6px;
+  }
+
+  .chatbot-tool-chip {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    font-size: 12px;
+  }
+
+  .chatbot-thinking {
+    margin: 42px 0 0 20px;
+    font-size: 20px;
+  }
+
+  .profile-settings-main {
+    padding: 18px 14px;
+  }
+
+  .profile-settings-grid {
+    gap: 18px;
+  }
+
+  .profile-settings-form .ant-form-item {
+    margin-bottom: 16px;
+  }
+
+  .profile-phone-row {
+    display: flex;
+  }
+}
+
+@media (max-width: 420px) {
+  .ops-header-left .ant-typography {
+    max-width: 92px;
+  }
+
+  .ops-header-actions .ant-avatar {
+    display: none;
+  }
+
+  .ops-header-actions .ant-btn:last-child {
+    padding-inline: 6px;
+  }
+
+  .page-title-row > .ant-space-compact .ant-input-affix-wrapper {
+    min-width: 160px;
+    flex-basis: 160px;
+  }
+
+  .analysis-stat-value {
+    font-size: 24px;
+  }
+
+  .china-map-wrap {
+    height: 270px;
+  }
+
+  .chatbot-history {
+    max-height: 124px;
   }
 }

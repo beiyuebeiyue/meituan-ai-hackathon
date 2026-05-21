@@ -83,6 +83,7 @@ export function UsersPage() {
         columns={columns}
         dataSource={users}
         loading={loading}
+        scroll={{ x: "max-content" }}
         pagination={{ total, pageSize: 50, showSizeChanger: false }}
         onRow={(record) => ({ onClick: () => setSelected(record) })}
       />

@@ -1,4 +1,5 @@
 from app.models.booking import Booking
+from app.models.analytics_event import AnalyticsEvent, AnalyticsIdentityLink
 from app.models.direct_message import DirectMessage
 from app.models.image_processing_artifact import ImageProcessingArtifact
 from app.models.job_log import JobLog
@@ -22,6 +23,8 @@ from app.models.user_style_view import UserStyleView
 
 __all__ = [
     "Booking",
+    "AnalyticsEvent",
+    "AnalyticsIdentityLink",
     "DirectMessage",
     "ImageProcessingArtifact",
     "JobLog",

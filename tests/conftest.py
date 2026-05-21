@@ -23,7 +23,7 @@ def app_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     seed_dir = tmp_path / "seed"
     report_dir = tmp_path / "reports"
     xhs_report_assets_dir = tmp_path / "xhs-daily-nail-report-assets"
-    nail_rag_dir = tmp_path / "nail-rag"
+    xhs_crawler_assets_dir = tmp_path / "xhs-crawler-assets"
     seed_dir.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
 
@@ -33,7 +33,7 @@ def app_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("SEED_DIR", str(seed_dir))
     monkeypatch.setenv("REPORT_DIR", str(report_dir))
     monkeypatch.setenv("XHS_DAILY_REPORT_ASSETS_DIR", str(xhs_report_assets_dir))
-    monkeypatch.setenv("NAIL_RAG_DIR", str(nail_rag_dir))
+    monkeypatch.setenv("XHS_CRAWLER_ASSETS_DIR", str(xhs_crawler_assets_dir))
     monkeypatch.setenv("SEED_XLSX_PATH", str(ROOT / "命题三美甲评测数据（对外版）.xlsx"))
     monkeypatch.setenv("OPENAI_API_KEY", "")
     monkeypatch.setenv("LONGCAT_API_KEY", "")

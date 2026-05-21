@@ -18,7 +18,10 @@ def get_optional_current_user(
 ) -> User | None:
     if credentials is None:
         return None
-    payload = decode_access_token(credentials.credentials)
+    try:
+        payload = decode_access_token(credentials.credentials)
+    except HTTPException:
+        return None
     user = db.get(User, payload["sub"])
     if user is None:
         return None

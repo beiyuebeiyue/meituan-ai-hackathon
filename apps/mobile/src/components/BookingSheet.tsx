@@ -15,6 +15,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeColors } from "../utils/theme";
+import { trackEvent } from "../utils/analytics";
 
 type BookingSheetProps = {
   visible: boolean;
@@ -101,11 +102,17 @@ export function BookingSheet({ visible, shopId, shopName, shopCity, styleId, onC
 
   useEffect(() => {
     if (!visible) return;
+    void trackEvent("booking_start_clicked", {
+      styleId: styleId ?? null,
+      shopId: shopId ?? null,
+      source: "booking_sheet",
+      screen: "booking",
+    });
     const selection = defaultSelection();
     setSelectedDate((value) => value || selection.date);
     setSelectedHour((value) => value ?? selection.hour);
     setContactPhone((value) => value || currentUser?.phone || "");
-  }, [currentUser?.phone, visible]);
+  }, [currentUser?.phone, shopId, styleId, visible]);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -250,7 +257,16 @@ export function BookingSheet({ visible, shopId, shopName, shopCity, styleId, onC
             <Pressable
               style={[styles.submitButton, { backgroundColor: colors.accent }, !canSubmit && styles.disabled]}
               disabled={!canSubmit}
-              onPress={() => mutation.mutate()}
+              onPress={() => {
+                void trackEvent("booking_submit_clicked", {
+                  styleId: styleId ?? null,
+                  shopId: shopId ?? null,
+                  source: "booking_sheet",
+                  screen: "booking",
+                  properties: { appointment_date: appointmentTime.slice(0, 10) },
+                });
+                mutation.mutate();
+              }}
             >
               {mutation.isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>提交预约</Text>}
             </Pressable>

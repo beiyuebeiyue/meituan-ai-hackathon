@@ -9,11 +9,15 @@ from app.models.merchant_shop import MerchantShop
 from app.models.nail_style import NailStyle
 from app.models.user import User
 from app.schemas.merchant import BookingRead
+from app.services.analytics_service import AnalyticsService
 
 VALID_BOOKING_STATUSES = {"pending", "accepted", "rejected", "completed", "cancelled"}
 
 
 class BookingService:
+    def __init__(self) -> None:
+        self.analytics = AnalyticsService()
+
     def _read(self, booking: Booking) -> BookingRead:
         style = booking.style
         shop = booking.shop
@@ -78,6 +82,15 @@ class BookingService:
         db.add(booking)
         db.commit()
         db.refresh(booking)
+        self.analytics.record_server_event(
+            db,
+            "booking_created",
+            user_id=user.id,
+            style_id=booking.style_id,
+            booking_id=booking.id,
+            shop_id=booking.shop_id,
+            amount_cents=booking.amount_cents,
+        )
         return booking
 
     def list_for_user(self, db: Session, user: User) -> list[Booking]:
@@ -98,4 +111,33 @@ class BookingService:
         db.add(booking)
         db.commit()
         db.refresh(booking)
+        if status_value == "completed":
+            self.analytics.record_server_event(
+                db,
+                "booking_completed",
+                user_id=booking.user_id,
+                style_id=booking.style_id,
+                booking_id=booking.id,
+                shop_id=booking.shop_id,
+                amount_cents=booking.amount_cents,
+            )
+            self.analytics.record_server_event(
+                db,
+                "revenue_recorded",
+                user_id=booking.user_id,
+                style_id=booking.style_id,
+                booking_id=booking.id,
+                shop_id=booking.shop_id,
+                amount_cents=booking.amount_cents,
+            )
+        elif status_value == "cancelled":
+            self.analytics.record_server_event(
+                db,
+                "booking_cancelled",
+                user_id=booking.user_id,
+                style_id=booking.style_id,
+                booking_id=booking.id,
+                shop_id=booking.shop_id,
+                amount_cents=booking.amount_cents,
+            )
         return booking

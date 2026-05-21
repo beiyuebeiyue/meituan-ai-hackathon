@@ -175,6 +175,22 @@ NAIL_SEG_BATCH_SIZE=8 ../../../.venv/bin/python -m scripts.segment_nail_images
 
 每个 note 文件夹会生成 `result.json`。如果任一图片识别到指甲，`has_nail` 写为 `yes`，并列出每张图片的文件名和指甲数量；如果所有图片都没有识别到指甲，`has_nail` 写为 `no`。`standard_nail_image` 保存最后一张 `nail_count == 5` 的图片文件名，没有则为空字符串。同一文件夹下还会创建 `masks/`，保存识别到指甲的图片 mask。分割完成后，同步把 `standard_nail_image` 写入 `$RUN_ROOT/xhs_note_digest.json`；digest 中保存本地图片路径，没有则为空字符串。
 
+### Step 7: 提取美甲检索 Features
+
+分割完成后，直接调用 feature 分析脚本。该脚本以全局 registry 的唯一笔记 id 为准，自动扫描 `assets/<YYYYMMDD>/xhs_note_digest.json`，优先使用 `standard_nail_image`，否则使用第一张本地存在的 `image_list` 图片。脚本支持续跑：已有成功项会跳过，失败或缺失项会继续处理。
+
+```bash
+../../../.venv/bin/python scripts/analyze_image_features.py
+```
+
+输出写入：
+
+```text
+assets/xhs_image_features.json
+```
+
+不要在 workflow 中手写或复制 feature prompt；prompt 已内置在 `scripts/analyze_image_features.py`。如需审查或修改 prompt，见本文档末尾的 `Feature Analysis Prompt`。
+
 ## Helper Scripts
 
 可执行 Python helper 从 skill 目录以 `python3 -m scripts.<module>` 调用。
@@ -185,6 +201,7 @@ NAIL_SEG_BATCH_SIZE=8 ../../../.venv/bin/python -m scripts.segment_nail_images
 - `scripts.read_note_details`: 通过当前 run summary 定位 raw JSON，读取笔记 id 与 token，将笔记详情 JSON 写到 `$RUN_ROOT/read/`，并生成 `$RUN_ROOT/xhs_note_digest.json`。
 - `scripts.download_note_images`: 从 `$RUN_ROOT/read/` 提取图片 URL，下载到 `$IMAGES_DIR/<note_id>/`，并更新 digest 的 `image_list`。
 - `scripts.segment_nail_images`: 使用本地 clone 的 `spaces/nail_yolo26/best.pt` 做 batch 分割，生成 `result.json`、mask 图，并更新 digest 的 `standard_nail_image`。
+- `scripts.analyze_image_features`: 以全局 registry 的唯一笔记 id 为准，使用 LongCat/OpenAI-compatible API 分析本地美甲图片，并把可检索 features 续跑写入 `assets/xhs_image_features.json`。
 - `scripts.import_digest_standard_posts`: 输入日期，从 `assets/<YYYYmmdd>/xhs_note_digest.json` 创建/复用用户，并把存在的 `standard_nail_image` 以该用户身份导入为平台发布内容。
 - `scripts.generate_demo_bookings`: 输入日期，给当前 digest 对应的平台用户随机生成 `completed` 和 `rejected` 预约，用于运营后台演示。
 - `scripts.utils`: 共享 JSON 读写、原子写入和笔记 id 提取函数。
@@ -205,6 +222,7 @@ NAIL_SEG_BATCH_SIZE=8 ../../../.venv/bin/python -m scripts.segment_nail_images
 - `$IMAGES_DIR/<note_id>/*`: 从笔记详情下载的图片文件。
 - `$IMAGES_DIR/<note_id>/result.json`: 当前笔记图片的指甲识别结果。
 - `$IMAGES_DIR/<note_id>/masks/*`: 当前笔记图片的指甲 mask 图。
+- `assets/xhs_image_features.json`: 全局笔记图片 feature 分析结果，按 registry 顺序保存，支持续跑。
 
 ## Resume and Failure Handling
 

@@ -1,15 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Image, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AuthorProfileScreen } from "./AuthorProfileScreen";
 import { api, resolveAssetUrl } from "../api/client";
 import { useAuthStore } from "../store/useAuthStore";
 import { bookingStatusLabel, getBookingStatusTextColor } from "../utils/bookingStatus";
-import { useThemeColors } from "../utils/theme";
+import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const loginLogo = require("../../assets/login/logo.png");
+const DEMO_CONSUMER_PHONE = "13886722665";
+const DEMO_PASSWORD = "admin@123456";
 
 const sloganHighlights = [
   { icon: "color-palette-outline", text: "千款美甲，随心挑选" },
@@ -21,7 +24,10 @@ export function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { token, user } = useAuthStore();
   const setUser = useAuthStore((state) => state.setUser);
+  const setSession = useAuthStore((state) => state.setSession);
   const colors = useThemeColors();
+  const isDark = useIsDarkMode();
+  const [agreed, setAgreed] = useState(true);
 
   const meQuery = useQuery({
     queryKey: ["me", token],
@@ -36,6 +42,20 @@ export function ProfileScreen() {
   }, [meQuery.data, setUser]);
 
   const displayUser = meQuery.data ?? user;
+  const quickLoginMutation = useMutation({
+    mutationFn: () => {
+      if (!agreed) {
+        throw new Error("请先阅读并同意用户协议与隐私政策");
+      }
+      return api.login({ phone: DEMO_CONSUMER_PHONE, password: DEMO_PASSWORD, requested_role: "consumer" });
+    },
+    onSuccess: async (response) => {
+      await setSession(response.access_token, response.user);
+    },
+    onError: (error) => {
+      Alert.alert("登录失败", error instanceof Error ? error.message : "请稍后重试");
+    },
+  });
 
   if (token && displayUser?.id) {
     return <AuthorProfileScreen authorId={displayUser.id} asProfileTab />;
@@ -51,58 +71,57 @@ export function ProfileScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.surfaceAlt }]}>
-      <ScrollView contentContainerStyle={styles.loggedOutContent} showsVerticalScrollIndicator={false}>
-        <Pressable style={styles.loggedOutHero} onPress={() => navigation.navigate("Login")}>
-          <View style={styles.loggedOutHeroLeft}>
-            <Image source={defaultAvatar} style={[styles.loggedOutAvatar, { backgroundColor: colors.surface }]} />
-            <View style={styles.loggedOutHeroText}>
-              <Text style={[styles.loggedOutTitle, { color: colors.text }]}>点击登录</Text>
-            </View>
-          </View>
-          <View style={styles.loggedOutHeroRight}>
-            <View style={styles.loggedOutActions}>
-              <Pressable
-                style={styles.loggedOutAction}
-                onPress={() => Alert.alert("帮助与客服", "在线客服功能演示中，后续会接入真实客服。")}
-              >
-                <View style={[styles.loggedOutActionIcon, { backgroundColor: colors.surface }]}>
-                  <Ionicons name="headset-outline" size={18} color={colors.subtext} />
-                </View>
-                <Text style={[styles.loggedOutActionText, { color: colors.subtext }]}>客服</Text>
-              </Pressable>
-              <Pressable style={styles.loggedOutAction} onPress={() => navigation.navigate("ProfileSettings")}>
-                <View style={[styles.loggedOutActionIcon, { backgroundColor: colors.surface }]}>
-                  <Ionicons name="settings-outline" size={18} color={colors.subtext} />
-                </View>
-                <Text style={[styles.loggedOutActionText, { color: colors.subtext }]}>设置</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Pressable>
+  const loggedOutBackground = isDark ? colors.background : "#ffffff";
+  const primaryRed = isDark ? colors.accent : "#ef3d4f";
+  const mutedButton = isDark ? colors.input : "#f5f5f5";
 
-        <View style={[styles.sloganCard, { backgroundColor: colors.surface }]}>
-          <Text
-            style={[styles.sloganText, { color: colors.text }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.82}
-          >
-            AI焕甲，即刻上手
-          </Text>
-          <View style={styles.sloganList}>
-            {sloganHighlights.map((item) => (
-              <View key={item.text} style={styles.sloganItem}>
-                <View style={[styles.sloganIconWrap, { backgroundColor: colors.accentSoft }]}>
-                  <Ionicons name={item.icon} size={18} color={colors.accent} />
-                </View>
-                <Text style={[styles.sloganItemText, { color: colors.subtext }]}>{item.text}</Text>
-              </View>
-            ))}
-          </View>
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: loggedOutBackground }]}>
+      <View style={styles.quickLoginContent}>
+        <View style={styles.quickLoginTopBar}>
+          <View />
+          <Pressable onPress={() => Alert.alert("帮助与客服", "在线客服功能演示中，后续会接入真实客服。")} hitSlop={10}>
+            <Text style={[styles.quickHelpText, { color: isDark ? colors.subtext : "#8f8f8f" }]}>帮助</Text>
+          </Pressable>
         </View>
-      </ScrollView>
+
+        <View style={styles.quickLoginBrand}>
+          <Image source={loginLogo} style={styles.quickBrandLogo} resizeMode="contain" />
+          <Text style={[styles.quickBrandSubtitle, { color: colors.text }]}>登录后展示自己</Text>
+        </View>
+
+        <View style={styles.quickLoginBottom}>
+          <Text style={[styles.maskedPhone, { color: colors.text }]}>+86 138 **** 2665</Text>
+          <Pressable
+            style={[styles.quickPrimaryButton, { backgroundColor: primaryRed, opacity: quickLoginMutation.isPending ? 0.72 : 1 }]}
+            disabled={quickLoginMutation.isPending}
+            onPress={() => quickLoginMutation.mutate()}
+          >
+            <Text style={styles.quickPrimaryLabel}>{quickLoginMutation.isPending ? "登录中..." : "一键登录"}</Text>
+          </Pressable>
+
+          <Pressable
+            style={[styles.otherLoginButton, { backgroundColor: mutedButton }]}
+            onPress={() => navigation.navigate("Login", { entryEdge: "right" })}
+          >
+            <Text style={[styles.otherLoginText, { color: isDark ? colors.text : "#3b6f9f" }]}>其他登录方式</Text>
+            <Ionicons name="chevron-forward" size={16} color={isDark ? colors.subtext : "#b7c2cc"} />
+          </Pressable>
+
+          <Pressable style={styles.quickAgreementRow} onPress={() => setAgreed((value) => !value)}>
+            <Ionicons
+              name={agreed ? "checkmark-circle" : "ellipse-outline"}
+              size={22}
+              color={agreed ? primaryRed : isDark ? colors.subtext : "#9a9a9a"}
+            />
+            <Text style={[styles.quickAgreementText, { color: isDark ? colors.subtext : "#a4a4a4" }]}>
+              我已阅读并同意 <Text style={[styles.quickAgreementLink, { color: isDark ? "#7ab5ff" : "#9eb2c0" }]}>《用户协议》</Text>{" "}
+              <Text style={[styles.quickAgreementLink, { color: isDark ? "#7ab5ff" : "#9eb2c0" }]}>《隐私政策》</Text>{" "}
+              <Text style={[styles.quickAgreementLink, { color: isDark ? "#7ab5ff" : "#9eb2c0" }]}>《未成年人个人信息保护规则》</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -190,6 +209,88 @@ function ConsumerProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  quickLoginContent: {
+    flex: 1,
+    paddingHorizontal: 30,
+    paddingTop: 18,
+    paddingBottom: 24,
+  },
+  quickLoginTopBar: {
+    minHeight: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  quickHelpText: {
+    fontSize: 18,
+    fontWeight: "500",
+  },
+  quickLoginBrand: {
+    alignItems: "center",
+    marginTop: 104,
+  },
+  quickBrandLogo: {
+    width: 210,
+    height: 94,
+  },
+  quickBrandSubtitle: {
+    marginTop: 12,
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: "500",
+  },
+  quickLoginBottom: {
+    marginTop: "auto",
+    paddingBottom: 18,
+    alignItems: "center",
+  },
+  maskedPhone: {
+    fontSize: 30,
+    lineHeight: 40,
+    fontWeight: "400",
+    textAlign: "center",
+  },
+  quickPrimaryButton: {
+    marginTop: 34,
+    width: "100%",
+    minHeight: 66,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickPrimaryLabel: {
+    color: "#ffffff",
+    fontSize: 19,
+    fontWeight: "700",
+  },
+  otherLoginButton: {
+    marginTop: 20,
+    minHeight: 58,
+    minWidth: 186,
+    paddingHorizontal: 22,
+    borderRadius: 999,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  otherLoginText: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  quickAgreementRow: {
+    marginTop: 26,
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  quickAgreementText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  quickAgreementLink: {},
   loggedOutContent: { paddingHorizontal: 16, paddingTop: 18, paddingBottom: 120, gap: 14 },
   loggedOutHero: {
     flexDirection: "row",

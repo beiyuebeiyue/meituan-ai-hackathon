@@ -41,7 +41,6 @@ services:
       - ./services/api/app:/workspace/services/api/app
       - ./.openclaw:/workspace/.openclaw
       - ./data:/workspace/data
-      - ./命题三美甲评测数据（对外版）.xlsx:/workspace/命题三美甲评测数据（对外版）.xlsx
 
   ops-web:
     build:
@@ -50,7 +49,8 @@ services:
     depends_on:
       - api
     environment:
-      VITE_API_BASE_URL: http://127.0.0.1:8000/api/v1
+      VITE_API_BASE_URL: /api/v1
+      VITE_API_PROXY_TARGET: http://api:8000
     ports:
       - "127.0.0.1:4173:4173"
 

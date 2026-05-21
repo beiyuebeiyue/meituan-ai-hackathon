@@ -5,8 +5,9 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/app/icon.png",
     "splash": {
-      "backgroundColor": "#fff4ed"
+      "backgroundColor": "#f4f1ed"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,10 +21,17 @@
     },
     "android": {
       "package": "com.nailtry.ai",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/app/icon.png",
+        "backgroundColor": "#f4f1ed"
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
       ]
+    },
+    "web": {
+      "favicon": "./assets/app/icon.png"
     },
     "plugins": [
       "expo-secure-store",

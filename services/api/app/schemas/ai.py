@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -22,6 +22,19 @@ class AIRecommendResponse(BaseModel):
     items: list[AIRecommendItem]
 
 
+class AIHotXhsRecommendationItem(BaseModel):
+    note_id: str
+    title: str
+    image_url: str
+    tags: list[str]
+    reason: str
+    score: float
+    liked_count: int
+    collected_count: int
+    share_count: int
+    nail_features: dict[str, Any] | None = Field(default=None, exclude=True)
+
+
 class AIChatMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str = Field(min_length=1, max_length=1000)
@@ -34,3 +47,6 @@ class AIChatRequest(BaseModel):
 class AIChatResponse(BaseModel):
     reply: str
     model: str
+    recommendations: list[AIHotXhsRecommendationItem] = Field(default_factory=list)
+    needs_hand_image: bool = False
+    hand_picker_message: str | None = None

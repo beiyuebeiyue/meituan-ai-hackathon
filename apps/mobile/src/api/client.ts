@@ -25,6 +25,7 @@ import {
   UserPost,
   UserPrivacy,
   UserSummary,
+  AnalyticsEventPayload,
 } from "../types/api";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
@@ -267,6 +268,16 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages }),
     }),
+  chatWithHand: (messages: AIChatMessage[], handImageUri?: string | null, savedHandPhotoId?: string | null) => {
+    const form = new FormData();
+    form.append("messages", JSON.stringify(messages));
+    if (savedHandPhotoId) {
+      form.append("saved_hand_photo_id", savedHandPhotoId);
+    } else if (handImageUri) {
+      form.append("hand_image", { uri: handImageUri, name: "hand.jpg", type: "image/jpeg" } as never);
+    }
+    return request<AIChatResponse>("/ai/chat", { method: "POST", body: form });
+  },
   createTryOnJob: async (payload: { styleId: string; promptText: string; handImageUri?: string | null; savedHandPhotoId?: string | null }) => {
     const form = new FormData();
     form.append("style_id", payload.styleId);
@@ -283,6 +294,12 @@ export const api = {
   deleteTryOnJob: (jobId: string) => request<{ message: string }>(`/tryon/jobs/${jobId}`, { method: "DELETE" }),
   recordStyleEvents: (items: Array<{ style_id: string; event_type: string; source: string; count?: number }>) =>
     request<{ updated: number }>("/events/styles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    }),
+  recordAnalyticsEvents: (items: AnalyticsEventPayload[]) =>
+    request<{ inserted: number; skipped: number }>("/events/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ items }),

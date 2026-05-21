@@ -89,7 +89,7 @@ class SeedService:
                 if style_url:
                     self._safe_download(
                         str(style_url),
-                        self.settings.seed_path / "styles" / "enhanced",
+                        self.settings.seed_path / "nails",
                         cache_by_url,
                         cache_by_hash,
                         failed_urls,
@@ -112,7 +112,7 @@ class SeedService:
                 if enhanced_url:
                     enhanced_record = self._safe_download(
                         str(enhanced_url),
-                        self.settings.seed_path / "styles" / "enhanced",
+                        self.settings.seed_path / "nails",
                         cache_by_url,
                         cache_by_hash,
                         failed_urls,

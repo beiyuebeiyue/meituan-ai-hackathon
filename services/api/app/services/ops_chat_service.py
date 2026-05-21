@@ -50,13 +50,13 @@ class OpsChatService:
 
             client = OpenAI(api_key=settings.longcat_api_key, base_url=settings.longcat_base_url)
             response = client.chat.completions.create(
-                model=settings.longcat_model,
+                model=settings.longcat_chat_model,
                 messages=self._chat_messages(dashboard, messages),
                 max_tokens=1000,
                 temperature=0.3,
             )
             content = response.choices[0].message.content or ""
-            return OpsChatResponse(reply=content.strip(), model=settings.longcat_model)
+            return OpsChatResponse(reply=content.strip(), model=settings.longcat_chat_model)
         except Exception as exc:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="运营小嘉暂不可用") from exc
 

@@ -2,7 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Alert, FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Alert, FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
@@ -68,6 +69,7 @@ export function HashtagScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const direction = useOverlayDirection("right");
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
@@ -104,6 +106,7 @@ export function HashtagScreen() {
   const heroShadeBg = isDark ? "rgba(14,14,18,0.74)" : "rgba(255,247,242,0.82)";
   const activeSortColor = colors.text;
   const inactiveSortColor = isDark ? "#7f7f89" : colors.subtext;
+  const stickyHeaderHeight = 118 + insets.top;
 
   const likeMutation = useMutation({
     mutationFn: async (item: NailStyle) => {
@@ -138,8 +141,8 @@ export function HashtagScreen() {
   return (
     <SlideOverlayScreen direction={direction} backgroundColor={pageBg} onDismiss={() => navigation.goBack()}>
       {(dismiss) => (
-        <SafeAreaView style={[styles.container, { backgroundColor: pageBg }]}>
-          <View style={[styles.stickyHeader, { backgroundColor: stickyBg, borderBottomColor: colors.border }]}>
+        <View style={[styles.container, { backgroundColor: pageBg }]}>
+          <View style={[styles.stickyHeader, { backgroundColor: stickyBg, borderBottomColor: colors.border, paddingTop: insets.top }]}>
             <View style={styles.stickyTopBar}>
               <Pressable style={styles.iconButton} onPress={dismiss}>
                 <Ionicons name="chevron-back" size={32} color={colors.text} />
@@ -180,8 +183,17 @@ export function HashtagScreen() {
             keyExtractor={(item) => item.id}
             numColumns={2}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.listContent, { paddingTop: 118 }]}
+            contentContainerStyle={[styles.listContent, { paddingTop: stickyHeaderHeight, paddingBottom: 108 + insets.bottom }]}
             columnWrapperStyle={styles.cardRow}
+            refreshControl={
+              <RefreshControl
+                refreshing={hashtagQuery.isRefetching}
+                onRefresh={() => void hashtagQuery.refetch()}
+                tintColor={colors.accent}
+                colors={[colors.accent]}
+                progressViewOffset={stickyHeaderHeight}
+              />
+            }
             ListHeaderComponent={
               <View style={styles.headerWrap}>
                 {heroImage ? <Image source={{ uri: heroImage }} blurRadius={22} style={styles.heroImage} /> : null}
@@ -231,11 +243,11 @@ export function HashtagScreen() {
               </View>
             }
           />
-          <Pressable style={styles.publishButton} onPress={openPublish}>
+          <Pressable style={[styles.publishButton, { bottom: 26 + insets.bottom }]} onPress={openPublish}>
             <Ionicons name="add" size={28} color="#fff" />
             <Text style={styles.publishText}>去发布</Text>
           </Pressable>
-        </SafeAreaView>
+        </View>
       )}
     </SlideOverlayScreen>
   );
@@ -300,7 +312,7 @@ const styles = StyleSheet.create({
   },
   topicIntro: {
     paddingHorizontal: 24,
-    paddingTop: 58,
+    paddingTop: 0,
   },
   titleRow: {
     flexDirection: "row",

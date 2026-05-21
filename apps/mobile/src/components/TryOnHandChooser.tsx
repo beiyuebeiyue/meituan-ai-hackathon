@@ -12,6 +12,7 @@ type TryOnHandChooserProps = {
   selectedHandPhotoId?: string | null;
   loading?: boolean;
   busy?: boolean;
+  tip?: string;
   onSelectSavedHand: (item: UserHandPhoto) => void;
   onTakePhoto: () => void;
   onPickFromLibrary: () => void;
@@ -57,6 +58,7 @@ export function TryOnHandChooser({
   selectedHandPhotoId,
   loading,
   busy,
+  tip = "选好手图后，我会直接拿当前这款美甲开始焕甲试戴。",
   onSelectSavedHand,
   onTakePhoto,
   onPickFromLibrary,
@@ -96,7 +98,7 @@ export function TryOnHandChooser({
 
       <View style={[styles.tipRow, { backgroundColor: colors.surfaceAlt }]}>
         <Ionicons name="sparkles-outline" size={16} color={colors.accent} />
-        <Text style={[styles.tipText, { color: colors.subtext }]}>选好手图后，我会直接拿当前这款美甲开始焕甲试戴。</Text>
+        <Text style={[styles.tipText, { color: colors.subtext }]}>{tip}</Text>
       </View>
     </View>
   );

@@ -27,7 +27,7 @@ set_env() {
 
 LONGCAT_KEY="$(read_env LONGCAT_API_KEY)"
 LONGCAT_BASE="$(read_env LONGCAT_BASE_URL)"
-LONGCAT_MODEL="$(read_env LONGCAT_MODEL)"
+LONGCAT_CHAT_MODEL="$(read_env LONGCAT_CHAT_MODEL)"
 GATEWAY_TOKEN="$(read_env OPENCLAW_GATEWAY_TOKEN)"
 
 if [ -z "$GATEWAY_TOKEN" ]; then
@@ -44,7 +44,7 @@ if [ ! -f "$WORKSPACE_DIR/SOUL.md" ]; then
   cp soul.md "$WORKSPACE_DIR/SOUL.md"
 fi
 
-export LONGCAT_KEY LONGCAT_BASE LONGCAT_MODEL GATEWAY_TOKEN CONFIG_WORKSPACE PORT
+export LONGCAT_KEY LONGCAT_BASE LONGCAT_CHAT_MODEL GATEWAY_TOKEN CONFIG_WORKSPACE PORT
 jq -n '
 {
   gateway: {
@@ -57,8 +57,8 @@ jq -n '
   agents: {
     defaults: {
       workspace: env.CONFIG_WORKSPACE,
-      model: {primary: ("longcat/" + env.LONGCAT_MODEL)},
-      models: {("longcat/" + env.LONGCAT_MODEL): {}}
+      model: {primary: ("longcat/" + env.LONGCAT_CHAT_MODEL)},
+      models: {("longcat/" + env.LONGCAT_CHAT_MODEL): {}}
     }
   },
   models: {
@@ -70,8 +70,8 @@ jq -n '
         api: "openai-completions",
         models: [
           {
-            id: env.LONGCAT_MODEL,
-            name: (env.LONGCAT_MODEL + " (LongCat)"),
+            id: env.LONGCAT_CHAT_MODEL,
+            name: (env.LONGCAT_CHAT_MODEL + " (LongCat)"),
             api: "openai-completions",
             reasoning: false,
             input: ["text"],

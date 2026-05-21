@@ -105,6 +105,63 @@ class OpsDashboardResponse(BaseModel):
     popular_nails: list[OpsPopularNail]
 
 
+class OpsAnalyticsKpis(BaseModel):
+    dau: int
+    new_users: int
+    recommendation_impressions: int
+    recommendation_ctr: float
+    tryon_started: int
+    tryon_completion_rate: float
+    booking_submits: int
+    completed_orders: int
+    revenue_cents: int
+    average_order_value_cents: int
+
+
+class OpsAnalyticsFunnelStep(BaseModel):
+    key: str
+    label: str
+    count: int
+    conversion_rate: float
+    step_rate: float
+    dropoff_rate: float
+
+
+class OpsAnalyticsTrendPoint(BaseModel):
+    date: date
+    tryons: int
+    bookings: int
+    completed_orders: int
+    revenue_cents: int
+
+
+class OpsAnalyticsRankItem(BaseModel):
+    id: str
+    name: str
+    image_url: str | None = None
+    impressions: int
+    clicks: int
+    ctr: float
+    tryons: int
+    tryon_rate: float
+    bookings: int
+    booking_rate: float
+    completed_orders: int
+    completion_rate: float
+    revenue_cents: int
+
+
+class OpsAnalyticsOverviewResponse(BaseModel):
+    start_date: date
+    end_date: date
+    generated_at: datetime
+    kpis: OpsAnalyticsKpis
+    funnel: list[OpsAnalyticsFunnelStep]
+    trends: list[OpsAnalyticsTrendPoint]
+    top_styles: list[OpsAnalyticsRankItem]
+    top_shops: list[OpsAnalyticsRankItem]
+
+
 OpsChatRole = Literal["user", "assistant"]
 
 

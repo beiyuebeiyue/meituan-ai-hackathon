@@ -492,7 +492,7 @@ export function StylePreviewScreen() {
           <View style={styles.infoBlock}>
             <Text style={[styles.title, { color: colors.text }]}>{query.data.title}</Text>
             {descriptionText || query.data.tags.length ? (
-              <Text style={[styles.desc, { color: colors.subtext }]}>
+              <Text style={[styles.desc, { color: colors.text }]}>
                 {descriptionText}
                 {query.data.tags.length ? (
                   <>
@@ -902,13 +902,14 @@ const styles = StyleSheet.create({
   infoBlock: {
     paddingHorizontal: 18,
     paddingTop: 18,
-    gap: 14,
+    gap: 8,
   },
   title: {
-    fontSize: 30,
-    fontWeight: "800",
+    fontSize: 18,
+    fontWeight: "400",
   },
   desc: {
+    fontSize: 16,
     lineHeight: 22,
   },
   inlineTag: {

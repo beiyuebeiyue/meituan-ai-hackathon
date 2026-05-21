@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8001/api/v1";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
 const TOKEN_KEY = "ops_access_token";
 
@@ -61,6 +61,57 @@ export type OpsDashboard = {
     revenue: MetricPair;
   };
   popular_nails: PopularNail[];
+};
+
+export type OpsAnalyticsOverview = {
+  start_date: string;
+  end_date: string;
+  generated_at: string;
+  kpis: {
+    dau: number;
+    new_users: number;
+    recommendation_impressions: number;
+    recommendation_ctr: number;
+    tryon_started: number;
+    tryon_completion_rate: number;
+    booking_submits: number;
+    completed_orders: number;
+    revenue_cents: number;
+    average_order_value_cents: number;
+  };
+  funnel: Array<{
+    key: string;
+    label: string;
+    count: number;
+    conversion_rate: number;
+    step_rate: number;
+    dropoff_rate: number;
+  }>;
+  trends: Array<{
+    date: string;
+    tryons: number;
+    bookings: number;
+    completed_orders: number;
+    revenue_cents: number;
+  }>;
+  top_styles: OpsAnalyticsRankItem[];
+  top_shops: OpsAnalyticsRankItem[];
+};
+
+export type OpsAnalyticsRankItem = {
+  id: string;
+  name: string;
+  image_url?: string | null;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  tryons: number;
+  tryon_rate: number;
+  bookings: number;
+  booking_rate: number;
+  completed_orders: number;
+  completion_rate: number;
+  revenue_cents: number;
 };
 
 export type PopularNail = {
@@ -255,6 +306,13 @@ export const api = {
       skipAuth: true,
     }),
   getDashboard: () => request<OpsDashboard>("/ops/dashboard"),
+  getAnalyticsOverview: (startDate?: string, endDate?: string) => {
+    const search = new URLSearchParams();
+    if (startDate) search.set("start_date", startDate);
+    if (endDate) search.set("end_date", endDate);
+    const suffix = search.toString() ? `?${search.toString()}` : "";
+    return request<OpsAnalyticsOverview>(`/ops/analytics/overview${suffix}`);
+  },
   getUsers: (query = "", limit = 50, offset = 0) =>
     request<ListResponse<OpsUser>>(`/ops/users?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`),
   getUser: (id: string) => request<OpsUser>(`/ops/users/${id}`),

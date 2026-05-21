@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ReactNode } from "react";
 import { Pressable, ScrollView, ScrollViewProps, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeColors } from "../utils/theme";
 
 type ScrollProps = {
@@ -22,9 +23,10 @@ type HeaderProps = {
 
 function Header({ title, onBack, right }: HeaderProps) {
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+    <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border, paddingTop: insets.top }]}>
       <Pressable style={styles.headerButton} onPress={onBack}>
         <Ionicons name="chevron-back" size={28} color={colors.text} />
       </Pressable>
@@ -71,7 +73,7 @@ export const OverlayContent = {
 
 const styles = StyleSheet.create({
   header: {
-    height: 54,
+    minHeight: 54,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     alignItems: "center",

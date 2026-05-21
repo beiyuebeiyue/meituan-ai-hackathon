@@ -19,6 +19,7 @@ from app.services.image_processing_artifact_service import ImageProcessingArtifa
 from app.services.segmentation_service import get_segmentation_service
 from app.services.style_service import StyleService
 from app.services.user_hand_photo_service import UserHandPhotoService
+from app.services.analytics_service import AnalyticsService
 from app.utils.files import relative_to_base
 
 
@@ -32,6 +33,7 @@ class TryOnService:
         self.artifact_service = ImageProcessingArtifactService()
         self.event_service = EventService()
         self.user_hand_photo_service = UserHandPhotoService()
+        self.analytics = AnalyticsService()
 
     @property
     def settings(self):
@@ -66,6 +68,14 @@ class TryOnService:
         db.add(job)
         db.commit()
         db.refresh(job)
+        self.analytics.record_server_event(
+            db,
+            "tryon_started",
+            user_id=user.id,
+            style_id=style.id,
+            tryon_job_id=job.id,
+            source="tryon",
+        )
         return job
 
     def get_job(self, db: Session, user: User, job_id: str) -> TryOnJob:
@@ -168,6 +178,14 @@ class TryOnService:
                 db,
                 [StyleEventInput(style_id=style.id, event_type="tryon", source="ask_ai", count=1)],
             )
+            self.analytics.record_server_event(
+                db,
+                "tryon_completed",
+                user_id=job.user_id,
+                style_id=style.id,
+                tryon_job_id=job.id,
+                source="tryon",
+            )
             return job
         except Exception as exc:
             job.status = "failed"
@@ -176,4 +194,13 @@ class TryOnService:
             db.add(job)
             db.commit()
             db.refresh(job)
+            self.analytics.record_server_event(
+                db,
+                "tryon_failed",
+                user_id=job.user_id,
+                style_id=job.selected_style_id,
+                tryon_job_id=job.id,
+                source="tryon",
+                properties={"error": str(exc)[:500]},
+            )
             return job

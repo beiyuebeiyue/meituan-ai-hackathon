@@ -1,124 +1,324 @@
 from __future__ import annotations
 
 import json
+import re
+from typing import Any
 
-from fastapi import HTTPException, status
-from sqlalchemy import select
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.nail_style import NailStyle
 from app.models.user import User
+from app.models.user_hand_photo import UserHandPhoto
 from app.schemas.ai import AIChatMessage, AIChatResponse
-from app.services.nail_rag_service import NailRagService
+from app.services.hand_feature_service import HandFeatureError, HandFeatureService
+from app.services.user_chat_tools import (
+    HAND_TOOL_NAME,
+    NEEDS_HAND_IMAGE_ERROR,
+    TEXT_TOOL_NAME,
+    ChatTool,
+    build_all_chat_tools,
+    build_chat_tools,
+)
+from app.services.xhs_vector_recommendation_service import XhsVectorRecommendationService
+from app.utils.files import resolve_local_path
+
+
+HAND_MATCH_QUERY_WORDS = ("我的手", "我适合", "适合我", "按我的手", "适合我本人", "手型", "肤色", "手图", "图搜图")
 
 
 class UserChatService:
     def __init__(self) -> None:
-        self.nail_rag_service = NailRagService()
+        self.hand_feature_service = HandFeatureService()
+        self.xhs_vector_recommendation_service = XhsVectorRecommendationService()
+        self.chat_tools_by_name = build_all_chat_tools(self.xhs_vector_recommendation_service)
 
-    def chat(self, db: Session, messages: list[AIChatMessage], user: User | None = None) -> AIChatResponse:
+    def chat(
+        self,
+        db: Session,
+        messages: list[AIChatMessage],
+        user: User | None = None,
+        hand_image: UploadFile | None = None,
+        saved_hand_photo_id: str | None = None,
+    ) -> AIChatResponse:
         settings = get_settings()
-        question = messages[-1].content
-        context = self._context(db, user, question)
-        if settings.longcat_api_key:
-            return self._longcat_reply(context, messages)
-        if settings.openai_api_key:
-            return self._openai_reply(context, messages)
-        return AIChatResponse(reply=self._local_reply(context, question), model="local-user-assistant")
+        question = messages[-1].content.strip()
+        try:
+            hand_features = self._hand_features(db, user, hand_image, saved_hand_photo_id)
+        except HandFeatureError as exc:
+            return AIChatResponse(reply=f"这张手图我暂时没法稳定判断：{exc}。可以换一张光线更自然、手指完整露出的照片。", model="hand-feature-extractor")
 
-    def _longcat_reply(self, context: dict[str, object], messages: list[AIChatMessage]) -> AIChatResponse:
+        if not settings.longcat_api_key:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="小嘉大模型未配置")
+        return self._longcat_reply(messages, question, hand_features)
+
+    def _longcat_reply(self, messages: list[AIChatMessage], question: str, hand_features: dict[str, str] | None) -> AIChatResponse:
         settings = get_settings()
+        available_tools = self._available_tools(hand_features)
         try:
             from openai import OpenAI
 
-            client = OpenAI(api_key=settings.longcat_api_key, base_url=settings.longcat_base_url)
+            client = OpenAI(
+                api_key=settings.longcat_api_key,
+                base_url=settings.longcat_base_url,
+                timeout=settings.longcat_chat_timeout_seconds,
+            )
             response = client.chat.completions.create(
-                model=settings.longcat_model,
-                messages=self._chat_messages(context, messages),
-                max_tokens=900,
-                temperature=0.4,
+                model=settings.longcat_chat_model,
+                messages=self._tool_chat_messages(messages, hand_features, available_tools),
+                tools=_openai_tool_definitions(available_tools),
+                tool_choice="auto",
+                max_tokens=700,
+                temperature=0.2,
             )
-            content = response.choices[0].message.content or ""
-            return AIChatResponse(reply=content.strip(), model=settings.longcat_model)
         except Exception as exc:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="小嘉暂时不可用") from exc
 
-    def _openai_reply(self, context: dict[str, object], messages: list[AIChatMessage]) -> AIChatResponse:
-        settings = get_settings()
-        try:
-            from openai import OpenAI
+        assistant_message = response.choices[0].message
+        structured_tool_calls = _structured_tool_calls(assistant_message)
+        if structured_tool_calls:
+            return self._longcat_markup_tool_reply(settings.longcat_chat_model, question, hand_features, structured_tool_calls)
 
-            client = OpenAI(api_key=settings.openai_api_key)
-            response = client.responses.create(
-                model=settings.openai_text_model,
-                instructions=self._system_prompt(context),
-                input=[message.model_dump() for message in messages[-12:]],
+        raw_reply = (assistant_message.content or "").strip()
+        parsed_tool_calls = _parse_longcat_tool_call_markup(raw_reply)
+        if parsed_tool_calls:
+            return self._longcat_markup_tool_reply(settings.longcat_chat_model, question, hand_features, parsed_tool_calls)
+        if _contains_longcat_tool_markup(raw_reply):
+            return AIChatResponse(
+                reply="我这次没有调用到可用的图库检索工具，所以先不展示推荐卡片。你可以再问一次，我会重新尝试检索。",
+                model=settings.longcat_chat_model,
+                recommendations=[],
             )
-            return AIChatResponse(reply=response.output_text.strip(), model=settings.openai_text_model)
-        except Exception as exc:
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="小嘉暂时不可用") from exc
+        return AIChatResponse(reply=_strip_longcat_tool_markup(raw_reply), model=settings.longcat_chat_model, recommendations=[])
 
-    def _chat_messages(self, context: dict[str, object], messages: list[AIChatMessage]) -> list[dict[str, str]]:
-        return [
-            {"role": "system", "content": self._system_prompt(context)},
-            *[message.model_dump() for message in messages[-12:]],
+    def _longcat_markup_tool_reply(
+        self,
+        model: str,
+        question: str,
+        hand_features: dict[str, str] | None,
+        parsed_tool_calls: list[dict[str, Any]],
+    ) -> AIChatResponse:
+        tool_results = [
+            self._execute_tool_call(
+                name=str(tool_call.get("name") or ""),
+                arguments=tool_call.get("arguments"),
+                default_query=question,
+                hand_features=hand_features,
+            )
+            for tool_call in parsed_tool_calls
         ]
+        recommendations = _recommendations_from_tool_results(tool_results)
+        reply = self._tool_result_reply(tool_results, bool(hand_features))
+        needs_hand_image = _needs_hand_image(tool_results)
+        return AIChatResponse(
+            reply=reply,
+            model=model,
+            recommendations=_dedupe_recommendations(recommendations),
+            needs_hand_image=needs_hand_image,
+            hand_picker_message=reply if needs_hand_image else None,
+        )
 
-    def _context(self, db: Session, user: User | None, question: str) -> dict[str, object]:
-        styles = db.scalars(
-            select(NailStyle).order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc()).limit(8)
-        ).all()
-        return {
-            "user": {
-                "username": user.username if user else None,
-                "role": user.role if user else None,
-                "location": user.last_login_ip_location if user else None,
-            },
-            "styles": [
-                {
-                    "id": style.id,
-                    "title": style.title,
-                    "tags": style.tags_json or [],
-                    "is_trending": style.is_trending,
-                    "popularity_score": style.popularity_score,
-                }
-                for style in styles
-            ],
-            "tools": {
-                "search_nail_rag": {
-                    "query": question,
-                    "items": self.nail_rag_service.search(question),
-                }
-            },
-        }
+    def _execute_tool_call(
+        self,
+        name: str,
+        arguments: Any,
+        default_query: str,
+        hand_features: dict[str, str] | None,
+    ) -> dict[str, Any]:
+        if name == TEXT_TOOL_NAME and hand_features is None and _needs_hand_match_from_query(arguments, default_query):
+            name = HAND_TOOL_NAME
+        tool = self.chat_tools_by_name.get(name)
+        if tool is None:
+            return {"status": "failed", "tool": name, "query": default_query, "error": "未知工具", "recommendations": []}
+        return tool.execute(arguments, default_query, hand_features)
+
+    def _available_tools(self, hand_features: dict[str, str] | None) -> list[ChatTool]:
+        del hand_features
+        return build_chat_tools(self.xhs_vector_recommendation_service, include_hand=True)
 
     @staticmethod
-    def _system_prompt(context: dict[str, object]) -> str:
+    def _message_dicts(messages: list[AIChatMessage]) -> list[dict[str, str]]:
+        result: list[dict[str, str]] = []
+        for message in messages[-12:]:
+            content = _strip_longcat_tool_markup(message.content) if message.role == "assistant" else message.content
+            result.append({"role": message.role, "content": content})
+        return result
+
+    def _hand_features(
+        self,
+        db: Session,
+        user: User | None,
+        hand_image: UploadFile | None,
+        saved_hand_photo_id: str | None,
+    ) -> dict[str, str] | None:
+        if hand_image is not None:
+            return self.hand_feature_service.analyze_upload(hand_image)
+        if not saved_hand_photo_id:
+            return None
+        if user is None:
+            raise HandFeatureError("请先登录后再使用已保存手图")
+        hand_photo = db.get(UserHandPhoto, saved_hand_photo_id)
+        if hand_photo is None or hand_photo.user_id != user.id:
+            raise HandFeatureError("没有找到这张已保存手图")
+        image_path = resolve_local_path(hand_photo.image_path)
+        if image_path is None or not image_path.exists():
+            raise HandFeatureError("这张已保存手图文件不存在")
+        return self.hand_feature_service.analyze_path(image_path)
+
+    @staticmethod
+    def _tool_chat_messages(messages: list[AIChatMessage], hand_features: dict[str, str] | None, tools: list[ChatTool]) -> list[dict[str, str]]:
+        return [
+            {"role": "system", "content": UserChatService._tool_system_prompt(hand_features, tools)},
+            *UserChatService._message_dicts(messages),
+        ]
+
+    @staticmethod
+    def _tool_system_prompt(hand_features: dict[str, str] | None, tools: list[ChatTool]) -> str:
+        hand_state = json.dumps(hand_features, ensure_ascii=False) if hand_features else "未上传"
+        tool_docs = "\n\n".join(
+            (
+                "### Tool namespace: function\n\n"
+                f"#### Tool name: {tool.name}\n\n"
+                f"Description: {tool.description}\n\n"
+                "InputSchema:\n"
+                f"{json.dumps(tool.parameters(), ensure_ascii=False, indent=2)}"
+            )
+            for tool in tools
+        )
         return (
-            "你是焕甲用户端的小嘉，是面向普通用户的美甲助手。"
-            "你可以帮助用户选择美甲风格、解释适合什么手型和场景、引导使用 AI 焕手、提醒预约到店。"
-            "回答要简洁、亲切、可执行。不要暴露运营后台信息，不要编造平台没有的数据。"
-            "你可以使用工具 search_nail_rag，工具结果会放在 tools.search_nail_rag.items。"
-            "推荐具体美甲款式时，优先基于工具返回的案例标题、标签、热度和图片信息；没有工具结果时再使用平台款式。"
-            "不要向用户暴露工具名、RAG、JSON 等内部实现。"
-            "如果用户想找具体款式，可以建议在页面下方推荐卡片里点开详情或直接 AI 试戴。"
-            "如果涉及皮肤疾病、过敏或医疗判断，只做安全提醒并建议咨询专业人士。"
-            f"\n\n当前可参考的用户和款式 JSON:\n{json.dumps(context, ensure_ascii=False)}"
+            "你是焕甲 App 的小嘉助手，服务对象是正在寻找美甲灵感的普通用户。\n"
+            "你的回答要简洁、自然、可信，不要编造平台库存或检索结果。\n\n"
+            "当前用户状态：\n"
+            f"- 手图状态：{hand_state}\n\n"
+            "## Tools\n"
+            "You have access to the following tools:\n\n"
+            f"{tool_docs}\n\n"
+            "工具由 API 的 function tool calling 提供。需要使用工具时，必须发起 function tool call，"
+            "不要在自然语言正文里手写工具名、XML、JSON 或任何内部调用痕迹。\n\n"
+            "工具使用规则：\n"
+            "1. 用户明确要求推荐、查找、看看、有没有、挑几款具体美甲图片时，必须调用工具。\n"
+            "2. 只涉及美甲知识解释、护理建议、概念说明或普通聊天时，不调用工具，直接回答。\n"
+            "3. 文搜图需求使用 search_nail_images_by_text，例如通勤、约会、显白、短甲、长甲、猫眼、法式、颜色、热门等。\n"
+            "4. 用户要求按自己的手、手型、肤色、手图或图搜图推荐时，只能使用 search_nail_images_by_hand_and_text，不能使用文搜图工具替代。\n"
+            "5. 如果用户没有上传手图但请求按自己的手推荐，也调用 search_nail_images_by_hand_and_text，由工具返回是否需要手图。\n"
+            "6. 用户提到颜色时，把细分颜色归并为基础色系并写入 filters.colors；例如墨绿/深绿归为绿色，裸粉归为粉色和裸色，奶白归为白色。\n"
+            "7. 只能调用上方列出的工具名，不要自造工具名。\n\n"
+            "输出规则：\n"
+            "- 如果需要推荐图片，发起 function tool call，不要只在正文里说“我来搜索”。\n"
+            "- 工具返回推荐时，只做简短说明，推荐卡片会在界面中展示。\n"
+            "- 工具没有返回结果时，如实说明暂时没找到稳定匹配，并建议用户换个描述。\n"
+            "- 不要提到 RAG、FAISS、embedding、JSON、数据库等内部实现。"
         )
 
     @staticmethod
-    def _local_reply(context: dict[str, object], question: str) -> str:
-        tools = context.get("tools", {})
-        if isinstance(tools, dict):
-            rag = tools.get("search_nail_rag", {})
-            items = rag.get("items", []) if isinstance(rag, dict) else []
-            if isinstance(items, list) and items:
-                names = "、".join(str(item.get("title")) for item in items[:3] if isinstance(item, dict))
-                return f"我查了美甲案例库，和“{question}”更相关的是：{names}。可以优先选这些方向，再用 AI 焕手试戴。"
+    def _tool_result_reply(tool_results: list[dict[str, Any]], has_hand: bool) -> str:
+        if _needs_hand_image(tool_results):
+            return "我需要先看一张清晰手图，才能判断你的手型和肤色，再给你挑更适合的款式。"
+        recommendations = []
+        for result in tool_results:
+            recommendations.extend(result.get("recommendations", []))
+        if recommendations:
+            if has_hand:
+                return "我结合你的手部特征和需求挑好了几款，下面卡片里有图片和推荐理由。"
+            return "我按你的需求挑好了几款美甲，下面卡片里有图片和推荐理由。"
+        return "我暂时没找到稳定匹配的图片结果。可以换个更具体的描述，或者换一张清晰手图再试。"
 
-        styles = context.get("styles", [])
-        if isinstance(styles, list) and styles:
-            names = "、".join(str(item.get("title")) for item in styles[:3] if isinstance(item, dict))
-            return f"我先按你的问题理解：{question}\n可以先看这几款：{names}。你也可以直接点推荐卡片试戴到手上。"
-        return f"我先按你的问题理解：{question}\n可以告诉我你想要显白、通勤、短甲、猫眼还是约会款，我会帮你挑适合试戴的款式。"
+
+def _needs_hand_image(tool_results: list[dict[str, Any]]) -> bool:
+    return any(result.get("error_type") == NEEDS_HAND_IMAGE_ERROR for result in tool_results)
+
+
+def _recommendations_from_tool_results(tool_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    recommendations: list[dict[str, Any]] = []
+    for result in tool_results:
+        recommendations.extend(result.get("recommendations", []))
+    return recommendations
+
+
+def _openai_tool_definitions(tools: list[ChatTool]) -> list[dict[str, Any]]:
+    return [
+        {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters(),
+            },
+        }
+        for tool in tools
+    ]
+
+
+def _structured_tool_calls(message: Any) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for tool_call in getattr(message, "tool_calls", None) or []:
+        function = getattr(tool_call, "function", None)
+        if function is None:
+            continue
+        arguments = getattr(function, "arguments", None)
+        try:
+            parsed_arguments = json.loads(arguments) if isinstance(arguments, str) and arguments.strip() else {}
+        except json.JSONDecodeError:
+            parsed_arguments = {}
+        result.append({"name": getattr(function, "name", ""), "arguments": parsed_arguments})
+    return result
+
+
+def _needs_hand_match_from_query(arguments: Any, default_query: str) -> bool:
+    queries = [default_query]
+    if isinstance(arguments, dict):
+        queries.append(str(arguments.get("query") or ""))
+    return any(word in query for query in queries for word in HAND_MATCH_QUERY_WORDS)
+
+
+def _loads_json_object(value: str) -> dict[str, Any]:
+    text = value.strip()
+    fence = re.search(r"```(?:json)?\s*(.*?)\s*```", text, flags=re.DOTALL | re.IGNORECASE)
+    if fence:
+        text = fence.group(1).strip()
+    if not text.startswith("{"):
+        start = text.find("{")
+        end = text.rfind("}")
+        if start >= 0 and end > start:
+            text = text[start : end + 1]
+    parsed = json.loads(text.replace("“", '"').replace("”", '"'))
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _contains_longcat_tool_markup(value: str) -> bool:
+    return "<longcat_tool_call>" in value
+
+
+def _parse_longcat_tool_call_markup(value: str) -> list[dict[str, Any]]:
+    calls: list[dict[str, Any]] = []
+    for match in re.finditer(r"<longcat_tool_call>(.*?)</longcat_tool_call>", value, flags=re.DOTALL):
+        body = match.group(1).strip()
+        if not body:
+            continue
+        try:
+            parsed = _loads_json_object(body)
+        except json.JSONDecodeError:
+            continue
+        if parsed and parsed.get("name"):
+            name = str(parsed.get("name") or "").strip()
+            arguments = parsed.get("arguments") if isinstance(parsed.get("arguments"), dict) else {}
+            if name in {TEXT_TOOL_NAME, HAND_TOOL_NAME}:
+                calls.append({"name": name, "arguments": arguments})
+    return calls
+
+
+def _strip_longcat_tool_markup(value: str) -> str:
+    text = re.sub(r"<longcat_tool_call>.*?</longcat_tool_call>", "", value, flags=re.DOTALL).strip()
+    return text or "我这次没有拿到稳定的回复。你可以换个说法再问我一次。"
+
+
+def _dedupe_recommendations(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen: set[str] = set()
+    result: list[dict[str, Any]] = []
+    for item in items:
+        note_id = str(item.get("note_id") or "")
+        if not note_id or note_id in seen:
+            continue
+        seen.add(note_id)
+        result.append(item)
+    return result

@@ -128,9 +128,51 @@ export type AIChatMessage = {
   content: string;
 };
 
+export type XhsHotRecommendation = {
+  note_id: string;
+  title: string;
+  image_url: string;
+  tags: string[];
+  reason: string;
+  score: number;
+  liked_count: number;
+  collected_count: number;
+  share_count: number;
+};
+
 export type AIChatResponse = {
   reply: string;
   model: string;
+  recommendations?: XhsHotRecommendation[];
+  needs_hand_image?: boolean;
+  hand_picker_message?: string | null;
+};
+
+export type AnalyticsEventName =
+  | "app_open"
+  | "style_impression"
+  | "style_click"
+  | "ai_recommendation_shown"
+  | "ai_recommendation_click"
+  | "tryon_start_clicked"
+  | "tryon_result_viewed"
+  | "booking_start_clicked"
+  | "booking_submit_clicked";
+
+export type AnalyticsEventPayload = {
+  event_id: string;
+  event_name: AnalyticsEventName;
+  anonymous_id?: string | null;
+  session_id?: string | null;
+  style_id?: string | null;
+  tryon_job_id?: string | null;
+  booking_id?: string | null;
+  shop_id?: string | null;
+  source?: string;
+  screen?: string;
+  amount_cents?: number | null;
+  properties?: Record<string, unknown>;
+  occurred_at?: string;
 };
 
 export type TryOnJob = {

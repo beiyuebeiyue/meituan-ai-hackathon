@@ -1,9 +1,9 @@
 import {
-  BarChartOutlined,
   BellOutlined,
   GlobalOutlined,
   DashboardOutlined,
   RobotOutlined,
+  MenuOutlined,
   LeftOutlined,
   LogoutOutlined,
   QuestionCircleOutlined,
@@ -14,7 +14,7 @@ import {
   TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Avatar, Button, Layout, Menu, Space, Typography } from "antd";
+import { Avatar, Button, Drawer, Grid, Layout, Menu, Space, Typography } from "antd";
 import { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearOpsToken } from "../api/client";
@@ -57,15 +57,32 @@ const navItems = [
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const showChatWidget = location.pathname !== "/chatbot";
+  const renderMenu = () => (
+    <Menu
+      mode="inline"
+      defaultOpenKeys={["dashboard", "members", "profile"]}
+      selectedKeys={[location.pathname]}
+      items={navItems}
+      onClick={({ key }) => {
+        if (String(key).startsWith("/")) {
+          navigate(key);
+          setMobileMenuOpen(false);
+        }
+      }}
+    />
+  );
 
   return (
     <Layout className="ops-shell">
       <Sider className="ops-sider" width={280} collapsedWidth={80} collapsed={collapsed}>
         <div className="ops-brand">
           <span className="ops-brand-logo">
-            <BarChartOutlined />
+            <img src="/logo.png" alt="焕甲" />
           </span>
           {!collapsed && <span>焕甲后台系统</span>}
         </div>
@@ -75,20 +92,15 @@ export function AppLayout() {
           icon={collapsed ? <RightOutlined /> : <LeftOutlined />}
           onClick={() => setCollapsed(!collapsed)}
         />
-        <Menu
-          mode="inline"
-          defaultOpenKeys={["dashboard", "members", "profile"]}
-          selectedKeys={[location.pathname]}
-          items={navItems}
-          onClick={({ key }) => {
-            if (String(key).startsWith("/")) navigate(key);
-          }}
-        />
+        {renderMenu()}
       </Sider>
       <Layout>
         <Header className="ops-header">
-          <Typography.Text type="secondary">焕甲后台系统</Typography.Text>
-          <Space>
+          <Space className="ops-header-left">
+            {isMobile ? <Button type="text" icon={<MenuOutlined />} onClick={() => setMobileMenuOpen(true)} /> : null}
+            <Typography.Text type="secondary">焕甲后台系统</Typography.Text>
+          </Space>
+          <Space className="ops-header-actions">
             <Button type="text" icon={<QuestionCircleOutlined />} />
             <Button type="text" icon={<GlobalOutlined />} />
             <Button type="text" icon={<BellOutlined />} />
@@ -108,6 +120,16 @@ export function AppLayout() {
             </Button>
           </Space>
         </Header>
+        <Drawer
+          className="ops-mobile-menu"
+          title="焕甲后台系统"
+          placement="left"
+          width={300}
+          open={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+        >
+          {renderMenu()}
+        </Drawer>
         <Content className="ops-content">
           <Outlet />
         </Content>

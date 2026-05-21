@@ -1,10 +1,11 @@
 import { DeleteOutlined, PlusOutlined, SendOutlined, UserOutlined } from "@ant-design/icons";
-import { App, Avatar, Button, Empty, Input, Popconfirm, Space, Typography } from "antd";
+import { App, Avatar, Button, Empty, Input, Popconfirm, Typography } from "antd";
 import Lottie from "lottie-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, ChatMessage } from "../api/client";
 import catTypingAnimation from "../assets/lottie/cat-typing.json";
 import {
+  CONVERSATIONS_CHANGED_EVENT,
   createOrReuseBlankConversation,
   getSavedActiveConversationId,
   groupLabel,
@@ -37,6 +38,7 @@ export function ChatbotPage() {
   const [loading, setLoading] = useState(false);
   const [waitingDots, setWaitingDots] = useState(".");
   const messagesRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(true);
 
   const activeConversation = conversations.find((item) => item.id === activeId) ?? conversations[0];
   const isBlankConversation = Boolean(activeConversation && isBlankNewConversation(activeConversation));
@@ -49,8 +51,25 @@ export function ChatbotPage() {
   }, [conversations]);
 
   useEffect(() => {
-    saveConversations(conversations);
-  }, [conversations]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const syncConversations = () => {
+      const next = loadConversations();
+      setConversations(next);
+      setActiveIdState(getSavedActiveConversationId(next));
+    };
+    window.addEventListener(CONVERSATIONS_CHANGED_EVENT, syncConversations);
+    window.addEventListener("storage", syncConversations);
+    return () => {
+      window.removeEventListener(CONVERSATIONS_CHANGED_EVENT, syncConversations);
+      window.removeEventListener("storage", syncConversations);
+    };
+  }, []);
 
   useEffect(() => {
     saveActiveConversationId(activeId);
@@ -81,8 +100,14 @@ export function ChatbotPage() {
 
   function updateConversations(next: XiaojiaConversation[], nextActiveId = activeId) {
     const sorted = sortConversations(next);
-    setConversations(sorted);
-    selectConversation(sorted.some((item) => item.id === nextActiveId) ? nextActiveId : (sorted[0]?.id ?? ""));
+    const resolvedActiveId = sorted.some((item) => item.id === nextActiveId) ? nextActiveId : (sorted[0]?.id ?? "");
+    saveConversations(sorted);
+    if (mountedRef.current) {
+      setConversations(sorted);
+      selectConversation(resolvedActiveId);
+    } else {
+      saveActiveConversationId(resolvedActiveId);
+    }
   }
 
   function createConversation() {
@@ -95,9 +120,14 @@ export function ChatbotPage() {
     updateConversations(conversations.filter((item) => item.id !== id));
   }
 
-  function replaceActive(messages: ChatMessage[], title?: string) {
-    const next = conversations.map((item) =>
-      item.id === activeConversation.id
+  function replaceConversation(
+    source: XiaojiaConversation[],
+    conversation: XiaojiaConversation,
+    messages: ChatMessage[],
+    title?: string,
+  ) {
+    const next = source.map((item) =>
+      item.id === conversation.id
         ? {
             ...item,
             title: title ?? item.title,
@@ -106,25 +136,31 @@ export function ChatbotPage() {
           }
         : item,
     );
-    updateConversations(next);
+    updateConversations(next, conversation.id);
+    return next;
   }
 
   async function sendMessage() {
     const content = input.trim();
     if (!content || loading || !activeConversation) return;
+    const conversationId = activeConversation.id;
     const baseMessages = isBlankNewConversation(activeConversation) ? [] : activeConversation.messages;
     const nextMessages: ChatMessage[] = [...baseMessages, { role: "user", content }];
     const nextTitle = activeConversation.title === "新对话" ? content.slice(0, 24) : activeConversation.title;
-    replaceActive(nextMessages, nextTitle);
+    replaceConversation(conversations, activeConversation, nextMessages, nextTitle);
     setInput("");
     setLoading(true);
     try {
       const response = await api.chat(nextMessages.slice(-20));
-      replaceActive([...nextMessages, { role: "assistant", content: response.reply }], nextTitle);
+      const latestConversations = loadConversations();
+      const latestConversation = latestConversations.find((item) => item.id === conversationId);
+      if (latestConversation) {
+        replaceConversation(latestConversations, latestConversation, [...nextMessages, { role: "assistant", content: response.reply }], nextTitle);
+      }
     } catch (error) {
-      message.error(error instanceof Error ? error.message : "运营小嘉暂不可用");
+      if (mountedRef.current) message.error(error instanceof Error ? error.message : "运营小嘉暂不可用");
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }
 
@@ -151,7 +187,7 @@ export function ChatbotPage() {
   );
 
   return (
-    <Space direction="vertical" size={16} className="page-stack chatbot-page">
+    <div className="page-stack chatbot-page">
       <div className="chatbot-shell">
         <aside className="chatbot-history">
           <Button block type="primary" ghost icon={<PlusOutlined />} onClick={createConversation}>
@@ -240,6 +276,6 @@ export function ChatbotPage() {
           )}
         </section>
       </div>
-    </Space>
+    </div>
   );
 }

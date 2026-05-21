@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
+import { trackEvent } from "../utils/analytics";
 
 type TryOnPayload = {
   styleId: string;
@@ -17,7 +18,15 @@ export function useTryOnLauncher({ onSuccess, onError }: UseTryOnLauncherOptions
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (payload: TryOnPayload) => api.createTryOnJob(payload),
+    mutationFn: async (payload: TryOnPayload) => {
+      await trackEvent("tryon_start_clicked", {
+        styleId: payload.styleId,
+        source: "tryon_launcher",
+        screen: "tryon",
+        properties: { hand_source: payload.savedHandPhotoId ? "saved" : payload.handImageUri ? "upload" : "missing" },
+      });
+      return api.createTryOnJob(payload);
+    },
     onSuccess: (job) => {
       void queryClient.invalidateQueries({ queryKey: ["saved-hand-photos"] });
       void queryClient.invalidateQueries({ queryKey: ["tryon-history"] });

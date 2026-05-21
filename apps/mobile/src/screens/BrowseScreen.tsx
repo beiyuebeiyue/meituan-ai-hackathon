@@ -11,6 +11,7 @@ import { NailStyle } from "../types/api";
 import { useAuthStore } from "../store/useAuthStore";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 import { DEFAULT_MARKET_CITY, findMarketCity } from "../utils/marketCities";
+import { trackEvent } from "../utils/analytics";
 
 type FeedTab = "local" | "following" | "discover";
 type FilterableTab = "local" | "discover";
@@ -181,6 +182,19 @@ export function BrowseScreen() {
               item.description.includes(keyword)
             );
           });
+  useEffect(() => {
+    if (!feedItems.length) return;
+    void Promise.all(
+      feedItems.slice(0, 12).map((item) =>
+        trackEvent("style_impression", {
+          styleId: item.id,
+          source: tab,
+          screen: "browse",
+          properties: { role: item.author_is_shop ? "merchant" : "consumer" },
+        }),
+      ),
+    );
+  }, [feedItems.map((item) => item.id).join(","), tab]);
   const canRefresh = hydrated && (tab === "discover" || (tab === "local" && canUseLocalFeed) || hasToken);
   const handleRefresh = async () => {
     if (!canRefresh) return;
@@ -310,7 +324,15 @@ export function BrowseScreen() {
                 item={item}
                 onToggleLike={onToggleLike}
                 showLike={!isMerchant}
-                onPress={(selected) => navigation.navigate("StylePreview", { styleId: selected.id })}
+                onPress={(selected) => {
+                  void trackEvent("style_click", {
+                    styleId: selected.id,
+                    source: tab,
+                    screen: "browse",
+                    properties: { role: selected.author_is_shop ? "merchant" : "consumer" },
+                  });
+                  navigation.navigate("StylePreview", { styleId: selected.id });
+                }}
               />
             </View>
           )}

@@ -2,7 +2,7 @@ import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 import { useQuery } from "@tanstack/react-query";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
 import { BookingSheet } from "../components/BookingSheet";
+import { trackEvent } from "../utils/analytics";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { RootStackParamList } from "../navigation/RootNavigator";
@@ -56,6 +57,15 @@ export function TryOnResultScreen() {
     }
     setBookingVisible(true);
   };
+  useEffect(() => {
+    if (query.data?.status !== "succeeded") return;
+    void trackEvent("tryon_result_viewed", {
+      styleId: query.data.selected_style_id,
+      tryonJobId: query.data.job_id,
+      source: "tryon_result",
+      screen: "tryon_result",
+    });
+  }, [query.data?.job_id, query.data?.status, query.data?.selected_style_id]);
   const loadingText =
     query.data?.stage === "preprocessing"
       ? "正在分析手部并分割美甲参考图，首次处理会稍慢"

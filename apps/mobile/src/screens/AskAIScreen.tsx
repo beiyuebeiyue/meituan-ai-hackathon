@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   SafeAreaView,
@@ -26,54 +27,29 @@ import { TryOnHandChooser } from "../components/TryOnHandChooser";
 import { useHandPhotoPicker } from "../hooks/useHandPhotoPicker";
 import { useTryOnLauncher } from "../hooks/useTryOnLauncher";
 import { RootStackParamList } from "../navigation/RootNavigator";
-import { useAskAIStore } from "../store/useAskAIStore";
+import { AskAIConversation, useAskAIStore } from "../store/useAskAIStore";
 import { useAuthStore } from "../store/useAuthStore";
-import { AIChatMessage, RecommendationResponse } from "../types/api";
+import { AIChatMessage, XhsHotRecommendation } from "../types/api";
 import {
   ASK_AGENT_EXAMPLES,
-  ASK_AGENT_FILTERS,
   AskIntent,
-  buildRecommendationQuery,
   getAgentHandPrompt,
   getAgentResultPrompt,
   inferAskIntent,
 } from "../utils/askAgent";
-import { useIsDarkMode, useThemeColors } from "../utils/theme";
+import { useThemeColors } from "../utils/theme";
+import { trackEvent } from "../utils/analytics";
 
-type RecommendationItem = RecommendationResponse["items"][number];
+type ChatPayload = {
+  messages: AIChatMessage[];
+  handImageUri?: string | null;
+  savedHandPhotoId?: string | null;
+};
 
-function formatPromptBoardDate() {
-  const now = new Date();
-  const month = `${now.getMonth() + 1}`.padStart(2, "0");
-  const day = `${now.getDate()}`.padStart(2, "0");
-  return { month, day, year: now.getFullYear() };
-}
-
-function PreviewPromptCard({
-  label,
-  onPress,
-  accent,
-  background,
-  textColor,
-}: {
-  label: string;
-  onPress: () => void;
-  accent: string;
-  background: string;
-  textColor: string;
-}) {
-  return (
-    <Pressable style={[styles.previewPromptCard, { backgroundColor: background }]} onPress={onPress}>
-      <View style={[styles.previewPromptIcon, { backgroundColor: accent }]}>
-        <Ionicons name="sparkles" size={16} color="#ffffff" />
-      </View>
-      <Text style={[styles.previewPromptText, { color: textColor }]} numberOfLines={1}>
-        {label}
-      </Text>
-      <Ionicons name="arrow-forward" size={18} color={accent} />
-    </Pressable>
-  );
-}
+type ConversationGroup = {
+  title: string;
+  items: AskAIConversation[];
+};
 
 function ActionChip({
   label,
@@ -82,6 +58,7 @@ function ActionChip({
   textColor,
   active,
   activeBackground,
+  disabled,
 }: {
   label: string;
   onPress: () => void;
@@ -89,40 +66,63 @@ function ActionChip({
   textColor: string;
   active?: boolean;
   activeBackground?: string;
+  disabled?: boolean;
 }) {
   return (
-    <Pressable style={[styles.actionChip, { backgroundColor: active ? activeBackground ?? background : background }]} onPress={onPress}>
-      <Text style={[styles.actionChipText, { color: textColor }]}>{label}</Text>
+    <Pressable
+      style={[styles.actionChip, { backgroundColor: active ? activeBackground ?? background : background, opacity: disabled ? 0.45 : 1 }]}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      <Text style={[styles.actionChipText, { color: textColor }]} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
+  );
+}
+
+function ChatBubble({
+  message,
+  pending,
+  colors,
+}: {
+  message: AIChatMessage;
+  pending: boolean;
+  colors: ReturnType<typeof useThemeColors>;
+}) {
+  const isUser = message.role === "user";
+  return (
+    <View style={[styles.chatBubbleRow, isUser ? styles.chatBubbleRowUser : styles.chatBubbleRowAssistant]}>
+      <View
+        style={[
+          styles.chatBubble,
+          isUser
+            ? [styles.userBubble, { backgroundColor: colors.accent }]
+            : [styles.assistantBubble, { backgroundColor: colors.surface, borderColor: colors.border }],
+        ]}
+      >
+        {message.content ? <Text style={[styles.chatBubbleText, { color: isUser ? "#ffffff" : colors.text }]}>{message.content}</Text> : null}
+        {pending ? <ActivityIndicator size="small" color={colors.accent} style={styles.chatBubbleSpinner} /> : null}
+      </View>
+    </View>
   );
 }
 
 function RecommendationCard({
   item,
-  active,
-  disabled,
-  buttonLabel,
-  onPress,
   onPreview,
   colors,
 }: {
-  item: RecommendationItem;
-  active: boolean;
-  disabled: boolean;
-  buttonLabel: string;
-  onPress: () => void;
+  item: XhsHotRecommendation;
   onPreview: () => void;
   colors: ReturnType<typeof useThemeColors>;
 }) {
+  const typeLabel = item.tags.length ? item.tags.slice(0, 4).join(" · ") : "平台精选";
+  const stats = `赞 ${item.liked_count} · 藏 ${item.collected_count} · 转 ${item.share_count}`;
+
   return (
-    <View
-      style={[
-        styles.recommendationCard,
-        { backgroundColor: colors.surface, borderColor: colors.border },
-        active && { borderColor: colors.accent, shadowColor: colors.accent },
-      ]}
-    >
-      <Pressable onPress={onPreview}>
+    <Pressable style={[styles.recommendationCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={onPreview}>
+      <Pressable style={styles.recommendationImageWrap} onPress={onPreview}>
         <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={[styles.recommendationImage, { backgroundColor: colors.accentSoft }]} />
       </Pressable>
       <View style={styles.recommendationBody}>
@@ -130,28 +130,23 @@ function RecommendationCard({
           <Text style={[styles.recommendationTitle, { color: colors.text }]} numberOfLines={2}>
             {item.title}
           </Text>
-          {active ? (
-            <View style={[styles.activeBadge, { backgroundColor: colors.accentSoft }]}>
-              <Text style={[styles.activeBadgeText, { color: colors.accent }]}>当前方案</Text>
-            </View>
-          ) : null}
         </View>
-        <Text style={[styles.recommendationReason, { color: colors.subtext }]}>{item.reason}</Text>
-        <View style={styles.tagRow}>
-          {item.tags.slice(0, 4).map((tag) => (
-            <View key={`${item.style_id}-${tag}`} style={[styles.tagPill, { backgroundColor: colors.surfaceAlt }]}>
-              <Text style={[styles.tagPillText, { color: colors.subtext }]}>#{tag}</Text>
-            </View>
-          ))}
+        <View style={styles.recommendationTypeRow}>
+          <Text style={[styles.recommendationTypeText, { color: colors.subtext }]} numberOfLines={1}>
+            {typeLabel}
+          </Text>
         </View>
-        <View style={styles.recommendationActions}>
-          <PrimaryButton label={buttonLabel} onPress={onPress} disabled={disabled} style={{ flex: 1 }} />
-          <Pressable style={[styles.previewButton, { borderColor: colors.border }]} onPress={onPreview}>
-            <Text style={[styles.previewButtonText, { color: colors.text }]}>详情</Text>
-          </Pressable>
+        <View style={[styles.recommendationReasonBox, { backgroundColor: colors.surfaceAlt }]}>
+          <Text style={[styles.recommendationReasonLabel, { color: colors.accent }]}>推荐理由</Text>
+          <Text style={[styles.recommendationReason, { color: colors.subtext }]} numberOfLines={3}>
+            {item.reason}
+          </Text>
         </View>
+        <Text style={[styles.recommendationStats, { color: colors.subtext }]} numberOfLines={1}>
+          {stats}
+        </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -160,7 +155,6 @@ export function AskAIScreen() {
   const queryClient = useQueryClient();
   const tabBarHeight = useBottomTabBarHeight();
   const colors = useThemeColors();
-  const isDarkMode = useIsDarkMode();
   const {
     handImageUri,
     promptText,
@@ -170,6 +164,12 @@ export function AskAIScreen() {
     setPromptText,
     setSelectedHandPhotoId,
     setSelectedStyleId,
+    conversations,
+    conversationsHydrated,
+    loadConversations,
+    saveConversation,
+    selectConversation,
+    startConversation,
   } = useAskAIStore();
   const token = useAuthStore((state) => state.token);
 
@@ -177,36 +177,37 @@ export function AskAIScreen() {
   const [chatMessages, setChatMessages] = useState<AIChatMessage[]>([]);
   const [intent, setIntent] = useState<AskIntent | null>(null);
   const [assistantLine, setAssistantLine] = useState("想看热门款、适合你的款式，或者直接挑一款先试戴，都可以问我。");
-  const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
+  const [handPickerMessage, setHandPickerMessage] = useState("");
+  const [recommendations, setRecommendations] = useState<XhsHotRecommendation[]>([]);
+  const [previewItem, setPreviewItem] = useState<XhsHotRecommendation | null>(null);
   const [needsHandFor, setNeedsHandFor] = useState<"recommend" | "tryon" | null>(null);
   const [queuedTryOnStyleId, setQueuedTryOnStyleId] = useState<string | null>(null);
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [tryOnFeedback, setTryOnFeedback] = useState<"idle" | "satisfied" | "unsatisfied">("idle");
   const [composerHeight, setComposerHeight] = useState(158);
-  const today = useMemo(formatPromptBoardDate, []);
+  const [historyVisible, setHistoryVisible] = useState(false);
 
   const chatMutation = useMutation({
-    mutationFn: (messages: AIChatMessage[]) => api.chat(messages),
-    onSuccess: (data, messages) => {
+    mutationFn: (payload: ChatPayload) =>
+      payload.handImageUri || payload.savedHandPhotoId
+        ? api.chatWithHand(payload.messages, payload.handImageUri, payload.savedHandPhotoId)
+        : api.chat(payload.messages),
+    onSuccess: (data, payload) => {
       setAssistantLine(data.reply);
-      setChatMessages([...messages, { role: "assistant" as const, content: data.reply }].slice(-12));
+      setRecommendations(data.needs_hand_image ? [] : data.recommendations ?? []);
+      const nextMessages = [...payload.messages, { role: "assistant" as const, content: data.reply }].slice(-12);
+      setChatMessages(nextMessages);
+      void saveConversation(nextMessages);
+      if (data.needs_hand_image) {
+        setIntent("hand_match");
+        setNeedsHandFor("recommend");
+        setHandPickerMessage(data.hand_picker_message ?? data.reply);
+      } else {
+        setHandPickerMessage("");
+      }
     },
     onError: () => {
       setAssistantLine("我暂时没连上小嘉大模型，但仍会先按图库帮你挑适合试戴的款式。");
-    },
-  });
-
-  const recommendMutation = useMutation({
-    mutationFn: ({ queryText, nextIntent }: { queryText: string; nextIntent: AskIntent }) => api.recommend(queryText),
-    onSuccess: (data) => {
-      setRecommendations(data.items);
-      setNeedsHandFor(null);
-    },
-    onError: () => {
-      setRecommendations([]);
-      if (!chatMutation.isPending) {
-        setAssistantLine("这次没顺利找到结果，换个说法或者换个关键词再问我一次。");
-      }
     },
   });
 
@@ -224,10 +225,22 @@ export function AskAIScreen() {
     setSelectedHandPhotoId(payload.handPhotoId ?? null);
     setHandImageUri(payload.imageUri);
     setNeedsHandFor(null);
+    setHandPickerMessage("");
 
-    if (intent === "hand_match" && askedQuery && recommendations.length === 0) {
-      setAssistantLine("收到这张手图，我先按你的问题给你挑几款更适合先试的美甲。");
-      recommendMutation.mutate({ queryText: buildRecommendationQuery("hand_match", askedQuery), nextIntent: "hand_match" });
+    if (intent === "hand_match" && askedQuery) {
+      const lastMessage = chatMessages[chatMessages.length - 1];
+      const nextMessages: AIChatMessage[] =
+        lastMessage?.role === "user" && lastMessage.content === askedQuery
+          ? chatMessages
+          : [...chatMessages, { role: "user" as const, content: askedQuery }].slice(-12);
+      setChatMessages(nextMessages);
+      setAssistantLine("收到这张手图，我先分析手型并粗筛适合你的款式。");
+      chatMutation.mutate({
+        messages: nextMessages,
+        handImageUri: payload.imageUri,
+        savedHandPhotoId: payload.handPhotoId ?? null,
+      });
+      void saveConversation(nextMessages);
       return;
     }
 
@@ -259,12 +272,44 @@ export function AskAIScreen() {
   const isStartingTryOn = tryOnLauncher.mutation.isPending;
   const recentHandPhotos = useMemo(() => savedHandPicker.recentHandPhotos, [savedHandPicker.recentHandPhotos]);
   const hasHandSelection = Boolean(selectedHandPhotoId || handImageUri);
-  const displayedRecommendations = useMemo(() => {
-    if (tryOnFeedback !== "unsatisfied" || !selectedStyleId) {
-      return recommendations;
+  const displayedRecommendations = recommendations;
+  const conversationMessages = useMemo<AIChatMessage[]>(() => {
+    if (!chatMessages.length) {
+      return [{ role: "assistant" as const, content: assistantLine }];
     }
-    return recommendations.filter((item) => item.style_id !== selectedStyleId);
-  }, [recommendations, selectedStyleId, tryOnFeedback]);
+    const lastMessage = chatMessages[chatMessages.length - 1];
+    if (chatMutation.isPending && lastMessage.role === "user") {
+      return [...chatMessages, { role: "assistant" as const, content: "" }].slice(-13);
+    }
+    if (assistantLine && (lastMessage.role === "user" || lastMessage.content !== assistantLine)) {
+      return [...chatMessages, { role: "assistant" as const, content: assistantLine }].slice(-13);
+    }
+    return chatMessages;
+  }, [assistantLine, chatMessages, chatMutation.isPending]);
+  const historyGroups = useMemo(() => groupConversations(conversations), [conversations]);
+
+  useEffect(() => {
+    if (!conversationsHydrated) {
+      void loadConversations();
+    }
+  }, [conversationsHydrated, loadConversations]);
+
+  useEffect(() => {
+    if (!recommendations.length) return;
+    void Promise.all(
+      recommendations.map((item) =>
+        trackEvent("ai_recommendation_shown", {
+          source: intent === "hand_match" ? "ask_ai_hand_match" : "ask_ai_text",
+          screen: "ask_ai",
+          properties: {
+            note_id: item.note_id,
+            color_or_tag: item.tags.slice(0, 3).join(","),
+            score: item.score,
+          },
+        }),
+      ),
+    );
+  }, [intent, recommendations.map((item) => item.note_id).join(",")]);
 
   useEffect(() => {
     if (!token && selectedHandPhotoId) {
@@ -287,10 +332,18 @@ export function AskAIScreen() {
     if (status === "succeeded") {
       setAssistantLine(getAgentResultPrompt("succeeded"));
       void queryClient.invalidateQueries({ queryKey: ["tryon-history"] });
+      if (tryOnJobQuery.data) {
+        void trackEvent("tryon_result_viewed", {
+          styleId: tryOnJobQuery.data.selected_style_id,
+          tryonJobId: tryOnJobQuery.data.job_id,
+          source: "ask_ai",
+          screen: "ask_ai",
+        });
+      }
     } else if (status === "failed") {
       setAssistantLine(getAgentResultPrompt("failed"));
     }
-  }, [queryClient, tryOnJobQuery.data?.status]);
+  }, [queryClient, tryOnJobQuery.data, tryOnJobQuery.data?.status]);
 
   useEffect(() => {
     if (!token || !queuedTryOnStyleId || !hasHandSelection || isStartingTryOn) return;
@@ -304,35 +357,43 @@ export function AskAIScreen() {
     });
   }, [askedQuery, handImageUri, hasHandSelection, isStartingTryOn, promptText, queuedTryOnStyleId, selectedHandPhotoId, token, tryOnLauncher.launchTryOn]);
 
-  const submitPrompt = (nextPrompt?: string) => {
+  const submitPrompt = (nextPrompt?: string, options?: { forceHandMatch?: boolean }) => {
+    if (chatMutation.isPending) return;
     const query = (nextPrompt ?? promptText).trim();
     if (!query) return;
 
-    const nextIntent = inferAskIntent(query);
+    const forceHandMatch = options?.forceHandMatch === true;
+    const nextIntent = forceHandMatch ? "hand_match" : inferAskIntent(query);
     setPromptText("");
     setAskedQuery(query);
     setIntent(nextIntent);
+    setHandPickerMessage("");
     setRecommendations([]);
     setSelectedStyleId(null);
     setActiveJobId(null);
     setTryOnFeedback("idle");
     setQueuedTryOnStyleId(null);
-    recommendMutation.reset();
     chatMutation.reset();
     queryClient.removeQueries({ queryKey: ["ask-ai-job"] });
 
-    if (nextIntent === "hand_match" && !hasHandSelection) {
+    const nextMessages: AIChatMessage[] = [...chatMessages, { role: "user" as const, content: query }].slice(-12);
+    setChatMessages(nextMessages);
+    void saveConversation(nextMessages, query);
+
+    if (forceHandMatch && !hasHandSelection) {
       setNeedsHandFor("recommend");
       setAssistantLine(getAgentHandPrompt(nextIntent, "recommend"));
       return;
     }
 
     setNeedsHandFor(null);
-    setAssistantLine("我先理解你的需求，再从图库里挑适合的款式。");
-    const nextMessages: AIChatMessage[] = [...chatMessages, { role: "user" as const, content: query }].slice(-12);
-    setChatMessages(nextMessages);
-    chatMutation.mutate(nextMessages);
-    recommendMutation.mutate({ queryText: buildRecommendationQuery(nextIntent, query), nextIntent });
+    setAssistantLine("");
+    const shouldSendHand = nextIntent === "hand_match" && hasHandSelection;
+    chatMutation.mutate({
+      messages: nextMessages,
+      handImageUri: shouldSendHand ? handImageUri : null,
+      savedHandPhotoId: shouldSendHand ? selectedHandPhotoId : null,
+    });
   };
 
   const startTryOn = (styleId: string, options?: { forceHandReady?: boolean }) => {
@@ -381,85 +442,56 @@ export function AskAIScreen() {
   const showingHandChooser = needsHandFor !== null;
   const composerBottomInset = Math.max(tabBarHeight - 74, 12);
   const scrollBottomPadding = composerHeight + 18;
+  const openConversation = (conversation: AskAIConversation) => {
+    const selected = selectConversation(conversation.id);
+    if (!selected) return;
+    setChatMessages(selected.messages);
+    const lastAssistant = [...selected.messages].reverse().find((message) => message.role === "assistant");
+    setAssistantLine(lastAssistant?.content ?? "这轮对话已经打开，你可以继续问我。");
+    setRecommendations([]);
+    setNeedsHandFor(null);
+    setHandPickerMessage("");
+    setPreviewItem(null);
+    setHistoryVisible(false);
+  };
+  const createNewConversation = () => {
+    startConversation();
+    setAskedQuery("");
+    setChatMessages([]);
+    setIntent(null);
+    setAssistantLine("想看热门款、适合你的款式，或者直接挑一款先试戴，都可以问我。");
+    setRecommendations([]);
+    setNeedsHandFor(null);
+    setHandPickerMessage("");
+    setSelectedStyleId(null);
+    setActiveJobId(null);
+    setTryOnFeedback("idle");
+    chatMutation.reset();
+    setHistoryVisible(false);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: scrollBottomPadding }]} showsVerticalScrollIndicator={false}>
-          <View style={styles.hero}>
-            <View style={[styles.heroGlow, { backgroundColor: isDarkMode ? "#271f2a" : "#e8defc" }]} />
-            <View style={[styles.heroGlowSecondary, { backgroundColor: isDarkMode ? "#1e232d" : "#dce9ff" }]} />
+          <View style={styles.chatTopBar}>
             <Pressable
-              style={[styles.historyButton, { backgroundColor: colors.surface }]}
-              onPress={() => navigation.navigate("TryOnHistory")}
+              style={[styles.historyIconButton, { backgroundColor: colors.surface }]}
+              onPress={() => setHistoryVisible(true)}
             >
-              <Ionicons name="time-outline" size={22} color={colors.text} />
+              <Ionicons name="menu" size={22} color={colors.text} />
             </Pressable>
-            <View style={[styles.logoHalo, { borderColor: `${colors.surface}cc`, backgroundColor: `${colors.surface}aa` }]}>
-              <Text style={[styles.logoTitle, { color: colors.text }]}>小嘉</Text>
-              <Text style={[styles.logoSubtitle, { color: colors.subtext }]}>懂甲色，更懂你</Text>
-            </View>
           </View>
 
-          <View style={[styles.promptBoard, { backgroundColor: `${colors.surface}dd`, borderColor: `${colors.border}aa` }]}>
-            <View style={styles.promptBoardHeader}>
-              <Text style={[styles.promptBoardTitle, { color: colors.text }]}>试试这样问我</Text>
-              <View style={styles.dateBlock}>
-                <Text style={[styles.dateDay, { color: colors.text }]}>{today.day}</Text>
-                <View>
-                  <Text style={[styles.dateMeta, { color: colors.subtext }]}>{today.month}月</Text>
-                  <Text style={[styles.dateMeta, { color: colors.subtext }]}>{today.year}</Text>
-                </View>
-              </View>
-            </View>
-            <View style={styles.previewPromptList}>
-              {ASK_AGENT_EXAMPLES.map((item) => (
-                <PreviewPromptCard
-                  key={item}
-                  label={item}
-                  onPress={() => submitPrompt(item)}
-                  accent={colors.accent}
-                  background={colors.surface}
-                  textColor={colors.text}
-                />
-              ))}
-            </View>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>小嘉能帮你</Text>
-            <View style={styles.filterRow}>
-              {ASK_AGENT_FILTERS.map((item) => (
-                <ActionChip
-                  key={item}
-                  label={item}
-                  onPress={() => {
-                    setPromptText(item);
-                    submitPrompt(item);
-                  }}
-                  background={colors.surface}
-                  activeBackground={colors.accentSoft}
-                  textColor={colors.text}
-                />
-              ))}
-            </View>
-          </View>
-
-          {askedQuery ? (
-            <View style={[styles.messageCard, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.messageLabel, { color: colors.subtext }]}>你刚刚问</Text>
-              <Text style={[styles.messageTitle, { color: colors.text }]}>{askedQuery}</Text>
-            </View>
-          ) : null}
-
-          <View style={[styles.assistantCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.assistantBadge, { backgroundColor: colors.accentSoft }]}>
-              <Ionicons name="sparkles" size={18} color={colors.accent} />
-            </View>
-            <View style={{ flex: 1, gap: 6 }}>
-              <View style={styles.assistantTitleRow}>
-                <Text style={[styles.assistantTitle, { color: colors.text }]}>{chatMutation.isPending ? "小嘉正在想" : "小嘉助手"}</Text>
-                {chatMutation.isPending ? <ActivityIndicator size="small" color={colors.accent} /> : null}
-              </View>
-              <Text style={[styles.assistantText, { color: colors.subtext }]}>{assistantLine}</Text>
-            </View>
+          <View style={styles.conversationList}>
+            {conversationMessages.map((message, index) => (
+              <ChatBubble
+                key={`${message.role}-${index}-${message.content.slice(0, 16)}`}
+                message={message}
+                pending={chatMutation.isPending && index === conversationMessages.length - 1 && message.role === "assistant"}
+                colors={colors}
+              />
+            ))}
           </View>
 
           {handImageUri ? (
@@ -478,7 +510,9 @@ export function AskAIScreen() {
             <TryOnHandChooser
               title={needsHandFor === "recommend" ? "先选一张手图，再继续推荐" : "选一张手图，马上开始试戴"}
               description={
-                recentHandPhotos.length
+                needsHandFor === "recommend" && handPickerMessage
+                  ? handPickerMessage
+                  : recentHandPhotos.length
                   ? "我先把你最近的 5 张手图摆出来，你可以直接挑一张继续。"
                   : "你还没有可用的手图，先拍一张，或者从相册里选一张以前拍过的。"
               }
@@ -486,50 +520,41 @@ export function AskAIScreen() {
               selectedHandPhotoId={selectedHandPhotoId}
               loading={token ? savedHandsLoading : false}
               busy={isStartingTryOn}
+              tip={
+                needsHandFor === "recommend"
+                  ? "选好手图后，我会继续按你的手型、肤色和文字需求推荐款式。"
+                  : "选好手图后，我会直接拿当前这款美甲开始焕甲试戴。"
+              }
               onSelectSavedHand={savedHandPicker.handleSavedHandSelect}
               onTakePhoto={() => void savedHandPicker.takePhotoNow()}
               onPickFromLibrary={() => void savedHandPicker.pickFromLibrary()}
             />
           ) : null}
 
-          {recommendMutation.isPending ? (
-            <View style={[styles.stateCard, { backgroundColor: colors.surface }]}>
-              <ActivityIndicator size="small" color={colors.accent} />
-              <Text style={[styles.stateText, { color: colors.subtext }]}>小嘉正在整理推荐列表</Text>
-            </View>
-          ) : null}
-
           {displayedRecommendations.length ? (
             <View style={styles.resultSection}>
-              <Text style={[styles.resultSectionTitle, { color: colors.text }]}>
-                {intent === "hand_match" ? "这几款更适合先拿来上手看看" : "先从这几款开始看"}
-              </Text>
+              <View style={styles.resultSectionHeader}>
+                <Text style={[styles.resultSectionTitle, { color: colors.text }]}>为你推荐</Text>
+                <Text style={[styles.resultSectionSubtitle, { color: colors.subtext }]} numberOfLines={1}>
+                  {intent === "hand_match" ? "小嘉根据你的手图和需求挑了这些美甲" : "小嘉从热门池里挑了这些美甲"}
+                </Text>
+              </View>
               <View style={styles.recommendationList}>
-                {displayedRecommendations.map((item) => {
-                  const isActive = item.style_id === selectedStyleId;
-                  let buttonLabel = "试试这款";
-                  if (isStartingTryOn && isActive) {
-                    buttonLabel = "试戴中";
-                  } else if (tryOnJobQuery.data?.status === "processing" && isActive) {
-                    buttonLabel = "融合中";
-                  } else if (tryOnFeedback === "unsatisfied") {
-                    buttonLabel = "换这款试戴";
-                  } else if (tryOnFeedback === "satisfied" && isActive) {
-                    buttonLabel = "当前最满意";
-                  }
-                  return (
-                    <RecommendationCard
-                      key={item.style_id}
-                      item={item}
-                      active={isActive}
-                      disabled={isStartingTryOn || tryOnJobQuery.data?.status === "processing"}
-                      buttonLabel={buttonLabel}
-                      onPress={() => startTryOn(item.style_id)}
-                      onPreview={() => navigation.navigate("StylePreview", { styleId: item.style_id })}
-                      colors={colors}
-                    />
-                  );
-                })}
+                {displayedRecommendations.map((item) => (
+                  <RecommendationCard
+                    key={item.note_id}
+                    item={item}
+                    onPreview={() => {
+                      void trackEvent("ai_recommendation_click", {
+                        source: intent === "hand_match" ? "ask_ai_hand_match" : "ask_ai_text",
+                        screen: "ask_ai",
+                        properties: { note_id: item.note_id, score: item.score },
+                      });
+                      setPreviewItem(item);
+                    }}
+                    colors={colors}
+                  />
+                ))}
               </View>
             </View>
           ) : null}
@@ -600,47 +625,150 @@ export function AskAIScreen() {
             }
           }}
         >
-          <View style={[styles.quickActionRow, { backgroundColor: colors.background }]}>
-            <ActionChip
-              label="找热门款"
-              onPress={() => submitPrompt("帮我找几款最近热门的显白美甲")}
-              background={colors.surface}
-              textColor={colors.text}
-            />
-            <ActionChip
-              label="适合我的手"
-              onPress={() => submitPrompt("我的手适合哪些显白又温柔的美甲")}
-              background={colors.surface}
-              textColor={colors.text}
-            />
-            <ActionChip
-              label="看看裸粉"
-              onPress={() => submitPrompt("帮我找几款适合通勤的裸粉美甲")}
-              background={colors.surface}
-              textColor={colors.text}
-            />
-          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            style={styles.quickPromptScroller}
+            contentContainerStyle={styles.quickPromptList}
+          >
+            {ASK_AGENT_EXAMPLES.map((item) => (
+              <ActionChip
+                key={item}
+                label={item}
+                onPress={() => submitPrompt(item)}
+                background={colors.surface}
+                textColor={colors.text}
+                disabled={chatMutation.isPending}
+              />
+            ))}
+          </ScrollView>
           <View style={[styles.composer, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <TextInput
-              style={[styles.composerInput, { color: colors.text }]}
+              style={[styles.composerInput, { color: colors.text, opacity: chatMutation.isPending ? 0.45 : 1 }]}
               placeholder="有什么问题尽管问我..."
               placeholderTextColor={colors.subtext}
               value={promptText}
               onChangeText={setPromptText}
               returnKeyType="send"
               onSubmitEditing={() => submitPrompt()}
+              editable={!chatMutation.isPending}
             />
             <Pressable style={styles.composerIcon} onPress={() => Alert.alert("语音输入即将上线", "这一步我先给你留好了入口。")}>
               <Ionicons name="mic-outline" size={22} color={colors.subtext} />
             </Pressable>
-            <Pressable style={[styles.sendButton, { backgroundColor: colors.accent }]} onPress={() => submitPrompt()}>
+            <Pressable
+              style={[styles.sendButton, { backgroundColor: colors.accent, opacity: chatMutation.isPending ? 0.45 : 1 }]}
+              onPress={() => submitPrompt()}
+              disabled={chatMutation.isPending}
+            >
               <Ionicons name="send" size={18} color="#ffffff" />
             </Pressable>
           </View>
         </View>
+
+        <Modal visible={!!previewItem} transparent animationType="fade" onRequestClose={() => setPreviewItem(null)}>
+          <Pressable style={styles.previewOverlay} onPress={() => setPreviewItem(null)}>
+            <Pressable style={[styles.previewPanel, { backgroundColor: colors.surface }]} onPress={(event) => event.stopPropagation()}>
+              {previewItem ? (
+                <>
+                  <Image source={{ uri: resolveAssetUrl(previewItem.image_url) }} style={[styles.previewImage, { backgroundColor: colors.accentSoft }]} />
+                  <View style={styles.previewCopy}>
+                    <Text style={[styles.previewTitle, { color: colors.text }]} numberOfLines={2}>
+                      {previewItem.title}
+                    </Text>
+                    <Text style={[styles.previewReason, { color: colors.subtext }]} numberOfLines={2}>
+                      {previewItem.reason}
+                    </Text>
+                  </View>
+                </>
+              ) : null}
+            </Pressable>
+          </Pressable>
+        </Modal>
+        <Modal visible={historyVisible} transparent animationType="fade" onRequestClose={() => setHistoryVisible(false)}>
+          <View style={styles.historyOverlay}>
+            <Pressable style={styles.historyBackdrop} onPress={() => setHistoryVisible(false)} />
+            <View style={[styles.historyDrawer, { backgroundColor: colors.background }]}>
+              <ScrollView contentContainerStyle={styles.historyDrawerContent} showsVerticalScrollIndicator={false}>
+                <Pressable style={[styles.newConversationButton, { backgroundColor: colors.surface }]} onPress={createNewConversation}>
+                  <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.text} />
+                  <Text style={[styles.newConversationText, { color: colors.text }]}>新建对话</Text>
+                </Pressable>
+
+                <Text style={[styles.historySectionLabel, { color: colors.subtext }]}>小嘉技能</Text>
+                <View style={styles.historySkillRow}>
+                  <Pressable
+                    style={[styles.historySkillButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                    onPress={() => {
+                      setHistoryVisible(false);
+                      submitPrompt("帮我找几款最近热门的显白猫眼");
+                    }}
+                  >
+                    <Ionicons name="sparkles-outline" size={22} color={colors.text} />
+                    <Text style={[styles.historySkillText, { color: colors.text }]}>找热门款</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.historySkillButton, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                    onPress={() => {
+                      setHistoryVisible(false);
+                      submitPrompt("我的手适合哪些温柔裸粉美甲", { forceHandMatch: true });
+                    }}
+                  >
+                    <Ionicons name="hand-left-outline" size={22} color={colors.text} />
+                    <Text style={[styles.historySkillText, { color: colors.text }]}>适合我的手</Text>
+                  </Pressable>
+                </View>
+
+                {historyGroups.length ? (
+                  historyGroups.map((group) => (
+                    <View key={group.title} style={styles.historyGroup}>
+                      <Text style={[styles.historySectionLabel, { color: colors.subtext }]}>{group.title}</Text>
+                      {group.items.map((conversation) => (
+                        <Pressable key={conversation.id} style={styles.historyItem} onPress={() => openConversation(conversation)}>
+                          <Text style={[styles.historyItemText, { color: colors.text }]} numberOfLines={1}>
+                            {conversation.title}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.historyEmpty}>
+                    <Text style={[styles.historySectionLabel, { color: colors.subtext }]}>今天</Text>
+                    <Text style={[styles.historyEmptyText, { color: colors.subtext }]}>还没有历史对话</Text>
+                  </View>
+                )}
+                <Text style={[styles.historyEndText, { color: colors.subtext }]}>已经到底啦</Text>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function groupConversations(conversations: AskAIConversation[]): ConversationGroup[] {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const sevenDaysStart = todayStart - 6 * 24 * 60 * 60 * 1000;
+  const groups: ConversationGroup[] = [
+    { title: "今天", items: [] },
+    { title: "近 7 天", items: [] },
+    { title: "更早", items: [] },
+  ];
+
+  for (const conversation of conversations) {
+    if (conversation.updatedAt >= todayStart) {
+      groups[0].items.push(conversation);
+    } else if (conversation.updatedAt >= sevenDaysStart) {
+      groups[1].items.push(conversation);
+    } else {
+      groups[2].items.push(conversation);
+    }
+  }
+  return groups.filter((group) => group.items.length);
 }
 
 const styles = StyleSheet.create({
@@ -650,169 +778,62 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     gap: 16,
   },
-  hero: {
-    height: 220,
-    borderRadius: 36,
-    overflow: "hidden",
-    alignItems: "center",
+  chatTopBar: {
+    minHeight: 38,
+    alignItems: "flex-end",
     justifyContent: "center",
   },
-  heroGlow: {
-    position: "absolute",
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    top: -30,
-    opacity: 0.85,
-  },
-  heroGlowSecondary: {
-    position: "absolute",
-    width: 230,
-    height: 230,
-    borderRadius: 115,
-    bottom: -50,
-    left: -30,
-    opacity: 0.58,
-  },
-  historyButton: {
-    position: "absolute",
-    top: 14,
-    right: 14,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  historyIconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
-  },
-  logoHalo: {
-    width: 206,
-    height: 206,
-    borderRadius: 103,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    gap: 8,
-  },
-  logoTitle: {
-    fontSize: 42,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  logoSubtitle: {
-    fontSize: 16,
-    letterSpacing: 2,
-  },
-  promptBoard: {
-    borderRadius: 28,
-    padding: 18,
-    gap: 14,
-    borderWidth: 1,
-  },
-  promptBoardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  promptBoardTitle: {
-    fontSize: 28,
-    fontWeight: "800",
-  },
-  dateBlock: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  dateDay: {
-    fontSize: 28,
-    fontWeight: "800",
-  },
-  dateMeta: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  previewPromptList: {
-    gap: 12,
-  },
-  previewPromptCard: {
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  previewPromptIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  previewPromptText: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  filterRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
   },
   actionChip: {
-    minHeight: 42,
-    borderRadius: 16,
-    paddingHorizontal: 16,
+    minHeight: 34,
+    borderRadius: 999,
+    paddingHorizontal: 13,
     alignItems: "center",
     justifyContent: "center",
   },
   actionChipText: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  messageCard: {
-    borderRadius: 24,
-    padding: 18,
-    gap: 6,
-  },
-  messageLabel: {
     fontSize: 13,
     fontWeight: "600",
   },
-  messageTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    lineHeight: 28,
+  conversationList: {
+    gap: 10,
   },
-  assistantCard: {
-    borderRadius: 24,
-    padding: 18,
-    gap: 14,
+  chatBubbleRow: {
     flexDirection: "row",
+    width: "100%",
+  },
+  chatBubbleRowUser: {
+    justifyContent: "flex-end",
+  },
+  chatBubbleRowAssistant: {
+    justifyContent: "flex-start",
+  },
+  chatBubble: {
+    maxWidth: "82%",
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  userBubble: {
+    borderBottomRightRadius: 6,
+  },
+  assistantBubble: {
+    borderBottomLeftRadius: 6,
     borderWidth: 1,
   },
-  assistantBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
+  chatBubbleText: {
+    fontSize: 15,
+    lineHeight: 22,
   },
-  assistantTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-  },
-  assistantTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  assistantText: {
-    fontSize: 14,
-    lineHeight: 20,
+  chatBubbleSpinner: {
+    alignSelf: "flex-start",
+    marginTop: 8,
   },
   currentHandCard: {
     borderRadius: 24,
@@ -884,89 +905,88 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
-  stateCard: {
-    borderRadius: 22,
-    padding: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  stateText: {
-    fontSize: 14,
-  },
   resultSection: {
-    gap: 12,
-  },
-  resultSectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-  },
-  recommendationList: {
     gap: 14,
   },
+  resultSectionHeader: {
+    gap: 4,
+  },
+  resultSectionTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  resultSectionSubtitle: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  recommendationList: {
+    gap: 12,
+  },
   recommendationCard: {
-    borderRadius: 26,
+    borderRadius: 22,
     borderWidth: 1,
+    padding: 10,
+    flexDirection: "row",
+    gap: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  recommendationImageWrap: {
+    position: "relative",
     overflow: "hidden",
+    borderRadius: 16,
+    width: 112,
+    height: 134,
   },
   recommendationImage: {
     width: "100%",
-    aspectRatio: 1.1,
+    height: "100%",
   },
   recommendationBody: {
-    padding: 16,
-    gap: 10,
+    flex: 1,
+    gap: 8,
+    minHeight: 134,
   },
   recommendationHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 8,
   },
   recommendationTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    lineHeight: 28,
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "800",
+    lineHeight: 21,
   },
-  activeBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+  recommendationTypeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
   },
-  activeBadgeText: {
+  recommendationTypeText: {
+    flex: 1,
     fontSize: 12,
+    lineHeight: 16,
     fontWeight: "700",
+  },
+  recommendationReasonBox: {
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 3,
+  },
+  recommendationReasonLabel: {
+    fontSize: 11,
+    fontWeight: "800",
   },
   recommendationReason: {
-    lineHeight: 19,
-  },
-  tagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  tagPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  tagPillText: {
     fontSize: 12,
-    fontWeight: "600",
+    lineHeight: 17,
   },
-  recommendationActions: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
-  },
-  previewButton: {
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  previewButtonText: {
-    fontSize: 14,
+  recommendationStats: {
+    fontSize: 12,
     fontWeight: "700",
   },
   processingCard: {
@@ -1035,19 +1055,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 18,
     paddingTop: 10,
     gap: 10,
   },
-  quickActionRow: {
-    flexDirection: "row",
-    gap: 8,
+  quickPromptScroller: {
+    marginHorizontal: 0,
+  },
+  quickPromptList: {
+    gap: 10,
+    paddingHorizontal: 18,
   },
   composer: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 24,
     borderWidth: 1,
+    marginHorizontal: 18,
     paddingHorizontal: 16,
     paddingVertical: 10,
     gap: 10,
@@ -1069,5 +1092,117 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+  },
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.58)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  previewPanel: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 28,
+    overflow: "hidden",
+  },
+  previewImage: {
+    width: "100%",
+    aspectRatio: 0.82,
+  },
+  previewCopy: {
+    padding: 16,
+    gap: 6,
+  },
+  previewTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "800",
+  },
+  previewReason: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  historyOverlay: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  historyBackdrop: {
+    flex: 1,
+  },
+  historyDrawer: {
+    width: "68%",
+    maxWidth: 360,
+    minWidth: 282,
+    height: "100%",
+    shadowColor: "#000",
+    shadowOffset: { width: -8, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 12,
+  },
+  historyDrawerContent: {
+    paddingTop: 58,
+    paddingHorizontal: 20,
+    paddingBottom: 44,
+    gap: 24,
+  },
+  newConversationButton: {
+    minHeight: 62,
+    borderRadius: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  newConversationText: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  historySectionLabel: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  historySkillRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: -12,
+  },
+  historySkillButton: {
+    flex: 1,
+    minHeight: 74,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  historySkillText: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  historyGroup: {
+    gap: 14,
+  },
+  historyItem: {
+    minHeight: 34,
+    justifyContent: "center",
+  },
+  historyItemText: {
+    fontSize: 17,
+    lineHeight: 23,
+  },
+  historyEmpty: {
+    gap: 12,
+  },
+  historyEmptyText: {
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  historyEndText: {
+    textAlign: "center",
+    fontSize: 14,
+    marginTop: 8,
   },
 });

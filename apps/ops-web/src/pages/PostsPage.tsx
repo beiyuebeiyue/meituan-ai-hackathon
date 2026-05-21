@@ -129,6 +129,7 @@ export function PostsPage() {
         columns={columns}
         dataSource={posts}
         loading={loading}
+        scroll={{ x: "max-content" }}
         pagination={{
           current: page,
           total,

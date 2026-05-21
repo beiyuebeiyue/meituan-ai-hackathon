@@ -26,9 +26,12 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_text_model: str = "gpt-5.2"
     openai_image_model: str = "gpt-image-2"
+    hf_token: str = ""
     longcat_api_key: str = ""
     longcat_base_url: str = "https://api.longcat.chat/openai"
-    longcat_model: str = "LongCat-Flash-Chat-2602-Exp"
+    longcat_chat_model: str = "LongCat-2.0-Preview"
+    longcat_multimodal_model: str = "LongCat-Flash-Omni-2603"
+    longcat_chat_timeout_seconds: float = 25.0
     image_pipeline_version: str = "mediapipe-sam31-v1"
     image_provider_config_hash: str = ""
     remote_gpu_tryon_url: str = ""
@@ -49,14 +52,17 @@ class Settings(BaseSettings):
         "能面刺寡人之过者，诛九族。上网谏寡人者，处极刑。谤讥于市朝闻寡人之耳者，赐自尽。"
     )
 
-    seed_xlsx_path: str = "./命题三美甲评测数据（对外版）.xlsx"
+    seed_xlsx_path: str = "./data/命题三美甲评测数据（对外版）.xlsx"
     upload_dir: str = "./data/uploads"
     tryon_result_dir: str = "./data/tryon_results"
     tryon_artifact_dir: str = "./data/tryon_artifacts"
     seed_dir: str = "./data/seed"
     report_dir: str = "./data/reports"
+    xhs_crawler_assets_dir: str = ".openclaw/skills/xhs-popular-nail-posts-crawler/assets"
     xhs_daily_report_assets_dir: str = ".openclaw/skills/xhs-daily-nail-report/assets"
-    nail_rag_dir: str = "./data/rag/nail_rag_mvp_300"
+    xhs_embedding_gradio_space_id: str = "dongli/nail_embedder"
+    xhs_embedding_timeout_seconds: float = 20.0
+    xhs_embedding_search_top_k: int = 200
     public_files_prefix: str = "/files"
 
     openclaw_enabled: bool = True
@@ -101,15 +107,11 @@ class Settings(BaseSettings):
 
     @property
     def xhs_crawler_assets_path(self) -> Path:
-        return self.base_dir / ".openclaw" / "skills" / "xhs-popular-nail-posts-crawler" / "assets"
+        return self.resolve_path(self.xhs_crawler_assets_dir)
 
     @property
     def xhs_daily_report_assets_path(self) -> Path:
         return self.resolve_path(self.xhs_daily_report_assets_dir)
-
-    @property
-    def nail_rag_path(self) -> Path:
-        return self.resolve_path(self.nail_rag_dir)
 
     @property
     def seed_xlsx(self) -> Path:

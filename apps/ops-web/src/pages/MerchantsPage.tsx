@@ -82,6 +82,7 @@ export function MerchantsPage() {
         columns={columns}
         dataSource={merchants}
         loading={loading}
+        scroll={{ x: "max-content" }}
         pagination={{ total, pageSize: 50, showSizeChanger: false }}
         onRow={(record) => ({ onClick: () => setSelected(record) })}
       />
