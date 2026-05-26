@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BottomTabBarButtonProps, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { NavigatorScreenParams, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useEffect, useRef, type ComponentType } from "react";
 import { Animated, Easing, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
@@ -42,14 +42,26 @@ import { StylePreviewScreen } from "../screens/StylePreviewScreen";
 import { StrangerMessagesScreen } from "../screens/StrangerMessagesScreen";
 import { TryOnHistoryScreen } from "../screens/TryOnHistoryScreen";
 import { TryOnResultScreen } from "../screens/TryOnResultScreen";
+import { WearableOrderScreen } from "../screens/WearableOrderScreen";
+import { WearableStoreScreen } from "../screens/WearableStoreScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import type { NearbyShop } from "../types/api";
 import { useThemeColors } from "../utils/theme";
 
 export type OverlayEntryParams = { entryEdge?: SlideDirection };
 
+export type MainTabParamList = {
+  Browse: undefined;
+  Market: undefined;
+  MerchantBookings: undefined;
+  Publish: undefined;
+  AskAI: undefined;
+  MerchantOverview: undefined;
+  Profile: undefined;
+};
+
 export type RootStackParamList = {
-  MainTabs: undefined;
+  MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
   Login: OverlayEntryParams | undefined;
   LoginHelp: OverlayEntryParams | undefined;
   BrowseHistory: OverlayEntryParams | undefined;
@@ -78,6 +90,8 @@ export type RootStackParamList = {
   DirectMessage: { userId: string } & OverlayEntryParams;
   StylePreview: { styleId: string } & OverlayEntryParams;
   TryOnResult: { jobId: string } & OverlayEntryParams;
+  WearableStore: { styleId: string } & OverlayEntryParams;
+  WearableOrder: { styleId: string } & OverlayEntryParams;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -138,6 +152,8 @@ const MyPostsOverlayScreen = createOverlayComponent(MyPostsScreen, { showHeader:
 const AuthorProfileOverlayScreen = createOverlayComponent(AuthorProfileScreen);
 const DirectMessageOverlayScreen = createOverlayComponent(DirectMessageScreen);
 const TryOnResultOverlayScreen = createOverlayComponent(TryOnResultScreen, { showHeader: true, title: "试戴结果" });
+const WearableStoreOverlayScreen = createOverlayComponent(WearableStoreScreen, { showHeader: true, title: "焕甲生活超市" });
+const WearableOrderOverlayScreen = createOverlayComponent(WearableOrderScreen, { showHeader: true, title: "确认下单" });
 const MarketMapOverlayScreen = createOverlayComponent(MarketMapScreen);
 const MarketShopDetailOverlayScreen = createOverlayComponent(MarketShopDetailScreen);
 
@@ -374,6 +390,8 @@ export function RootNavigator() {
       <Stack.Screen name="DirectMessage" component={DirectMessageOverlayScreen} options={overlayOptions} />
       <Stack.Screen name="StylePreview" component={StylePreviewScreen} options={overlayOptions} />
       <Stack.Screen name="TryOnResult" component={TryOnResultOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="WearableStore" component={WearableStoreOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="WearableOrder" component={WearableOrderOverlayScreen} options={overlayOptions} />
     </Stack.Navigator>
   );
 }

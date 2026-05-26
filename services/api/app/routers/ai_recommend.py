@@ -5,21 +5,33 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.db import get_db
-from app.dependencies import get_optional_current_user
+from app.dependencies import get_current_user, get_optional_current_user
 from app.models.user import User
-from app.schemas.ai import AIChatRequest, AIChatResponse, AIRecommendRequest, AIRecommendResponse
+from app.schemas.ai import AIChatRequest, AIChatResponse, AIRecommendRequest, AIRecommendResponse, XhsRecommendationStyleResponse
 from app.services.recommendation_service import RecommendationService
 from app.services.user_chat_service import UserChatService
+from app.services.xhs_style_materialization_service import XhsStyleMaterializationService
 
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 recommendation_service = RecommendationService()
 user_chat_service = UserChatService()
+xhs_style_materialization_service = XhsStyleMaterializationService()
 
 
 @router.post("/recommend", response_model=AIRecommendResponse)
 def recommend_styles(payload: AIRecommendRequest, db: Session = Depends(get_db)) -> AIRecommendResponse:
     return recommendation_service.recommend(db, payload.query_text, payload.limit)
+
+
+@router.post("/xhs-recommendations/{note_id}/style", response_model=XhsRecommendationStyleResponse)
+def materialize_xhs_recommendation_style(
+    note_id: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> XhsRecommendationStyleResponse:
+    style = xhs_style_materialization_service.get_or_create_style(db, note_id)
+    return XhsRecommendationStyleResponse(style_id=style.id)
 
 
 @router.post("/chat", response_model=AIChatResponse)

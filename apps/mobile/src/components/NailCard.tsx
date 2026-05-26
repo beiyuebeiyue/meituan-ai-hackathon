@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveAssetUrl } from "../api/client";
 import { AuthorRoleBadge } from "./AuthorRoleBadge";
 import { NailStyle } from "../types/api";
+import { getNailTypeLabel } from "../utils/nailType";
 import { useThemeColors } from "../utils/theme";
 
 type NailCardProps = {
@@ -33,7 +34,12 @@ export function NailCard({ item, onToggleLike, onPress }: NailCardProps) {
         <Text style={[styles.desc, { color: colors.subtext }]} numberOfLines={2}>
           {item.description}
         </Text>
-        <AuthorRoleBadge isMerchant={item.author_is_shop} compact />
+        <View style={styles.metaRow}>
+          <View style={[styles.typePill, { backgroundColor: colors.surfaceAlt }]}>
+            <Text style={[styles.typePillText, { color: colors.subtext }]}>{getNailTypeLabel(item.nail_type)}</Text>
+          </View>
+          <AuthorRoleBadge isMerchant={item.author_is_shop} compact />
+        </View>
         <View style={styles.tagRow}>
           {item.tags.slice(0, 2).map((tag) => (
             <View key={tag} style={[styles.tag, { backgroundColor: colors.accentSoft }]}>
@@ -79,6 +85,21 @@ const styles = StyleSheet.create({
   },
   desc: {
     lineHeight: 18,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  typePill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  typePillText: {
+    fontSize: 11,
+    fontWeight: "800",
   },
   tagRow: {
     flexDirection: "row",

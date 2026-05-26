@@ -26,15 +26,26 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ token: null, user: null, hydrated: true });
     await clearStoredValues([...AUTH_STORAGE_KEYS]);
   },
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    set({ user });
+    void setStoredValue("nailtry_user", JSON.stringify(user));
+  },
 }));
 
-export async function bootstrapAuth() {
+export async function hydrateAuthFromStorage() {
   const token = await getStoredValue("nailtry_token");
-  const user = await getStoredValue("nailtry_user");
-  useAuthStore.setState({
-    token,
-    user: user ? (JSON.parse(user) as User) : null,
-    hydrated: true,
-  });
+  if (!token) {
+    useAuthStore.setState({ token: null, user: null, hydrated: true });
+    return;
+  }
+
+  const storedUser = await getStoredValue("nailtry_user");
+  let parsedUser: User | null = null;
+  try {
+    parsedUser = storedUser ? (JSON.parse(storedUser) as User) : null;
+  } catch {
+    parsedUser = null;
+  }
+
+  useAuthStore.setState({ token, user: parsedUser, hydrated: true });
 }

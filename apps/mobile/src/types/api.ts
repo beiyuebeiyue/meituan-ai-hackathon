@@ -47,6 +47,8 @@ export type UserHandPhoto = {
   created_at: string;
 };
 
+export type NailType = "handmade" | "press_on";
+
 export type BrowseHistoryItem = {
   id: string;
   style: NailStyle;
@@ -62,6 +64,7 @@ export type NailStyle = {
   dominant_colors: string[];
   popularity_score: number;
   is_trending: boolean;
+  nail_type: NailType;
   is_liked: boolean;
   like_count: number;
   is_favorited: boolean;
@@ -205,6 +208,7 @@ export type UserPost = {
   title: string;
   description: string;
   image_url: string;
+  nail_type: NailType;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -219,6 +223,7 @@ export type AuthorPost = {
   title: string;
   description: string;
   image_url: string;
+  nail_type: NailType;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -263,7 +268,7 @@ export type NearbyShop = {
   id: string;
   platform_shop_id?: string | null;
   name: string;
-  cover_image_url: string;
+  cover_image_url?: string | null;
   city: string;
   region: string;
   address: string;

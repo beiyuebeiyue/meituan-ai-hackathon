@@ -12,6 +12,7 @@ class NailStyleRead(BaseModel):
     dominant_colors: list[str] = Field(default_factory=list)
     popularity_score: float = 0.0
     is_trending: bool = False
+    nail_type: str = "press_on"
     is_liked: bool = False
     like_count: int = 0
     is_favorited: bool = False

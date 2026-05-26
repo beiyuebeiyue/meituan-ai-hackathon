@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { resolveAssetUrl } from "../api/client";
 import { formatMarketDistance, formatMarketLocationLine, useMarketShops } from "../hooks/useMarketShops";
+import { useMarketStore } from "../store/useMarketStore";
 import { NearbyShop } from "../types/api";
 import { useThemeColors } from "../utils/theme";
 
@@ -24,9 +25,19 @@ function joinMeta(parts: Array<string | null | undefined>) {
   return parts.filter(Boolean).join(" · ");
 }
 
+function ShopPhotoPlaceholder({ colors, compact = false }: { colors: ReturnType<typeof useThemeColors>; compact?: boolean }) {
+  return (
+    <View style={[compact ? styles.compactPhotoPlaceholder : styles.photoPlaceholder, { backgroundColor: colors.surfaceAlt }]}>
+      <Ionicons name="storefront-outline" size={compact ? 18 : 24} color={colors.subtext} />
+      {!compact ? <Text style={[styles.photoPlaceholderText, { color: colors.subtext }]}>暂无门店照片</Text> : null}
+    </View>
+  );
+}
+
 export function MarketScreen() {
   const colors = useThemeColors();
   const navigation = useNavigation<any>();
+  const pendingBookingStyleId = useMarketStore((state) => state.pendingBookingStyleId);
   const {
     selectedCity,
     sort,
@@ -49,9 +60,14 @@ export function MarketScreen() {
   const renderShopCard = ({ item }: { item: NearbyShop }) => {
     const rating = formatRating(item.rating);
     const priceAndTime = joinMeta([item.average_price_text, item.business_time_text]);
+    const coverUri = item.cover_image_url ? resolveAssetUrl(item.cover_image_url) : null;
     return (
       <Pressable style={styles.resultCard} onPress={() => openShopDetail(item)}>
-        <Image source={{ uri: resolveAssetUrl(item.cover_image_url) }} style={[styles.resultImage, { backgroundColor: colors.surfaceAlt }]} />
+        {coverUri ? (
+          <Image source={{ uri: coverUri }} style={[styles.resultImage, { backgroundColor: colors.surfaceAlt }]} />
+        ) : (
+          <ShopPhotoPlaceholder colors={colors} />
+        )}
         <View style={styles.resultBody}>
           <View style={styles.resultTitleRow}>
             <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={2}>
@@ -129,6 +145,13 @@ export function MarketScreen() {
         <View style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}>
           <Ionicons name="alert-circle-outline" size={16} color={colors.subtext} />
           <Text style={[styles.noticeText, { color: colors.subtext }]}>{unavailableMessage}</Text>
+        </View>
+      ) : null}
+
+      {pendingBookingStyleId ? (
+        <View style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}>
+          <Ionicons name="calendar-outline" size={16} color={colors.subtext} />
+          <Text style={[styles.noticeText, { color: colors.subtext }]}>正在为刚才试戴的手工甲选择可预约商家。</Text>
         </View>
       ) : null}
 
@@ -275,6 +298,25 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 10,
+  },
+  photoPlaceholder: {
+    width: 96,
+    height: 96,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  compactPhotoPlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoPlaceholderText: {
+    fontSize: 11,
+    fontWeight: "700",
   },
   resultBody: {
     flex: 1,

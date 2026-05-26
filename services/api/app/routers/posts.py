@@ -58,6 +58,7 @@ def create_post(
     settings = get_settings()
     saved_path, _ = save_user_upload_file(image, user_upload_dir(settings.upload_path, "posts", user.uid), user.uid)
     tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+    nail_type = "handmade" if user.role == "merchant" or verified_booking is not None else "press_on"
     post = post_service.create(
         db,
         user,
@@ -66,6 +67,7 @@ def create_post(
         image_url=public_url_for_path(saved_path),
         local_image_path=relative_to_base(saved_path),
         tags=tag_list,
+        nail_type=nail_type,
         shop_id=shop.id if shop is not None else None,
         verified_booking_id=verified_booking.id if verified_booking is not None else None,
     )

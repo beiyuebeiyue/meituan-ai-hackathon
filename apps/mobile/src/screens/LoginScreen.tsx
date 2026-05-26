@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import { Image, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -33,6 +33,7 @@ function extractErrorMessage(error: unknown): string {
 
 export function LoginScreen() {
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
   const dismissOverlay = useSlideOverlayDismiss();
   const setSession = useAuthStore((state) => state.setSession);
   const colors = useThemeColors();
@@ -93,6 +94,7 @@ export function LoginScreen() {
     onSuccess: async (response) => {
       setFeedback(null);
       await setSession(response.access_token, response.user);
+      queryClient.setQueryData(["me", response.access_token], response.user);
       if (navigation.canGoBack()) {
         dismissOverlay?.() ?? navigation.goBack();
       }

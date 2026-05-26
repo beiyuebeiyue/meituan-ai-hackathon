@@ -17,6 +17,7 @@ class UserPost(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     description: Mapped[str] = mapped_column(Text, default="", nullable=False)
     image_url: Mapped[str] = mapped_column(String(512), nullable=False)
     local_image_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    nail_type: Mapped[str] = mapped_column(String(20), default="press_on", nullable=False)
     tags_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 

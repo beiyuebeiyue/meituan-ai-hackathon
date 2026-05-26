@@ -554,6 +554,124 @@ textarea {
   background: #eef2f7;
 }
 
+.ops-command-page {
+  padding-bottom: 20px;
+}
+
+.ops-command-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px;
+  border: 1px solid #edf1f7;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
+}
+
+.ops-command-card,
+.ops-command-kpi,
+.ops-command-note {
+  border: 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+}
+
+.ops-command-kpi {
+  min-height: 142px;
+  overflow: hidden;
+}
+
+.ops-command-kpi::before {
+  content: "";
+  display: block;
+  height: 4px;
+  margin: -24px -24px 18px;
+  background: #2563eb;
+}
+
+.ops-command-kpi.is-revenue::before {
+  background: #ff6b45;
+}
+
+.ops-command-kpi.is-order::before {
+  background: #16a34a;
+}
+
+.ops-command-kpi.is-recommend::before {
+  background: #2563eb;
+}
+
+.ops-command-kpi.is-tryon::before {
+  background: #9333ea;
+}
+
+.ops-command-kpi.is-conversion::before {
+  background: #0f766e;
+}
+
+.ops-command-kpi.is-aov::before {
+  background: #d97706;
+}
+
+.ops-command-kpi-value {
+  margin: 10px 0 8px;
+  color: #111827;
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.12;
+}
+
+.ops-funnel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ops-funnel-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.ops-funnel-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 800;
+}
+
+.ops-funnel-main {
+  min-width: 0;
+}
+
+.ops-funnel-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  color: #111827;
+}
+
+.ops-funnel-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  color: #657083;
+  font-size: 12px;
+}
+
+.ops-command-note .ant-card-body {
+  padding: 12px 16px;
+}
+
 .monitor-page {
   padding-bottom: 16px;
 }
@@ -1253,12 +1371,110 @@ textarea {
   margin-bottom: 0;
 }
 
+.chatbot-message .markdown-preview {
+  max-height: none;
+  overflow: visible;
+  color: inherit;
+  font-size: inherit;
+  line-height: 1.65;
+}
+
+.chatbot-message .markdown-preview .ant-typography {
+  margin-bottom: 10px;
+  color: inherit;
+  font-size: inherit;
+  line-height: 1.65;
+}
+
+.chatbot-message .markdown-preview .ant-typography:last-child,
+.chatbot-message .markdown-preview .markdown-list:last-child {
+  margin-bottom: 0;
+}
+
+.chatbot-message .markdown-preview strong {
+  font-weight: 800;
+}
+
+.chatbot-message .markdown-list {
+  margin-bottom: 10px;
+}
+
+.chatbot-composer {
+  flex: 0 0 auto;
+  width: min(1280px, calc(100% - 72px));
+  margin: 0 auto;
+}
+
+.chatbot-queue {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #e5eaf2;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.chatbot-queue-header,
+.chatbot-queue-item {
+  display: flex;
+  align-items: center;
+}
+
+.chatbot-queue-header {
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+.chatbot-queue-item {
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.chatbot-queue-item.is-editing {
+  align-items: flex-start;
+}
+
+.chatbot-queue-index {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #edf4ff;
+  color: #2f6bff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chatbot-queue-content {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: #374151;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chatbot-queue-edit {
+  flex: 1;
+}
+
+.chatbot-queue-actions {
+  flex: 0 0 auto;
+}
+
 .chatbot-input-wrap {
   position: relative;
   flex: 0 0 auto;
-  width: min(1280px, calc(100% - 72px));
+  width: 100%;
   min-height: 96px;
-  margin: 0 auto 28px;
+  margin: 0 0 28px;
   padding: 0;
   border: 1px solid #dde2ea;
   border-radius: 12px;
@@ -1346,9 +1562,10 @@ textarea {
 
 .chatbot-thinking {
   display: flex;
+  align-self: flex-start;
   align-items: center;
   gap: 12px;
-  margin: 90px 0 0 80px;
+  margin: 0;
   color: #1677ff;
   font-size: 24px;
   font-weight: 800;
@@ -1640,6 +1857,41 @@ textarea {
     padding-bottom: 0;
   }
 
+  .ops-command-hero {
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .ops-command-hero .ant-space {
+    width: 100%;
+  }
+
+  .ops-command-hero .ant-picker {
+    width: 100%;
+  }
+
+  .ops-command-kpi {
+    min-height: 126px;
+  }
+
+  .ops-command-kpi-value {
+    font-size: 24px;
+  }
+
+  .ops-funnel-row {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .ops-funnel-index {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .ops-funnel-meta {
+    gap: 4px 10px;
+  }
+
   .analysis-mode-row {
     justify-content: flex-start;
     margin-bottom: 0;
@@ -1867,8 +2119,27 @@ textarea {
     height: 36px;
   }
 
-  .chatbot-input-wrap {
+  .chatbot-composer {
     width: calc(100% - 24px);
+  }
+
+  .chatbot-queue {
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 8px;
+  }
+
+  .chatbot-queue-item {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .chatbot-queue-content {
+    font-size: 13px;
+  }
+
+  .chatbot-input-wrap {
+    width: 100%;
     min-height: 84px;
     margin-bottom: 14px;
   }
@@ -1892,7 +2163,7 @@ textarea {
   }
 
   .chatbot-thinking {
-    margin: 42px 0 0 20px;
+    margin: 0;
     font-size: 20px;
   }
 

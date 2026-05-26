@@ -50,3 +50,7 @@ class AIChatResponse(BaseModel):
     recommendations: list[AIHotXhsRecommendationItem] = Field(default_factory=list)
     needs_hand_image: bool = False
     hand_picker_message: str | None = None
+
+
+class XhsRecommendationStyleResponse(BaseModel):
+    style_id: str

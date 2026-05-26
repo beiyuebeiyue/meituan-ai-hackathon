@@ -109,13 +109,21 @@ class OpsAnalyticsKpis(BaseModel):
     dau: int
     new_users: int
     recommendation_impressions: int
+    recommendation_clicks: int
     recommendation_ctr: float
     tryon_started: int
+    tryon_completed: int
     tryon_completion_rate: float
     booking_submits: int
     completed_orders: int
     revenue_cents: int
     average_order_value_cents: int
+    click_to_tryon_rate: float
+    tryon_to_booking_rate: float
+    booking_to_order_rate: float
+    click_to_order_rate: float
+    arpu_cents: int
+    revenue_conversion_rate: float
 
 
 class OpsAnalyticsFunnelStep(BaseModel):
@@ -125,11 +133,16 @@ class OpsAnalyticsFunnelStep(BaseModel):
     conversion_rate: float
     step_rate: float
     dropoff_rate: float
+    dropoff_count: int
 
 
 class OpsAnalyticsTrendPoint(BaseModel):
     date: date
+    recommendation_clicks: int
+    tryon_started: int
     tryons: int
+    tryon_completed: int
+    booking_submits: int
     bookings: int
     completed_orders: int
     revenue_cents: int
@@ -149,6 +162,7 @@ class OpsAnalyticsRankItem(BaseModel):
     completed_orders: int
     completion_rate: float
     revenue_cents: int
+    revenue_share: float
 
 
 class OpsAnalyticsOverviewResponse(BaseModel):

@@ -30,6 +30,7 @@ import { useTryOnLauncher } from "../hooks/useTryOnLauncher";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useAuthStore } from "../store/useAuthStore";
 import { StyleDetail } from "../types/api";
+import { getNailTypeLabel } from "../utils/nailType";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 type ScreenRoute = RouteProp<RootStackParamList, "StylePreview">;
@@ -511,6 +512,9 @@ export function StylePreviewScreen() {
               </Text>
             ) : null}
             <View style={styles.publishMetaRow}>
+              <View style={[styles.nailTypePill, { backgroundColor: lightCardBackground }]}>
+                <Text style={[styles.nailTypeText, { color: colors.subtext }]}>{getNailTypeLabel(query.data.nail_type)}</Text>
+              </View>
               {query.data.verified_consumption ? (
                 <View style={[styles.verifiedBadge, { backgroundColor: isDark ? "rgba(56, 189, 122, 0.16)" : "#e9f8ef" }]}>
                   <Ionicons name="shield-checkmark" size={13} color="#28a45f" />
@@ -924,6 +928,15 @@ const styles = StyleSheet.create({
   publishMeta: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  nailTypePill: {
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  nailTypeText: {
+    fontSize: 12,
+    fontWeight: "900",
   },
   verifiedBadge: {
     flexDirection: "row",

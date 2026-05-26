@@ -416,6 +416,7 @@ export function MarketMapView({
             renderItem={({ item }) => {
               const selected = selectedShop?.id === item.id;
               const score = formatShopScore(item);
+              const coverUri = item.cover_image_url ? resolveAssetUrl(item.cover_image_url) : null;
               return (
                 <Pressable
                   style={[styles.shopRow, { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? colors.accentSoft : colors.surface }]}
@@ -424,7 +425,13 @@ export function MarketMapView({
                     onOpenShop(item);
                   }}
                 >
-                  <Image source={{ uri: resolveAssetUrl(item.cover_image_url) }} style={[styles.shopImage, { backgroundColor: colors.surfaceAlt }]} />
+                  {coverUri ? (
+                    <Image source={{ uri: coverUri }} style={[styles.shopImage, { backgroundColor: colors.surfaceAlt }]} />
+                  ) : (
+                    <View style={[styles.shopPhotoPlaceholder, { backgroundColor: colors.surfaceAlt }]}>
+                      <Ionicons name="storefront-outline" size={18} color={colors.subtext} />
+                    </View>
+                  )}
                   <View style={styles.shopInfo}>
                     <Text style={[styles.shopName, { color: colors.text }]} numberOfLines={1}>
                       {item.name}
@@ -702,6 +709,13 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 12,
+  },
+  shopPhotoPlaceholder: {
+    width: 70,
+    height: 70,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   shopInfo: {
     flex: 1,

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useIsFetching, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Image, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { AuthorProfileScreen } from "./AuthorProfileScreen";
 import { api, resolveAssetUrl } from "../api/client";
@@ -22,26 +22,13 @@ const sloganHighlights = [
 
 export function ProfileScreen() {
   const navigation = useNavigation<any>();
-  const { token, user } = useAuthStore();
-  const setUser = useAuthStore((state) => state.setUser);
+  const queryClient = useQueryClient();
+  const { token, user, hydrated } = useAuthStore();
   const setSession = useAuthStore((state) => state.setSession);
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
   const [agreed, setAgreed] = useState(true);
-
-  const meQuery = useQuery({
-    queryKey: ["me", token],
-    queryFn: api.getMe,
-    enabled: Boolean(token),
-  });
-
-  useEffect(() => {
-    if (meQuery.data) {
-      setUser(meQuery.data);
-    }
-  }, [meQuery.data, setUser]);
-
-  const displayUser = meQuery.data ?? user;
+  const isMeValidating = useIsFetching({ queryKey: ["me", token] }) > 0;
   const quickLoginMutation = useMutation({
     mutationFn: () => {
       if (!agreed) {
@@ -51,14 +38,25 @@ export function ProfileScreen() {
     },
     onSuccess: async (response) => {
       await setSession(response.access_token, response.user);
+      queryClient.setQueryData(["me", response.access_token], response.user);
     },
     onError: (error) => {
       Alert.alert("登录失败", error instanceof Error ? error.message : "请稍后重试");
     },
   });
 
-  if (token && displayUser?.id) {
-    return <AuthorProfileScreen authorId={displayUser.id} asProfileTab />;
+  if (!hydrated || (token && isMeValidating)) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingWrap}>
+          <Text style={[styles.emptyBooking, { color: colors.subtext }]}>正在校验登录状态...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (token && user?.id) {
+    return <AuthorProfileScreen authorId={user.id} asProfileTab />;
   }
 
   if (token) {
@@ -209,6 +207,27 @@ function ConsumerProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  profileErrorActions: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 18,
+  },
+  profileErrorButton: {
+    borderRadius: 999,
+    minWidth: 96,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    alignItems: "center",
+  },
+  profileErrorButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  profileErrorPrimaryText: {
+    color: "#ffffff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
   quickLoginContent: {
     flex: 1,
     paddingHorizontal: 30,

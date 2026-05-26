@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy import select
@@ -22,9 +23,7 @@ GAODE_STATIC_MAP_API_BASE_URL = "https://restapi.amap.com/v3/staticmap"
 GAODE_DEFAULT_RADIUS_METERS = 5000
 GAODE_DEFAULT_PAGE = 1
 GAODE_DEFAULT_LIMIT = 25
-GAODE_PLACEHOLDER_COVER_URL = (
-    "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?auto=format&fit=crop&w=1200&q=80"
-)
+GAODE_PLACEHOLDER_COVER_URL = ""
 PLATFORM_SHOP_SEARCH_RADIUS_METERS = 5000
 KEKE_SHOP_REGION = "龙岗区"
 KEKE_SHOP_RATING = 4.9
@@ -88,15 +87,22 @@ def _distance_meters(lat1: float, lng1: float, lat2: float, lng2: float) -> int:
     return int(earth_radius_meters * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
 
 
-def _first_photo_url(record: dict[str, Any]) -> str:
+def _first_photo_url(record: dict[str, Any]) -> str | None:
     photos = record.get("photos") or record.get("photo")
     if isinstance(photos, list):
         for item in photos:
             if isinstance(item, dict) and item.get("url"):
-                return str(item["url"])
+                return _safe_photo_url(str(item["url"]))
     if isinstance(photos, dict) and photos.get("url"):
-        return str(photos["url"])
-    return GAODE_PLACEHOLDER_COVER_URL
+        return _safe_photo_url(str(photos["url"]))
+    return None
+
+
+def _safe_photo_url(url: str) -> str | None:
+    parsed = urlparse(url)
+    if parsed.netloc.endswith("store.is.autonavi.com"):
+        return None
+    return url
 
 
 def _fallback_center_for_place(place: str | None) -> tuple[float, float] | None:

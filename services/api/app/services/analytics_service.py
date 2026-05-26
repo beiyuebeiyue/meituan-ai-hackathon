@@ -155,21 +155,31 @@ class AnalyticsService:
         recommendation_click = event_counts["ai_recommendation_click"]
         tryon_started = event_counts["tryon_started"]
         tryon_completed = event_counts["tryon_completed"]
+        booking_submits = event_counts["booking_submit_clicked"]
         new_users = int(
             db.scalar(select(func.count(User.id)).where(User.created_at >= start, User.created_at <= end, User.role == "consumer")) or 0
         )
+        active_users = len({actor_id(event) for event in events})
 
         kpis = OpsAnalyticsKpis(
-            dau=len({actor_id(event) for event in events}),
+            dau=active_users,
             new_users=new_users,
             recommendation_impressions=recommendation_shown,
+            recommendation_clicks=recommendation_click,
             recommendation_ctr=self._rate(recommendation_click, recommendation_shown),
             tryon_started=tryon_started,
+            tryon_completed=tryon_completed,
             tryon_completion_rate=self._rate(tryon_completed, tryon_started),
-            booking_submits=event_counts["booking_submit_clicked"],
+            booking_submits=booking_submits,
             completed_orders=completed_orders,
             revenue_cents=revenue_cents,
             average_order_value_cents=revenue_cents // completed_orders if completed_orders else 0,
+            click_to_tryon_rate=self._rate(tryon_started, recommendation_click),
+            tryon_to_booking_rate=self._rate(booking_submits, tryon_completed),
+            booking_to_order_rate=self._rate(completed_orders, booking_submits),
+            click_to_order_rate=self._rate(completed_orders, recommendation_click),
+            arpu_cents=revenue_cents // active_users if active_users else 0,
+            revenue_conversion_rate=self._rate(event_counts["revenue_recorded"], booking_submits),
         )
 
         previous = 0
@@ -185,6 +195,7 @@ class AnalyticsService:
                     conversion_rate=1.0 if index == 0 else self._rate(count, base),
                     step_rate=1.0 if index == 0 else self._rate(count, previous),
                     dropoff_rate=0.0 if index == 0 else max(0.0, 1.0 - self._rate(count, previous)),
+                    dropoff_count=0 if index == 0 else max(previous - count, 0),
                 )
             )
             previous = count
@@ -226,7 +237,11 @@ class AnalyticsService:
         return [
             OpsAnalyticsTrendPoint(
                 date=day,
+                recommendation_clicks=values["ai_recommendation_click"],
+                tryon_started=values["tryon_started"],
                 tryons=values["tryon_started"],
+                tryon_completed=values["tryon_completed"],
+                booking_submits=values["booking_submit_clicked"],
                 bookings=values["booking_submit_clicked"],
                 completed_orders=values["booking_completed"],
                 revenue_cents=values["revenue_cents"],
@@ -256,6 +271,7 @@ class AnalyticsService:
 
     def _rank_items(self, db: Session, grouped: dict[str, dict[str, int]], kind: str) -> list[OpsAnalyticsRankItem]:
         items: list[OpsAnalyticsRankItem] = []
+        total_revenue = sum(values["revenue_cents"] for values in grouped.values())
         for item_id, values in grouped.items():
             if kind == "style":
                 item = db.get(NailStyle, item_id)
@@ -285,6 +301,7 @@ class AnalyticsService:
                     completed_orders=completed,
                     completion_rate=self._rate(completed, bookings),
                     revenue_cents=values["revenue_cents"],
+                    revenue_share=self._rate(values["revenue_cents"], total_revenue),
                 )
             )
         return sorted(items, key=lambda item: (item.revenue_cents, item.completed_orders, item.tryons, item.clicks), reverse=True)[:10]

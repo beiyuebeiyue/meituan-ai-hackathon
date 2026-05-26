@@ -95,7 +95,10 @@ def test_analytics_events_support_anonymous_login_and_idempotency(client, db_ses
     assert overview.status_code == 200
     data = overview.json()
     assert data["kpis"]["recommendation_impressions"] == 1
+    assert data["kpis"]["recommendation_clicks"] == 1
     assert data["kpis"]["recommendation_ctr"] == 1.0
+    assert data["kpis"]["click_to_order_rate"] == 0.0
+    assert data["funnel"][1]["dropoff_count"] == 0
     assert data["kpis"]["dau"] == 1
     assert user["id"] in {row.user_id for row in db_session.query(AnalyticsIdentityLink).all()}
 
@@ -157,9 +160,29 @@ def test_ops_analytics_overview_counts_server_revenue_and_rankings(client, db_se
     assert response.status_code == 200
     data = response.json()
     assert data["kpis"]["tryon_started"] == 1
+    assert data["kpis"]["tryon_completed"] == 1
     assert data["kpis"]["tryon_completion_rate"] == 1.0
     assert data["kpis"]["completed_orders"] == 1
     assert data["kpis"]["revenue_cents"] == 18800
     assert data["kpis"]["average_order_value_cents"] == 18800
+    assert data["kpis"]["arpu_cents"] == 18800
+    assert data["trends"][0]["tryon_completed"] == 1
+    assert data["trends"][0]["revenue_cents"] == 18800
     assert data["top_styles"][0]["id"] == style.id
+    assert data["top_styles"][0]["revenue_share"] == 1.0
     assert data["top_shops"][0]["id"] == shop.id
+
+
+def test_ops_analytics_overview_empty_window_returns_zeroes(client):
+    response = client.get(
+        "/api/v1/ops/analytics/overview?start_date=2035-01-01&end_date=2035-01-01",
+        headers=_ops_headers(client),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["kpis"]["revenue_cents"] == 0
+    assert data["kpis"]["recommendation_clicks"] == 0
+    assert data["kpis"]["click_to_tryon_rate"] == 0.0
+    assert data["trends"] == []
+    assert data["top_styles"] == []
+    assert data["top_shops"] == []

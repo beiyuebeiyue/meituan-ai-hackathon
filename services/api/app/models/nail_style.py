@@ -23,6 +23,7 @@ class NailStyle(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     original_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     enhanced_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     source_type: Mapped[str] = mapped_column(String(50), default="seed_xlsx", nullable=False)
+    nail_type: Mapped[str] = mapped_column(String(20), default="press_on", nullable=False)
     tags_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     dominant_colors_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     style_metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)

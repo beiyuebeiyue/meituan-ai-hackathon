@@ -71,13 +71,21 @@ export type OpsAnalyticsOverview = {
     dau: number;
     new_users: number;
     recommendation_impressions: number;
+    recommendation_clicks: number;
     recommendation_ctr: number;
     tryon_started: number;
+    tryon_completed: number;
     tryon_completion_rate: number;
     booking_submits: number;
     completed_orders: number;
     revenue_cents: number;
     average_order_value_cents: number;
+    click_to_tryon_rate: number;
+    tryon_to_booking_rate: number;
+    booking_to_order_rate: number;
+    click_to_order_rate: number;
+    arpu_cents: number;
+    revenue_conversion_rate: number;
   };
   funnel: Array<{
     key: string;
@@ -86,10 +94,15 @@ export type OpsAnalyticsOverview = {
     conversion_rate: number;
     step_rate: number;
     dropoff_rate: number;
+    dropoff_count: number;
   }>;
   trends: Array<{
     date: string;
+    recommendation_clicks: number;
+    tryon_started: number;
     tryons: number;
+    tryon_completed: number;
+    booking_submits: number;
     bookings: number;
     completed_orders: number;
     revenue_cents: number;
@@ -112,6 +125,7 @@ export type OpsAnalyticsRankItem = {
   completed_orders: number;
   completion_rate: number;
   revenue_cents: number;
+  revenue_share: number;
 };
 
 export type PopularNail = {

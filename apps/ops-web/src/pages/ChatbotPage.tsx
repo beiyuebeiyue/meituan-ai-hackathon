@@ -1,9 +1,10 @@
-import { DeleteOutlined, PlusOutlined, SendOutlined, UserOutlined } from "@ant-design/icons";
-import { App, Avatar, Button, Empty, Input, Popconfirm, Typography } from "antd";
+import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, PlusOutlined, SendOutlined, UserOutlined } from "@ant-design/icons";
+import { App, Avatar, Button, Empty, Input, Popconfirm, Space, Typography } from "antd";
 import Lottie from "lottie-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, ChatMessage } from "../api/client";
 import catTypingAnimation from "../assets/lottie/cat-typing.json";
+import { MarkdownPreview } from "../components/MarkdownPreview";
 import {
   CONVERSATIONS_CHANGED_EVENT,
   createOrReuseBlankConversation,
@@ -17,6 +18,11 @@ import {
   sortConversations,
   type XiaojiaConversation,
 } from "../utils/xiaojiaConversations";
+
+type QueuedMessage = {
+  id: string;
+  content: string;
+};
 
 function XiaojiaMascot({ className = "" }: { className?: string }) {
   return (
@@ -36,6 +42,9 @@ export function ChatbotPage() {
   const [activeId, setActiveIdState] = useState(() => getSavedActiveConversationId(loadConversations()));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [queuedMessages, setQueuedMessages] = useState<QueuedMessage[]>([]);
+  const [editingQueueId, setEditingQueueId] = useState<string | null>(null);
+  const [editingQueueContent, setEditingQueueContent] = useState("");
   const [waitingDots, setWaitingDots] = useState(".");
   const messagesRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
@@ -93,6 +102,13 @@ export function ChatbotPage() {
     });
   }, [activeId, activeConversation?.messages, loading, waitingDots]);
 
+  useEffect(() => {
+    if (loading || editingQueueId || !queuedMessages.length || !activeConversation) return;
+    const [nextQueuedMessage] = queuedMessages;
+    setQueuedMessages((items) => items.slice(1));
+    void submitMessage(nextQueuedMessage.content);
+  }, [loading, editingQueueId, queuedMessages, activeConversation]);
+
   function selectConversation(id: string) {
     setActiveIdState(id);
     saveActiveConversationId(id);
@@ -114,6 +130,9 @@ export function ChatbotPage() {
     const { conversation, conversations: next } = createOrReuseBlankConversation(conversations);
     updateConversations(next, conversation.id);
     setInput("");
+    setQueuedMessages([]);
+    setEditingQueueId(null);
+    setEditingQueueContent("");
   }
 
   function deleteConversation(id: string) {
@@ -140,22 +159,22 @@ export function ChatbotPage() {
     return next;
   }
 
-  async function sendMessage() {
-    const content = input.trim();
-    if (!content || loading || !activeConversation) return;
-    const conversationId = activeConversation.id;
-    const baseMessages = isBlankNewConversation(activeConversation) ? [] : activeConversation.messages;
+  async function submitMessage(content: string) {
+    if (!content || !activeConversation) return;
+    const latestConversations = loadConversations();
+    const latestConversation = latestConversations.find((item) => item.id === activeConversation.id) ?? activeConversation;
+    const conversationId = latestConversation.id;
+    const baseMessages = isBlankNewConversation(latestConversation) ? [] : latestConversation.messages;
     const nextMessages: ChatMessage[] = [...baseMessages, { role: "user", content }];
-    const nextTitle = activeConversation.title === "新对话" ? content.slice(0, 24) : activeConversation.title;
-    replaceConversation(conversations, activeConversation, nextMessages, nextTitle);
-    setInput("");
+    const nextTitle = latestConversation.title === "新对话" ? content.slice(0, 24) : latestConversation.title;
+    replaceConversation(latestConversations, latestConversation, nextMessages, nextTitle);
     setLoading(true);
     try {
       const response = await api.chat(nextMessages.slice(-20));
-      const latestConversations = loadConversations();
-      const latestConversation = latestConversations.find((item) => item.id === conversationId);
-      if (latestConversation) {
-        replaceConversation(latestConversations, latestConversation, [...nextMessages, { role: "assistant", content: response.reply }], nextTitle);
+      const updatedConversations = loadConversations();
+      const updatedConversation = updatedConversations.find((item) => item.id === conversationId);
+      if (updatedConversation) {
+        replaceConversation(updatedConversations, updatedConversation, [...nextMessages, { role: "assistant", content: response.reply }], nextTitle);
       }
     } catch (error) {
       if (mountedRef.current) message.error(error instanceof Error ? error.message : "运营小嘉暂不可用");
@@ -164,24 +183,110 @@ export function ChatbotPage() {
     }
   }
 
+  function sendMessage() {
+    const content = input.trim();
+    if (!content || !activeConversation) return;
+    setInput("");
+    if (loading) {
+      setQueuedMessages((items) => [...items, { id: makeQueueId(), content }]);
+      return;
+    }
+    void submitMessage(content);
+  }
+
+  function startEditQueuedMessage(item: QueuedMessage) {
+    setEditingQueueId(item.id);
+    setEditingQueueContent(item.content);
+  }
+
+  function confirmEditQueuedMessage() {
+    const content = editingQueueContent.trim();
+    if (!editingQueueId) return;
+    if (!content) return;
+    setQueuedMessages((items) => items.map((item) => (item.id === editingQueueId ? { ...item, content } : item)));
+    setEditingQueueId(null);
+    setEditingQueueContent("");
+  }
+
+  function cancelEditQueuedMessage() {
+    setEditingQueueId(null);
+    setEditingQueueContent("");
+  }
+
+  function deleteQueuedMessage(id: string) {
+    setQueuedMessages((items) => items.filter((item) => item.id !== id));
+    if (editingQueueId === id) cancelEditQueuedMessage();
+  }
+
   const chatInput = (
-    <div className="chatbot-input-wrap">
-      <Input.TextArea
-        value={input}
-        autoSize={{ minRows: 2, maxRows: 5 }}
-        placeholder="输入消息，按 Enter 发送..."
-        onChange={(event) => setInput(event.target.value)}
-        onPressEnter={(event) => {
-          if (!event.shiftKey) {
-            event.preventDefault();
-            sendMessage();
-          }
-        }}
-      />
-      <div className="chatbot-input-actions">
-        <span className="chatbot-tool-chip">✦</span>
-        <span className="chatbot-tool-chip">G</span>
-        <Button type="primary" shape="circle" icon={<SendOutlined />} loading={loading} onClick={sendMessage} />
+    <div className="chatbot-composer">
+      {queuedMessages.length ? (
+        <div className="chatbot-queue">
+          <div className="chatbot-queue-header">
+            <Typography.Text type="secondary">待发送队列</Typography.Text>
+            <Typography.Text type="secondary">{queuedMessages.length} 条</Typography.Text>
+          </div>
+          {queuedMessages.map((item, index) => {
+            const isEditing = editingQueueId === item.id;
+            return (
+              <div className={`chatbot-queue-item${isEditing ? " is-editing" : ""}`} key={item.id}>
+                <span className="chatbot-queue-index">{index + 1}</span>
+                {isEditing ? (
+                  <Input.TextArea
+                    className="chatbot-queue-edit"
+                    value={editingQueueContent}
+                    autoSize={{ minRows: 1, maxRows: 4 }}
+                    onChange={(event) => setEditingQueueContent(event.target.value)}
+                    onPressEnter={(event) => {
+                      if (!event.shiftKey) {
+                        event.preventDefault();
+                        confirmEditQueuedMessage();
+                      }
+                    }}
+                  />
+                ) : (
+                  <span className="chatbot-queue-content">{item.content}</span>
+                )}
+                <Space size={4} className="chatbot-queue-actions">
+                  {isEditing ? (
+                    <>
+                      <Button
+                        size="small"
+                        type="text"
+                        icon={<CheckOutlined />}
+                        disabled={!editingQueueContent.trim()}
+                        onClick={confirmEditQueuedMessage}
+                      />
+                      <Button size="small" type="text" icon={<CloseOutlined />} onClick={cancelEditQueuedMessage} />
+                    </>
+                  ) : (
+                    <Button size="small" type="text" icon={<EditOutlined />} onClick={() => startEditQueuedMessage(item)} />
+                  )}
+                  <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => deleteQueuedMessage(item.id)} />
+                </Space>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      <div className="chatbot-input-wrap">
+        <Input.TextArea
+          value={input}
+          autoSize={{ minRows: 2, maxRows: 5 }}
+          placeholder={loading ? "当前回复完成后自动发送..." : "输入消息，按 Enter 发送..."}
+          onChange={(event) => setInput(event.target.value)}
+          onPressEnter={(event) => {
+            if (!event.shiftKey) {
+              event.preventDefault();
+              sendMessage();
+            }
+          }}
+        />
+        <div className="chatbot-input-actions">
+          <span className="chatbot-tool-chip">✦</span>
+          <span className="chatbot-tool-chip">G</span>
+          <Button type="primary" shape="circle" icon={<SendOutlined />} disabled={!input.trim()} onClick={sendMessage} />
+        </div>
       </div>
     </div>
   );
@@ -240,7 +345,7 @@ export function ChatbotPage() {
                 <div className="chatbot-blank-state">
                   <div className="chatbot-welcome">
                     <XiaojiaMascot className="chatbot-welcome-mascot" />
-                    <Typography.Title level={2}>你好，有什么可以帮你?</Typography.Title>
+                    <Typography.Title level={2}>你好！我是小嘉，你的运营助理。</Typography.Title>
                   </div>
                   {chatInput}
                 </div>
@@ -255,7 +360,11 @@ export function ChatbotPage() {
                           </div>
                         ) : null}
                         <div className={`chatbot-message chatbot-message-${item.role}`}>
-                          <Typography.Paragraph>{item.content}</Typography.Paragraph>
+                          {item.role === "assistant" ? (
+                            <MarkdownPreview content={item.content} />
+                          ) : (
+                            <Typography.Paragraph>{item.content}</Typography.Paragraph>
+                          )}
                         </div>
                         {item.role === "user" ? (
                           <Avatar className="chatbot-user-avatar" icon={<UserOutlined />} />
@@ -278,4 +387,9 @@ export function ChatbotPage() {
       </div>
     </div>
   );
+}
+
+function makeQueueId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }

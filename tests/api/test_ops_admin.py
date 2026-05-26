@@ -176,6 +176,24 @@ def test_ops_ai_chat_uses_local_summary_without_openai_key(client):
     assert "当前日期" in data["reply"]
 
 
+def test_ops_ai_chat_prompt_uses_tools_instead_of_full_dashboard():
+    from app.services.ops_chat_service import OpsChatService
+
+    service = OpsChatService()
+    prompt = service._system_prompt()
+    calls = service._parse_tool_calls(
+        '<ops_tool_call>{"name":"get_ops_analytics_overview","arguments":{"start_date":"2026-05-21"}}</ops_tool_call>'
+    )
+
+    assert "当前 dashboard JSON" not in prompt
+    assert "xhs_note_digest" not in prompt
+    assert "get_ops_analytics_overview" in prompt
+    assert "get_popular_nails" not in prompt
+    assert "longcat_tool_call" not in prompt
+    assert calls == [{"name": "get_ops_analytics_overview", "arguments": {"start_date": "2026-05-21"}}]
+    assert service._parse_tool_calls("<longcat_tool_call>get_ops_analytics_overview</longcat_tool_call>") == []
+
+
 def test_ops_ai_chat_can_route_to_openclaw(client, app_env, monkeypatch):
     from app.routers import ops_admin
     from app.schemas.ops import OpsChatResponse

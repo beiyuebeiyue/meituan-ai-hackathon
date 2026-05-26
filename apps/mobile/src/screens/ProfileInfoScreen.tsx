@@ -1,7 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useEffect, useMemo, useState } from "react";
 import { Image, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -45,13 +45,7 @@ export function ProfileInfoScreen() {
   const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
   const [birthdayDraft, setBirthdayDraft] = useState<Date>(parseBirthdayValue(user?.birthday) ?? new Date(2000, 0, 1));
 
-  const meQuery = useQuery({
-    queryKey: ["me", token],
-    queryFn: api.getMe,
-    enabled: Boolean(token),
-  });
-
-  const currentUser = meQuery.data ?? user;
+  const currentUser = user;
   const currentUsernameValue = currentUser?.username?.trim() ?? "";
   const parsedCurrentBirthday = parseBirthdayValue(currentUser?.birthday);
   const effectiveBirthdayValue = parsedCurrentBirthday ? formatBirthdayDate(parsedCurrentBirthday) : "";
@@ -79,7 +73,7 @@ export function ProfileInfoScreen() {
     },
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
-      void queryClient.invalidateQueries({ queryKey: ["me"] });
+      if (token) queryClient.setQueryData(["me", token], updatedUser);
       void queryClient.invalidateQueries({ queryKey: ["author-profile", updatedUser.id] });
       dismissOverlay?.() ?? navigation.goBack();
     },

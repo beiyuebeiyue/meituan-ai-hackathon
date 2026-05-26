@@ -266,6 +266,7 @@ class StyleService:
             style.tags_json = post.tags_json or []
             style.image_url = post.image_url
             style.local_image_path = post.local_image_path
+            style.nail_type = post.nail_type
             style.shop_id = post.shop_id
             style.verified_booking_id = post.verified_booking_id
             db.add(style)
@@ -278,6 +279,7 @@ class StyleService:
             description=post.description,
             image_url=post.image_url,
             local_image_path=post.local_image_path,
+            nail_type=post.nail_type,
             source_type="user_upload",
             tags_json=post.tags_json,
             dominant_colors_json=[],

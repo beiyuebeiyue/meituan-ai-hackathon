@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -60,13 +60,7 @@ export function ProfileEditScreen() {
   const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
   const [birthdayDraft, setBirthdayDraft] = useState<Date>(parseBirthdayValue(user?.birthday) ?? new Date(2000, 0, 1));
 
-  const meQuery = useQuery({
-    queryKey: ["me"],
-    queryFn: api.getMe,
-    enabled: Boolean(token),
-  });
-
-  const currentUser = meQuery.data ?? user;
+  const currentUser = user;
   const isMerchant = currentUser?.role === "merchant";
   const currentUsernameValue = currentUser?.username?.trim() ?? "";
   const parsedCurrentBirthday = parseBirthdayValue(currentUser?.birthday);
@@ -74,14 +68,13 @@ export function ProfileEditScreen() {
   const effectiveBioValue = currentUser?.bio?.trim() ?? "";
 
   useEffect(() => {
-    const currentUser = meQuery.data ?? user;
-    if (!currentUser) return;
-    const parsedBirthday = parseBirthdayValue(currentUser.birthday);
-    setUsername(currentUser.username ?? "");
+    if (!user) return;
+    const parsedBirthday = parseBirthdayValue(user.birthday);
+    setUsername(user.username ?? "");
     setBirthday(parsedBirthday ? formatBirthdayDate(parsedBirthday) : "");
     setBirthdayDraft(parsedBirthday ?? new Date(2000, 0, 1));
-    setBio(currentUser.bio?.trim() ?? "");
-  }, [meQuery.data, user]);
+    setBio(user.bio?.trim() ?? "");
+  }, [user]);
 
   const isDirty = useMemo(() => {
     if (!currentUser) return false;
@@ -104,7 +97,7 @@ export function ProfileEditScreen() {
     },
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
-      void queryClient.invalidateQueries({ queryKey: ["me"] });
+      if (token) queryClient.setQueryData(["me", token], updatedUser);
       void queryClient.invalidateQueries({ queryKey: ["profile-author", updatedUser.id] });
       void queryClient.invalidateQueries({ queryKey: ["author-profile", updatedUser.id] });
       dismissOverlay?.() ?? navigation.goBack();

@@ -51,7 +51,15 @@ const navItems = [
     label: "个人页",
     children: [{ key: "/profile/settings", label: "个人设置" }],
   },
-  { key: "/chatbot", icon: <RobotOutlined />, label: "运营小嘉" },
+  {
+    key: "chatbot",
+    icon: <RobotOutlined />,
+    label: "运营小嘉",
+    children: [
+      { key: "/chatbot", label: "对话" },
+      { key: "external:openclaw", label: "OpenClaw 后台" },
+    ],
+  },
 ];
 
 export function AppLayout() {
@@ -65,12 +73,18 @@ export function AppLayout() {
   const renderMenu = () => (
     <Menu
       mode="inline"
-      defaultOpenKeys={["dashboard", "members", "profile"]}
+      defaultOpenKeys={["dashboard", "members", "profile", "chatbot"]}
       selectedKeys={[location.pathname]}
       items={navItems}
       onClick={({ key }) => {
-        if (String(key).startsWith("/")) {
-          navigate(key);
+        const menuKey = String(key);
+        if (menuKey === "external:openclaw") {
+          window.open("http://localhost:18798", "_blank", "noopener,noreferrer");
+          setMobileMenuOpen(false);
+          return;
+        }
+        if (menuKey.startsWith("/")) {
+          navigate(menuKey);
           setMobileMenuOpen(false);
         }
       }}

@@ -6,9 +6,10 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Image, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { AuthSessionGate } from "./src/components/AuthSessionGate";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { bootstrapAppearance, useAppearanceStore } from "./src/store/useAppearanceStore";
-import { bootstrapAuth } from "./src/store/useAuthStore";
+import { hydrateAuthFromStorage } from "./src/store/useAuthStore";
 import { initAnalytics, trackEvent } from "./src/utils/analytics";
 import { getNavigationTheme } from "./src/utils/theme";
 
@@ -24,7 +25,7 @@ export default function App() {
 
   useEffect(() => {
     void (async () => {
-      await bootstrapAuth();
+      await hydrateAuthFromStorage();
       await initAnalytics();
       await trackEvent("app_open", { screen: "app", source: "startup" });
     })();
@@ -59,10 +60,12 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <NavigationContainer theme={getNavigationTheme(mode)}>
-          <StatusBar style={mode === "dark" ? "light" : "dark"} />
-          <RootNavigator />
-        </NavigationContainer>
+        <AuthSessionGate>
+          <NavigationContainer theme={getNavigationTheme(mode)}>
+            <StatusBar style={mode === "dark" ? "light" : "dark"} />
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthSessionGate>
       </SafeAreaProvider>
       {showWelcome ? (
         <Animated.View pointerEvents="none" style={[styles.welcomeOverlay, { opacity: welcomeOpacity }]}>

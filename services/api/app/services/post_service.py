@@ -39,6 +39,7 @@ class PostService:
         image_url: str,
         local_image_path: str,
         tags: list[str],
+        nail_type: str = "press_on",
         shop_id: str | None = None,
         verified_booking_id: str | None = None,
     ) -> UserPost:
@@ -50,6 +51,7 @@ class PostService:
             description=description,
             image_url=image_url,
             local_image_path=local_image_path,
+            nail_type=nail_type,
             tags_json=tags,
             verified_booking_id=verified_booking_id,
             created_at=now,

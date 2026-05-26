@@ -2,10 +2,9 @@ import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 import { useQuery } from "@tanstack/react-query";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   SafeAreaView,
   StyleSheet,
@@ -13,11 +12,12 @@ import {
   View,
 } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
-import { BookingSheet } from "../components/BookingSheet";
 import { trackEvent } from "../utils/analytics";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { RootStackParamList } from "../navigation/RootNavigator";
+import { useMarketStore } from "../store/useMarketStore";
+import { getNailTypeLabel, isHandmadeNail } from "../utils/nailType";
 import { useThemeColors } from "../utils/theme";
 
 type ScreenRoute = RouteProp<RootStackParamList, "TryOnResult">;
@@ -27,7 +27,7 @@ export function TryOnResultScreen() {
   const dismissOverlay = useSlideOverlayDismiss();
   const route = useRoute<ScreenRoute>();
   const colors = useThemeColors();
-  const [bookingVisible, setBookingVisible] = useState(false);
+  const setPendingBookingStyleId = useMarketStore((state) => state.setPendingBookingStyleId);
   const query = useQuery({
     queryKey: ["tryon-job", route.params.jobId],
     queryFn: () => api.getTryOnJob(route.params.jobId),
@@ -49,13 +49,15 @@ export function TryOnResultScreen() {
     const download = await FileSystem.downloadAsync(resolveAssetUrl(query.data.result_image_url), `${FileSystem.cacheDirectory}tryon-result.jpg`);
     await MediaLibrary.saveToLibraryAsync(download.uri);
   };
-  const openBooking = () => {
-    if (!query.data?.selected_style_id) return;
-    if (!styleQuery.data?.shop_id) {
-      Alert.alert("暂不能预约", "这款美甲还没有绑定商家门店。");
+  const openNextStep = () => {
+    const styleId = query.data?.selected_style_id;
+    if (!styleId || !styleQuery.data) return;
+    if (isHandmadeNail(styleQuery.data.nail_type)) {
+      setPendingBookingStyleId(styleId);
+      navigation.navigate("MainTabs", { screen: "Market" });
       return;
     }
-    setBookingVisible(true);
+    navigation.navigate("WearableStore", { styleId, entryEdge: "right" });
   };
   useEffect(() => {
     if (query.data?.status !== "succeeded") return;
@@ -70,8 +72,13 @@ export function TryOnResultScreen() {
     query.data?.stage === "preprocessing"
       ? "正在分析手部并分割美甲参考图，首次处理会稍慢"
       : query.data?.stage === "generating"
-        ? "正在生成焕甲结果"
-        : "AI 正在处理中，通常需要几秒钟";
+      ? "正在生成焕甲结果"
+      : "AI 正在处理中，通常需要几秒钟";
+  const nextStepLabel = !styleQuery.data
+    ? "正在确认款式类型..."
+    : isHandmadeNail(styleQuery.data.nail_type)
+      ? "选择美甲商家预约"
+      : "去焕甲生活超市下单";
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.surfaceAlt }]}>
@@ -79,8 +86,13 @@ export function TryOnResultScreen() {
         {query.data?.status === "succeeded" && query.data.result_image_url ? (
           <>
             <Image source={{ uri: resolveAssetUrl(query.data.result_image_url) }} style={[styles.resultImage, { backgroundColor: colors.accentSoft }]} />
+            {styleQuery.data ? (
+              <View style={[styles.typePill, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.typePillText, { color: colors.subtext }]}>{getNailTypeLabel(styleQuery.data.nail_type)}</Text>
+              </View>
+            ) : null}
             <PrimaryButton label="保存到相册" onPress={saveResult} />
-            <PrimaryButton label="预约门店" onPress={openBooking} />
+            <PrimaryButton label={nextStepLabel} onPress={openNextStep} disabled={!styleQuery.data} />
             <PrimaryButton label="返回继续挑选" onPress={() => dismissOverlay?.() ?? navigation.goBack()} variant="ghost" />
           </>
         ) : query.data?.status === "failed" ? (
@@ -97,15 +109,6 @@ export function TryOnResultScreen() {
           </>
         )}
       </View>
-      <BookingSheet
-        visible={bookingVisible}
-        onClose={() => setBookingVisible(false)}
-        shopId={styleQuery.data?.shop_id}
-        shopName={styleQuery.data?.shop_name}
-        shopCity={styleQuery.data?.shop_city}
-        styleId={query.data?.selected_style_id}
-        onSuccess={() => Alert.alert("预约已提交", "商家会在预约列表里处理你的意向单。")}
-      />
     </SafeAreaView>
   );
 }
@@ -114,6 +117,16 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1, padding: 16, paddingBottom: 120, gap: 14 },
   resultImage: { width: "100%", aspectRatio: 1, borderRadius: 26 },
+  typePill: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  typePillText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
   loadingCard: {
     flex: 1,
     alignItems: "center",

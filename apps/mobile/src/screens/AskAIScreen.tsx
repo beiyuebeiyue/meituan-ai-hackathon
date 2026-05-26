@@ -5,10 +5,11 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -17,9 +18,11 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  StyleProp,
   Text,
   TextInput,
   View,
+  ViewStyle,
 } from "react-native";
 import { api, resolveAssetUrl } from "../api/client";
 import { PrimaryButton } from "../components/PrimaryButton";
@@ -29,6 +32,7 @@ import { useTryOnLauncher } from "../hooks/useTryOnLauncher";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { AskAIConversation, useAskAIStore } from "../store/useAskAIStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { useMarketStore } from "../store/useMarketStore";
 import { AIChatMessage, XhsHotRecommendation } from "../types/api";
 import {
   ASK_AGENT_EXAMPLES,
@@ -39,6 +43,7 @@ import {
 } from "../utils/askAgent";
 import { useThemeColors } from "../utils/theme";
 import { trackEvent } from "../utils/analytics";
+import { getNailTypeLabel, isHandmadeNail } from "../utils/nailType";
 
 type ChatPayload = {
   messages: AIChatMessage[];
@@ -50,6 +55,52 @@ type ConversationGroup = {
   title: string;
   items: AskAIConversation[];
 };
+
+function AnimatedPressable({
+  children,
+  disabled,
+  hitSlop,
+  onPress,
+  style,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  hitSlop?: number;
+  onPress: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const animateTo = (value: number) => {
+    Animated.spring(scale, {
+      toValue: value,
+      useNativeDriver: true,
+      speed: 28,
+      bounciness: 7,
+    }).start();
+  };
+
+  useEffect(() => {
+    if (disabled) animateTo(1);
+  }, [disabled]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale }], opacity: disabled ? 0.45 : 1 }}>
+      <Pressable
+        hitSlop={hitSlop}
+        style={style}
+        onPress={onPress}
+        disabled={disabled}
+        onPressIn={() => {
+          if (!disabled) animateTo(0.94);
+        }}
+        onPressOut={() => animateTo(1)}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 function ActionChip({
   label,
@@ -69,15 +120,15 @@ function ActionChip({
   disabled?: boolean;
 }) {
   return (
-    <Pressable
-      style={[styles.actionChip, { backgroundColor: active ? activeBackground ?? background : background, opacity: disabled ? 0.45 : 1 }]}
+    <AnimatedPressable
+      style={[styles.actionChip, { backgroundColor: active ? activeBackground ?? background : background }]}
       onPress={onPress}
       disabled={disabled}
     >
       <Text style={[styles.actionChipText, { color: textColor }]} numberOfLines={1}>
         {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -121,7 +172,7 @@ function RecommendationCard({
   const stats = `赞 ${item.liked_count} · 藏 ${item.collected_count} · 转 ${item.share_count}`;
 
   return (
-    <Pressable style={[styles.recommendationCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={onPreview}>
+    <AnimatedPressable style={[styles.recommendationCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={onPreview}>
       <Pressable style={styles.recommendationImageWrap} onPress={onPreview}>
         <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={[styles.recommendationImage, { backgroundColor: colors.accentSoft }]} />
       </Pressable>
@@ -130,6 +181,9 @@ function RecommendationCard({
           <Text style={[styles.recommendationTitle, { color: colors.text }]} numberOfLines={2}>
             {item.title}
           </Text>
+          <View style={[styles.nailTypePill, { backgroundColor: colors.accentSoft }]}>
+            <Text style={[styles.nailTypePillText, { color: colors.accent }]}>穿戴甲</Text>
+          </View>
         </View>
         <View style={styles.recommendationTypeRow}>
           <Text style={[styles.recommendationTypeText, { color: colors.subtext }]} numberOfLines={1}>
@@ -146,7 +200,7 @@ function RecommendationCard({
           {stats}
         </Text>
       </View>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -172,6 +226,7 @@ export function AskAIScreen() {
     startConversation,
   } = useAskAIStore();
   const token = useAuthStore((state) => state.token);
+  const setPendingBookingStyleId = useMarketStore((state) => state.setPendingBookingStyleId);
 
   const [askedQuery, setAskedQuery] = useState("");
   const [chatMessages, setChatMessages] = useState<AIChatMessage[]>([]);
@@ -186,6 +241,10 @@ export function AskAIScreen() {
   const [tryOnFeedback, setTryOnFeedback] = useState<"idle" | "satisfied" | "unsatisfied">("idle");
   const [composerHeight, setComposerHeight] = useState(158);
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [materializingNoteId, setMaterializingNoteId] = useState<string | null>(null);
+  const [queuedTryOnNoteId, setQueuedTryOnNoteId] = useState<string | null>(null);
+  const sendHaloScale = useRef(new Animated.Value(1)).current;
+  const sendHaloOpacity = useRef(new Animated.Value(0)).current;
 
   const chatMutation = useMutation({
     mutationFn: (payload: ChatPayload) =>
@@ -211,6 +270,47 @@ export function AskAIScreen() {
     },
   });
 
+  useEffect(() => {
+    if (!promptText.trim() || chatMutation.isPending) {
+      sendHaloScale.stopAnimation();
+      sendHaloOpacity.stopAnimation();
+      sendHaloScale.setValue(1);
+      sendHaloOpacity.setValue(0);
+      return;
+    }
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(sendHaloScale, {
+            toValue: 1.18,
+            duration: 760,
+            useNativeDriver: true,
+          }),
+          Animated.timing(sendHaloOpacity, {
+            toValue: 0.18,
+            duration: 760,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(sendHaloScale, {
+            toValue: 1,
+            duration: 760,
+            useNativeDriver: true,
+          }),
+          Animated.timing(sendHaloOpacity, {
+            toValue: 0.06,
+            duration: 760,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [chatMutation.isPending, promptText, sendHaloOpacity, sendHaloScale]);
+
   const tryOnJobQuery = useQuery({
     queryKey: ["ask-ai-job", activeJobId],
     queryFn: () => api.getTryOnJob(activeJobId as string),
@@ -219,6 +319,11 @@ export function AskAIScreen() {
       const status = queryState.state.data?.status;
       return status === "succeeded" || status === "failed" ? false : 2000;
     },
+  });
+  const activeStyleQuery = useQuery({
+    queryKey: ["style", tryOnJobQuery.data?.selected_style_id, "ask-ai-result"],
+    queryFn: () => api.getStyle(tryOnJobQuery.data?.selected_style_id ?? ""),
+    enabled: Boolean(tryOnJobQuery.data?.selected_style_id),
   });
 
   const handleHandReady = (payload: { imageUri: string; handPhotoId?: string | null }) => {
@@ -424,6 +529,50 @@ export function AskAIScreen() {
     });
   };
 
+  const materializeAndStartTryOn = async (noteId: string) => {
+    if (materializingNoteId) return;
+    try {
+      setMaterializingNoteId(noteId);
+      const result = await api.materializeXhsRecommendationStyle(noteId);
+      setQueuedTryOnNoteId(null);
+      setPreviewItem(null);
+      startTryOn(result.style_id, { forceHandReady: true });
+    } catch (error) {
+      Alert.alert("暂不能焕甲", error instanceof Error ? error.message : "这款推荐暂时无法用于焕甲试戴。");
+    } finally {
+      setMaterializingNoteId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!token || !queuedTryOnNoteId) return;
+    if (!hasHandSelection) {
+      setNeedsHandFor("tryon");
+      setAssistantLine(getAgentHandPrompt(intent ?? "generic", "tryon"));
+      return;
+    }
+    void materializeAndStartTryOn(queuedTryOnNoteId);
+  }, [hasHandSelection, intent, queuedTryOnNoteId, token]);
+
+  const startTryOnFromRecommendation = async (item: XhsHotRecommendation) => {
+    if (materializingNoteId) return;
+    if (!token) {
+      setQueuedTryOnNoteId(item.note_id);
+      setPreviewItem(null);
+      setAssistantLine("差最后一步，登录后我就能把这款美甲直接试到你的手上。");
+      navigation.navigate("Login");
+      return;
+    }
+    if (!hasHandSelection) {
+      setQueuedTryOnNoteId(item.note_id);
+      setPreviewItem(null);
+      setNeedsHandFor("tryon");
+      setAssistantLine(getAgentHandPrompt(intent ?? "generic", "tryon"));
+      return;
+    }
+    await materializeAndStartTryOn(item.note_id);
+  };
+
   const saveTryOnResult = async () => {
     if (!tryOnJobQuery.data?.result_image_url) return;
     const permission = await MediaLibrary.requestPermissionsAsync();
@@ -436,6 +585,17 @@ export function AskAIScreen() {
     setTryOnFeedback("satisfied");
     setAssistantLine("好呀，这款就先帮你记下来了。你也可以继续挑别的款式再试一轮。");
     Alert.alert("已保存", "试戴结果已经保存到你的系统相册。");
+  };
+
+  const openTryOnNextStep = () => {
+    const styleId = tryOnJobQuery.data?.selected_style_id;
+    if (!styleId || !activeStyleQuery.data) return;
+    if (isHandmadeNail(activeStyleQuery.data.nail_type)) {
+      setPendingBookingStyleId(styleId);
+      navigation.navigate("MainTabs", { screen: "Market" });
+      return;
+    }
+    navigation.navigate("WearableStore", { styleId, entryEdge: "right" });
   };
 
   const currentResultImageUrl = tryOnJobQuery.data?.result_image_url ? resolveAssetUrl(tryOnJobQuery.data.result_image_url) : null;
@@ -475,12 +635,12 @@ export function AskAIScreen() {
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: scrollBottomPadding }]} showsVerticalScrollIndicator={false}>
           <View style={styles.chatTopBar}>
-            <Pressable
+            <AnimatedPressable
               style={[styles.historyIconButton, { backgroundColor: colors.surface }]}
               onPress={() => setHistoryVisible(true)}
             >
               <Ionicons name="menu" size={22} color={colors.text} />
-            </Pressable>
+            </AnimatedPressable>
           </View>
 
           <View style={styles.conversationList}>
@@ -569,10 +729,25 @@ export function AskAIScreen() {
 
           {tryOnJobQuery.data?.status === "succeeded" && currentResultImageUrl ? (
             <View style={[styles.resultCard, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.resultCardTitle, { color: colors.text }]}>这次的上手效果</Text>
+              <View style={styles.resultCardHeader}>
+                <Text style={[styles.resultCardTitle, { color: colors.text }]}>这次的上手效果</Text>
+                {activeStyleQuery.data ? (
+                  <View style={[styles.nailTypePill, { backgroundColor: colors.accentSoft }]}>
+                    <Text style={[styles.nailTypePillText, { color: colors.accent }]}>{getNailTypeLabel(activeStyleQuery.data.nail_type)}</Text>
+                  </View>
+                ) : null}
+              </View>
               <Image source={{ uri: currentResultImageUrl }} style={[styles.resultImage, { backgroundColor: colors.accentSoft }]} />
               <View style={styles.resultActions}>
                 <PrimaryButton label="满意，保存结果" onPress={saveTryOnResult} style={{ flex: 1 }} />
+                <PrimaryButton
+                  label={isHandmadeNail(activeStyleQuery.data?.nail_type) ? "选择商家预约" : "去超市下单"}
+                  onPress={openTryOnNextStep}
+                  disabled={!activeStyleQuery.data}
+                  style={{ flex: 1 }}
+                />
+              </View>
+              <View style={styles.resultActions}>
                 <PrimaryButton
                   label="不太满意"
                   variant="ghost"
@@ -582,6 +757,7 @@ export function AskAIScreen() {
                   }}
                   style={{ flex: 1 }}
                 />
+                <PrimaryButton label="继续挑款" variant="ghost" onPress={() => setActiveJobId(null)} style={{ flex: 1 }} />
               </View>
               <View style={styles.resultSubActions}>
                 <Pressable
@@ -654,16 +830,27 @@ export function AskAIScreen() {
               onSubmitEditing={() => submitPrompt()}
               editable={!chatMutation.isPending}
             />
-            <Pressable style={styles.composerIcon} onPress={() => Alert.alert("语音输入即将上线", "这一步我先给你留好了入口。")}>
+            <AnimatedPressable style={styles.composerIcon} onPress={() => Alert.alert("语音输入即将上线", "这一步我先给你留好了入口。")}>
               <Ionicons name="mic-outline" size={22} color={colors.subtext} />
-            </Pressable>
-            <Pressable
-              style={[styles.sendButton, { backgroundColor: colors.accent, opacity: chatMutation.isPending ? 0.45 : 1 }]}
+            </AnimatedPressable>
+            <AnimatedPressable
+              style={[styles.sendButton, { backgroundColor: colors.accent }]}
               onPress={() => submitPrompt()}
               disabled={chatMutation.isPending}
             >
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.sendButtonHalo,
+                  {
+                    backgroundColor: colors.accent,
+                    opacity: sendHaloOpacity,
+                    transform: [{ scale: sendHaloScale }],
+                  },
+                ]}
+              />
               <Ionicons name="send" size={18} color="#ffffff" />
-            </Pressable>
+            </AnimatedPressable>
           </View>
         </View>
 
@@ -674,12 +861,20 @@ export function AskAIScreen() {
                 <>
                   <Image source={{ uri: resolveAssetUrl(previewItem.image_url) }} style={[styles.previewImage, { backgroundColor: colors.accentSoft }]} />
                   <View style={styles.previewCopy}>
+                    <View style={[styles.nailTypePill, { backgroundColor: colors.accentSoft }]}>
+                      <Text style={[styles.nailTypePillText, { color: colors.accent }]}>穿戴甲</Text>
+                    </View>
                     <Text style={[styles.previewTitle, { color: colors.text }]} numberOfLines={2}>
                       {previewItem.title}
                     </Text>
                     <Text style={[styles.previewReason, { color: colors.subtext }]} numberOfLines={2}>
                       {previewItem.reason}
                     </Text>
+                    <PrimaryButton
+                      label={materializingNoteId === previewItem.note_id ? "正在准备焕甲..." : "焕甲试戴"}
+                      onPress={() => void startTryOnFromRecommendation(previewItem)}
+                      disabled={materializingNoteId === previewItem.note_id || isStartingTryOn}
+                    />
                   </View>
                 </>
               ) : null}
@@ -960,6 +1155,16 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     lineHeight: 21,
   },
+  nailTypePill: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  nailTypePillText: {
+    fontSize: 11,
+    fontWeight: "900",
+  },
   recommendationTypeRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -1008,7 +1213,14 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 14,
   },
+  resultCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
   resultCardTitle: {
+    flex: 1,
     fontSize: 22,
     fontWeight: "800",
   },
@@ -1092,6 +1304,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
+  },
+  sendButtonHalo: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 20,
   },
   previewOverlay: {
     flex: 1,

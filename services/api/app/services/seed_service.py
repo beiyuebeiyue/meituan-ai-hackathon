@@ -234,6 +234,7 @@ class SeedService:
                 original_image_url=str(original_url) if original_url else None,
                 enhanced_image_url=str(enhanced_url) if enhanced_url else None,
                 source_type="seed_xlsx",
+                nail_type="press_on",
                 tags_json=[],
                 dominant_colors_json=[],
                 style_metadata_json={},
@@ -245,6 +246,7 @@ class SeedService:
             style.local_image_path = local_path
             style.original_image_url = str(original_url) if original_url else style.original_image_url
             style.enhanced_image_url = str(enhanced_url) if enhanced_url else style.enhanced_image_url
+            style.nail_type = "press_on"
         db.add(style)
         db.commit()
 

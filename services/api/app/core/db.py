@@ -106,8 +106,22 @@ def sync_runtime_schema() -> None:
                 connection.execute(text("ALTER TABLE user_posts ADD COLUMN shop_id VARCHAR(36)"))
             if "verified_booking_id" not in post_columns:
                 connection.execute(text("ALTER TABLE user_posts ADD COLUMN verified_booking_id VARCHAR(36)"))
+            if "nail_type" not in post_columns:
+                connection.execute(text("ALTER TABLE user_posts ADD COLUMN nail_type VARCHAR(20)"))
             if "is_hidden" not in post_columns:
                 connection.execute(text("ALTER TABLE user_posts ADD COLUMN is_hidden BOOLEAN DEFAULT FALSE"))
+            connection.execute(
+                text(
+                    """
+                    UPDATE user_posts
+                    SET nail_type = CASE
+                        WHEN shop_id IS NOT NULL OR verified_booking_id IS NOT NULL THEN 'handmade'
+                        ELSE 'press_on'
+                    END
+                    WHERE nail_type IS NULL OR nail_type = ''
+                    """
+                )
+            )
             connection.execute(text("UPDATE user_posts SET is_hidden = FALSE WHERE is_hidden IS NULL"))
 
         if "nail_styles" in table_names:
@@ -116,6 +130,21 @@ def sync_runtime_schema() -> None:
                 connection.execute(text("ALTER TABLE nail_styles ADD COLUMN shop_id VARCHAR(36)"))
             if "verified_booking_id" not in style_columns:
                 connection.execute(text("ALTER TABLE nail_styles ADD COLUMN verified_booking_id VARCHAR(36)"))
+            if "nail_type" not in style_columns:
+                connection.execute(text("ALTER TABLE nail_styles ADD COLUMN nail_type VARCHAR(20)"))
+            connection.execute(
+                text(
+                    """
+                    UPDATE nail_styles
+                    SET nail_type = CASE
+                        WHEN source_type IN ('seed_xlsx', 'xhs_note') THEN 'press_on'
+                        WHEN source_type = 'user_upload' AND (shop_id IS NOT NULL OR verified_booking_id IS NOT NULL) THEN 'handmade'
+                        ELSE 'press_on'
+                    END
+                    WHERE nail_type IS NULL OR nail_type = ''
+                    """
+                )
+            )
 
         if "direct_messages" in table_names:
             message_columns = {column["name"] for column in inspector.get_columns("direct_messages")}

@@ -24,11 +24,16 @@ function isMetricColumn(header?: string): boolean {
 }
 
 function renderInline(value: string, keyPrefix: string): ReactNode[] {
-  return value.split(/(`[^`]+`)/g).map((part, index) => {
+  return value.split(/(`[^`]+`)/g).flatMap((part, index) => {
     if (part.startsWith("`") && part.endsWith("`")) {
       return <code key={`${keyPrefix}-${index}`}>{cleanCell(part)}</code>;
     }
-    return part;
+    return part.split(/(\*\*[^*]+\*\*)/g).map((inlinePart, inlineIndex) => {
+      if (inlinePart.startsWith("**") && inlinePart.endsWith("**")) {
+        return <strong key={`${keyPrefix}-${index}-${inlineIndex}`}>{inlinePart.slice(2, -2)}</strong>;
+      }
+      return inlinePart;
+    });
   });
 }
 

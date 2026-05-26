@@ -86,9 +86,43 @@ def test_gaode_provider_maps_success_response(monkeypatch):
     assert result.items[0].latitude == 22.5431
     assert result.items[0].longitude == 114.0579
     assert result.items[0].rating == 4.8
+    assert result.items[0].cover_image_url == "https://example.test/shop.jpg"
     assert result.items[0].average_price_text == "人均¥88"
     assert result.items[0].business_time_text == "10:00-22:00"
     assert result.items[0].phone_text == "0755-12345678"
+
+
+def test_gaode_provider_does_not_fake_unreachable_autonavi_photo_urls(monkeypatch):
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "status": "1",
+                "info": "OK",
+                "pois": [
+                    {
+                        "id": "B001",
+                        "name": "甲甲美学",
+                        "address": "科技园路100号",
+                        "location": "114.057900,22.543100",
+                        "cityname": "深圳市",
+                        "adname": "南山区",
+                        "photos": [{"url": "https://store.is.autonavi.com/showpic/e23ace19551f7cd0291d05d6bb841bcf"}],
+                    }
+                ],
+            }
+
+    monkeypatch.setattr("app.services.market_service.httpx.get", lambda *args, **kwargs: FakeResponse())
+    provider = GaodePoiSearchProvider(
+        api_key="gaode-key",
+        around_api_url="https://example.test/place/around",
+    )
+
+    result = provider.search_nearby(place=None, city="深圳", region=None, lat=22.5431, lng=114.0579, sort="distance")
+
+    assert result.items[0].cover_image_url is None
 
 
 def test_gaode_provider_uses_fixed_nail_keyword(monkeypatch):

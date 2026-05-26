@@ -8,6 +8,7 @@ class UserPostRead(BaseModel):
     title: str
     description: str
     image_url: str
+    nail_type: str = "press_on"
     tags: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -22,6 +23,7 @@ class AuthorPostRead(BaseModel):
     title: str
     description: str
     image_url: str
+    nail_type: str = "press_on"
     tags: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime

@@ -3,6 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveAssetUrl } from "../api/client";
 import { AuthorRoleBadge } from "./AuthorRoleBadge";
 import { NailStyle } from "../types/api";
+import { getNailTypeLabel } from "../utils/nailType";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 const defaultAvatar = require("../../assets/profile/default_avatar.png");
@@ -26,6 +27,9 @@ export function BrowseFeedCard({ item, onPress, onToggleLike, showLike = true }:
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
           {item.title}
         </Text>
+        <View style={[styles.typePill, { backgroundColor: isDark ? "#2a2a30" : colors.surfaceAlt }]}>
+          <Text style={[styles.typePillText, { color: colors.subtext }]}>{getNailTypeLabel(item.nail_type)}</Text>
+        </View>
         <View style={styles.footer}>
           <View style={styles.authorWrap}>
             <Image source={avatarSource} style={[styles.avatar, { backgroundColor: isDark ? "#34343a" : colors.surfaceAlt }]} />
@@ -74,6 +78,16 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 20,
     minHeight: 40,
+  },
+  typePill: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  typePillText: {
+    fontSize: 11,
+    fontWeight: "800",
   },
   footer: {
     flexDirection: "row",

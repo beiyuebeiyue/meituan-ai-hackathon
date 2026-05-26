@@ -7,7 +7,7 @@ class NearbyShopRead(BaseModel):
     id: str
     platform_shop_id: str | None = None
     name: str
-    cover_image_url: str
+    cover_image_url: str | None = None
     city: str
     region: str
     address: str

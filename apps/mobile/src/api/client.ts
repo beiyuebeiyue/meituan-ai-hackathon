@@ -30,6 +30,7 @@ import {
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
+const AUTH_FAILURE_EXEMPT_PATHS = new Set(["/auth/login", "/auth/register"]);
 
 function buildHeaders(extra?: HeadersInit) {
   const token = useAuthStore.getState().token;
@@ -45,6 +46,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: buildHeaders(init?.headers),
   });
   if (!response.ok) {
+    if (response.status === 401 && !AUTH_FAILURE_EXEMPT_PATHS.has(path)) {
+      await useAuthStore.getState().clearSession();
+      throw new Error("登录状态已失效，请重新登录");
+    }
     const text = await response.text();
     throw new Error(text || "请求失败");
   }
@@ -278,6 +283,8 @@ export const api = {
     }
     return request<AIChatResponse>("/ai/chat", { method: "POST", body: form });
   },
+  materializeXhsRecommendationStyle: (noteId: string) =>
+    request<{ style_id: string }>(`/ai/xhs-recommendations/${encodeURIComponent(noteId)}/style`, { method: "POST" }),
   createTryOnJob: async (payload: { styleId: string; promptText: string; handImageUri?: string | null; savedHandPhotoId?: string | null }) => {
     const form = new FormData();
     form.append("style_id", payload.styleId);

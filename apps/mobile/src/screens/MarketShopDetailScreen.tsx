@@ -8,6 +8,7 @@ import { BookingSheet } from "../components/BookingSheet";
 import { BrowseFeedCard } from "../components/BrowseFeedCard";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
+import { useMarketStore } from "../store/useMarketStore";
 import { NailStyle, NearbyShop } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
@@ -90,6 +91,8 @@ export function MarketShopDetailScreen() {
   const hydrated = useAuthStore((state) => state.hydrated);
   const token = useAuthStore((state) => state.token);
   const currentUser = useAuthStore((state) => state.user);
+  const pendingBookingStyleId = useMarketStore((state) => state.pendingBookingStyleId);
+  const setPendingBookingStyleId = useMarketStore((state) => state.setPendingBookingStyleId);
   const shop = route.params?.shop;
   const authScope = !hydrated ? "booting" : token ? "authed" : "anon";
   const platformShopId = shop?.platform_shop_id ?? null;
@@ -186,7 +189,8 @@ export function MarketShopDetailScreen() {
   const reviewItems = galleryItems.filter((item) => item.verified_consumption);
   const featuredReviewItems = pickFeaturedReviews(reviewItems);
   const merchantGalleryItems = galleryItems.filter((item) => !item.verified_consumption).slice(0, 2);
-  const heroUri = resolveAssetUrl(shop.cover_image_url || merchantGalleryItems[0]?.image_url || reviewItems[0]?.image_url);
+  const heroSourceUri = shop.cover_image_url || (isPlatformShop ? merchantGalleryItems[0]?.image_url || reviewItems[0]?.image_url : null);
+  const heroUri = heroSourceUri ? resolveAssetUrl(heroSourceUri) : null;
   const priceAndTime = joinMeta([shop.average_price_text, shop.business_time_text]);
   const galleryCopy = "精选该店当前热门作品。";
   const hasRecentFeaturedReview = featuredReviewItems.some(isReviewWithinLastYear);
@@ -202,7 +206,14 @@ export function MarketShopDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroWrap}>
-          <Image source={{ uri: heroUri }} style={[styles.heroImage, { backgroundColor: colors.surfaceAlt }]} />
+          {heroUri ? (
+            <Image source={{ uri: heroUri }} style={[styles.heroImage, { backgroundColor: colors.surfaceAlt }]} />
+          ) : (
+            <View style={[styles.heroPhotoPlaceholder, { backgroundColor: colors.surfaceAlt }]}>
+              <Ionicons name="storefront-outline" size={42} color={colors.subtext} />
+              <Text style={[styles.heroPhotoPlaceholderText, { color: colors.subtext }]}>暂无门店照片</Text>
+            </View>
+          )}
           <View style={styles.heroOverlay} />
           <View style={styles.header}>
             <Pressable style={[styles.iconButton, { backgroundColor: isDark ? "rgba(27,28,32,0.78)" : "rgba(255,255,255,0.84)" }]} onPress={goBack}>
@@ -247,6 +258,12 @@ export function MarketShopDetailScreen() {
         </View>
 
         <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
+          {pendingBookingStyleId && isPlatformShop ? (
+            <View style={[styles.pendingBookingBanner, { backgroundColor: colors.surfaceAlt }]}>
+              <Ionicons name="calendar-outline" size={17} color={colors.accent} />
+              <Text style={[styles.pendingBookingText, { color: colors.subtext }]}>将为刚才试戴的手工甲创建预约。</Text>
+            </View>
+          ) : null}
           <View style={styles.infoTopRow}>
             {rating ? (
               <View style={styles.ratingWrap}>
@@ -425,8 +442,9 @@ export function MarketShopDetailScreen() {
         shopId={platformShopId}
         shopName={shop.name}
         shopCity={shop.city}
-        styleId={null}
+        styleId={pendingBookingStyleId}
         onClose={() => setBookingVisible(false)}
+        onSuccess={() => setPendingBookingStyleId(null)}
       />
     </SafeAreaView>
   );
@@ -447,6 +465,17 @@ const styles = StyleSheet.create({
   heroImage: {
     width: "100%",
     height: "100%",
+  },
+  heroPhotoPlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  heroPhotoPlaceholderText: {
+    fontSize: 15,
+    fontWeight: "800",
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -555,6 +584,20 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     padding: 16,
     gap: 10,
+  },
+  pendingBookingBanner: {
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  pendingBookingText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "700",
   },
   infoTopRow: {
     flexDirection: "row",
