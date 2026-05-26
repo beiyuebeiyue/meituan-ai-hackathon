@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.models.merchant_trend import MerchantTrendClaim
 from app.models.merchant_shop import MerchantShop
 from app.models.nail_style import NailStyle
 from app.schemas.market import NearbyShopRead, NearbyShopSearchResponse
@@ -140,6 +141,7 @@ class NearbyShopProvider:
         lat: float | None,
         lng: float | None,
         sort: str,
+        style_id: str | None = None,
     ) -> NearbyShopSearchResponse:
         raise NotImplementedError
 
@@ -360,6 +362,7 @@ class MarketService:
         lat: float | None,
         lng: float | None,
         sort: str,
+        style_id: str | None = None,
     ) -> NearbyShopSearchResponse:
         normalized_sort = sort if sort in {"default", "distance"} else "default"
         if not (place or "").strip() and (lat is None or lng is None):
@@ -379,7 +382,7 @@ class MarketService:
                 lng=lng,
                 sort=normalized_sort,
             )
-            return self._merge_platform_shops(db, result, sort=normalized_sort)
+            return self._merge_platform_shops(db, result, sort=normalized_sort, style_id=style_id)
         except Exception as exc:
             result = unavailable_market_response(
                 city=city,
@@ -394,7 +397,7 @@ class MarketService:
             elif lat is not None and lng is not None:
                 result.center_lat = lat
                 result.center_lng = lng
-            return self._merge_platform_shops(db, result, sort=normalized_sort)
+            return self._merge_platform_shops(db, result, sort=normalized_sort, style_id=style_id)
 
     def _merge_platform_shops(
         self,
@@ -402,10 +405,16 @@ class MarketService:
         result: NearbyShopSearchResponse,
         *,
         sort: str,
+        style_id: str | None,
     ) -> NearbyShopSearchResponse:
         if db is None or result.center_lat is None or result.center_lng is None:
             return result
 
+        claimed_shop_ids = (
+            set(db.scalars(select(MerchantTrendClaim.shop_id).where(MerchantTrendClaim.style_id == style_id)))
+            if style_id
+            else set()
+        )
         platform_items: list[NearbyShopRead] = []
         for shop in db.scalars(select(MerchantShop).order_by(MerchantShop.is_default.desc(), MerchantShop.created_at.asc())):
             if shop.latitude is None or shop.longitude is None:
@@ -413,14 +422,30 @@ class MarketService:
             distance = _distance_meters(result.center_lat, result.center_lng, shop.latitude, shop.longitude)
             if distance > PLATFORM_SHOP_SEARCH_RADIUS_METERS:
                 continue
-            platform_items.append(self._map_platform_shop(db, shop, distance_meters=distance))
+            platform_items.append(
+                self._map_platform_shop(
+                    db,
+                    shop,
+                    distance_meters=distance,
+                    can_do_style=shop.id in claimed_shop_ids,
+                )
+            )
 
         if not platform_items:
             return result
 
         existing_platform_ids = {item.platform_shop_id for item in result.items if item.platform_shop_id}
         merged_items = [item for item in platform_items if item.platform_shop_id not in existing_platform_ids] + result.items
-        if sort == "distance":
+        if style_id:
+            merged_items.sort(
+                key=lambda item: (
+                    not item.can_do_style,
+                    item.distance_meters is None,
+                    item.distance_meters if item.distance_meters is not None else 999999999,
+                    item.name,
+                )
+            )
+        elif sort == "distance":
             merged_items.sort(
                 key=lambda item: (
                     item.distance_meters is None,
@@ -433,7 +458,7 @@ class MarketService:
             result.message = None if merged_items else result.message
         return result
 
-    def _map_platform_shop(self, db: Session, shop: MerchantShop, *, distance_meters: int) -> NearbyShopRead:
+    def _map_platform_shop(self, db: Session, shop: MerchantShop, *, distance_meters: int, can_do_style: bool = False) -> NearbyShopRead:
         cover_style = db.scalar(
             select(NailStyle)
             .where(NailStyle.shop_id == shop.id)
@@ -444,6 +469,7 @@ class MarketService:
         return NearbyShopRead(
             id=f"platform-{shop.id}",
             platform_shop_id=shop.id,
+            merchant_user_id=shop.merchant_user_id,
             name=shop.name,
             cover_image_url=cover_style.image_url if cover_style is not None else GAODE_PLACEHOLDER_COVER_URL,
             city=shop.city or DEFAULT_CITY,
@@ -457,4 +483,5 @@ class MarketService:
             average_price_text=KEKE_SHOP_AVERAGE_PRICE_TEXT if is_keke else "价格到店咨询",
             business_time_text=KEKE_SHOP_BUSINESS_TIME_TEXT if is_keke else None,
             phone_text=shop.contact_phone,
+            can_do_style=can_do_style,
         )

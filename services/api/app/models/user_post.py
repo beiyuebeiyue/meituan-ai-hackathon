@@ -20,6 +20,9 @@ class UserPost(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     nail_type: Mapped[str] = mapped_column(String(20), default="press_on", nullable=False)
     tags_json: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    source_type: Mapped[str] = mapped_column(String(50), default="user_upload", nullable=False)
+    source_external_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    source_metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict, nullable=False)
 
     user = relationship("User", back_populates="posts")
     shop = relationship("MerchantShop", back_populates="posts")

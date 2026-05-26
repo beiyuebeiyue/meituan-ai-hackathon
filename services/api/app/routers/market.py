@@ -18,6 +18,7 @@ def get_nearby_shops(
     lat: float | None = Query(default=None),
     lng: float | None = Query(default=None),
     sort: str = Query(default="default"),
+    style_id: str | None = Query(default=None),
     view: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> NearbyShopSearchResponse:
@@ -29,4 +30,5 @@ def get_nearby_shops(
         lat=lat,
         lng=lng,
         sort=sort,
+        style_id=style_id,
     )

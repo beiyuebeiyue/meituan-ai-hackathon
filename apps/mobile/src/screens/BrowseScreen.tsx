@@ -9,6 +9,7 @@ import { BrowseFeedCard } from "../components/BrowseFeedCard";
 import { RequireLogin } from "../components/RequireLogin";
 import { NailStyle } from "../types/api";
 import { useAuthStore } from "../store/useAuthStore";
+import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 import { DEFAULT_MARKET_CITY, findMarketCity } from "../utils/marketCities";
 import { trackEvent } from "../utils/analytics";
@@ -42,6 +43,8 @@ export function BrowseScreen() {
   const token = useAuthStore((state) => state.token);
   const user = useAuthStore((state) => state.user);
   const hydrated = useAuthStore((state) => state.hydrated);
+  const includeXhsPosts = useContentPreferenceStore((state) => state.includeXhsPosts);
+  const contentPreferenceHydrated = useContentPreferenceStore((state) => state.hydrated);
   const hasToken = Boolean(token);
   const isMerchant = user?.role === "merchant";
   const authScope = !hydrated ? "booting" : hasToken ? "authed" : "anon";
@@ -111,9 +114,9 @@ export function BrowseScreen() {
       ] as const);
 
   const query = useQuery({
-    queryKey: ["browse", tab, authScope, localCity],
+    queryKey: ["browse", tab, authScope, localCity, includeXhsPosts],
     queryFn: () => (tab === "following" ? api.getFollowingStyles() : tab === "local" ? api.getLocalStyles(localCity) : api.getDiscover()),
-    enabled: hydrated && (tab === "discover" || (tab === "local" && canUseLocalFeed) || hasToken),
+    enabled: hydrated && contentPreferenceHydrated && (tab === "discover" || (tab === "local" && canUseLocalFeed) || hasToken),
   });
   const messageInboxQuery = useQuery({
     queryKey: ["message-inbox"],
@@ -195,7 +198,7 @@ export function BrowseScreen() {
       ),
     );
   }, [feedItems.map((item) => item.id).join(","), tab]);
-  const canRefresh = hydrated && (tab === "discover" || (tab === "local" && canUseLocalFeed) || hasToken);
+  const canRefresh = hydrated && contentPreferenceHydrated && (tab === "discover" || (tab === "local" && canUseLocalFeed) || hasToken);
   const handleRefresh = async () => {
     if (!canRefresh) return;
     setIsPullRefreshing(true);

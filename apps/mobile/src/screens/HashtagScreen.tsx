@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
+import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import type { NailStyle } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
@@ -75,15 +76,17 @@ export function HashtagScreen() {
   const isDark = useIsDarkMode();
   const token = useAuthStore((state) => state.token);
   const hydrated = useAuthStore((state) => state.hydrated);
+  const includeXhsPosts = useContentPreferenceStore((state) => state.includeXhsPosts);
+  const contentPreferenceHydrated = useContentPreferenceStore((state) => state.hydrated);
   const authScope = !hydrated ? "booting" : token ? "authed" : "anon";
   const tag = normalizeTag(route.params?.tag);
   const [sortMode, setSortMode] = useState<"hot" | "latest">("hot");
   const [followed, setFollowed] = useState(false);
 
   const hashtagQuery = useQuery({
-    queryKey: ["hashtag", tag, sortMode, authScope],
+    queryKey: ["hashtag", tag, sortMode, authScope, includeXhsPosts],
     queryFn: () => api.searchStyles(`#${tag}`),
-    enabled: hydrated && tag.length > 0,
+    enabled: hydrated && contentPreferenceHydrated && tag.length > 0,
   });
 
   const items = useMemo(() => {

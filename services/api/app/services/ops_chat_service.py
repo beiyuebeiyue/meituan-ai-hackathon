@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.schemas.ops import OpsChatMessage, OpsChatResponse
 from app.services.analytics_service import AnalyticsService
 from app.services.ops_admin_service import OpsAdminService
+from app.services.trend_nail_service import TrendNailService
 
 TOOL_CALL_RE = re.compile(r"<ops_tool_call>\s*(.*?)\s*</ops_tool_call>", re.DOTALL)
 
@@ -20,6 +21,7 @@ class OpsChatService:
     def __init__(self) -> None:
         self.ops_admin = OpsAdminService()
         self.analytics = AnalyticsService()
+        self.trends = TrendNailService()
 
     def chat(self, db: Session, messages: list[OpsChatMessage]) -> OpsChatResponse:
         settings = get_settings()
@@ -131,7 +133,9 @@ class OpsChatService:
             "1. get_ops_dashboard_summary: 查询今日运营概览和少量热门美甲。"
             '参数 {"popular_limit": 5}，popular_limit 范围 1-10。\n'
             "2. get_ops_analytics_overview: 查询转化漏斗、KPI、趋势、Top 款式和 Top 门店。"
-            '参数 {"start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD"}，日期可省略表示今天。\n\n'
+            '参数 {"start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD"}，日期可省略表示今天。\n'
+            "3. get_trend_nail_candidates: 查询可推送给商家的热门手工甲候选池。"
+            '参数 {"limit": 20}，只返回手工甲，limit 范围 1-50。\n\n'
             "示例：用户问“今天营收怎么样”，你应先返回："
             '<ops_tool_call>{"name":"get_ops_analytics_overview","arguments":{}}</ops_tool_call>'
         )
@@ -156,6 +160,8 @@ class OpsChatService:
                 return {"name": name, "status": "succeeded", "data": self._dashboard_summary(db, arguments)}
             if name == "get_ops_analytics_overview":
                 return {"name": name, "status": "succeeded", "data": self._analytics_overview(db, arguments)}
+            if name == "get_trend_nail_candidates":
+                return {"name": name, "status": "succeeded", "data": self._trend_nail_candidates(db, arguments)}
             return {"name": name, "status": "failed", "error": "unknown_tool"}
         except Exception as exc:  # keep chat resilient; tool errors should become answerable context
             return {"name": name, "status": "failed", "error": str(exc)}
@@ -185,6 +191,23 @@ class OpsChatService:
             "top_shops": overview["top_shops"][:10],
         }
 
+    def _trend_nail_candidates(self, db: Session, arguments: dict[str, object]) -> dict[str, object]:
+        limit = self._bounded_limit(arguments.get("limit"), default=20, maximum=50)
+        candidates = self.trends.list_candidates(db, limit=limit)
+        return {
+            "items": [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "tags": item.tags,
+                    "popularity_score": item.popularity_score,
+                    "like_count": item.like_count,
+                    "claim_count": item.claim_count,
+                }
+                for item in candidates
+            ]
+        }
+
     @staticmethod
     def _compact_popular_nails(items: list[dict[str, object]]) -> list[dict[str, object]]:
         compact: list[dict[str, object]] = []
@@ -203,12 +226,12 @@ class OpsChatService:
         return compact
 
     @staticmethod
-    def _bounded_limit(value: object, default: int) -> int:
+    def _bounded_limit(value: object, default: int, maximum: int = 10) -> int:
         try:
             limit = int(value)
         except (TypeError, ValueError):
             limit = default
-        return max(1, min(limit, 10))
+        return max(1, min(limit, maximum))
 
     @staticmethod
     def _parse_date(value: object) -> date | None:

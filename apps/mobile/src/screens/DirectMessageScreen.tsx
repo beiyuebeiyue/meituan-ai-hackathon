@@ -72,6 +72,7 @@ export function DirectMessageScreen() {
   const [activeEmojiGroup, setActiveEmojiGroup] = useState<(typeof emojiGroups)[number]["key"]>("smile");
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const listRef = useRef<FlatList<DirectMessage>>(null);
+  const sentInitialPayloadRef = useRef(false);
 
   const query = useQuery({
     queryKey: ["conversation", route.params.userId],
@@ -153,7 +154,34 @@ export function DirectMessageScreen() {
   });
 
   const styleMessageMutation = useMutation({
-    mutationFn: (styleId: string) => api.sendStyleMessage(route.params.userId, styleId),
+    mutationFn: ({ styleId, content }: { styleId: string; content?: string }) =>
+      api.sendStyleMessage(route.params.userId, styleId, content ?? ""),
+    onSuccess: async () => {
+      setMessage("");
+      setEmojiPanelOpen(false);
+      setMorePanelOpen(false);
+      setLikedStylesOpen(false);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["conversation", route.params.userId] }),
+        queryClient.invalidateQueries({ queryKey: ["message-inbox"] }),
+        queryClient.invalidateQueries({ queryKey: ["stranger-messages"] }),
+      ]);
+    },
+    onError: (error: Error) => {
+      let detail = error.message;
+      try {
+        const parsed = JSON.parse(error.message) as { detail?: string };
+        detail = parsed.detail ?? detail;
+      } catch {
+        // ignore parse failures
+      }
+      Alert.alert("发送失败", detail);
+    },
+  });
+
+  const tryOnResultMessageMutation = useMutation({
+    mutationFn: ({ tryOnJobId, content }: { tryOnJobId: string; content?: string }) =>
+      api.sendTryOnResultMessage(route.params.userId, tryOnJobId, content ?? ""),
     onSuccess: async () => {
       setMessage("");
       setEmojiPanelOpen(false);
@@ -202,13 +230,37 @@ export function DirectMessageScreen() {
   });
 
   const hasDraft = Boolean(message.trim());
-  const isSending = sendMutation.isPending || imageMutation.isPending || styleMessageMutation.isPending || bookingInviteMutation.isPending;
+  const isSending =
+    sendMutation.isPending ||
+    imageMutation.isPending ||
+    styleMessageMutation.isPending ||
+    tryOnResultMessageMutation.isPending ||
+    bookingInviteMutation.isPending;
   const canSend = Boolean(thread?.can_send && !isSending && hasDraft);
   const canUseMoreActions = Boolean(thread?.can_send && !isSending);
   const canSendImage = canUseMoreActions;
   const canSendBookingInvite = Boolean(canUseMoreActions && currentUser?.role === "merchant" && thread?.target.role === "consumer");
 
   const bubbleBorderColor = useMemo(() => colors.border, [colors.border]);
+
+  useEffect(() => {
+    if (sentInitialPayloadRef.current || !thread?.can_send) return;
+    if (route.params.initialTryOnJobId) {
+      sentInitialPayloadRef.current = true;
+      tryOnResultMessageMutation.mutate({
+        tryOnJobId: route.params.initialTryOnJobId,
+        content: route.params.initialMessage,
+      });
+      return;
+    }
+    if (route.params.initialStyleId) {
+      sentInitialPayloadRef.current = true;
+      styleMessageMutation.mutate({
+        styleId: route.params.initialStyleId,
+        content: route.params.initialMessage,
+      });
+    }
+  }, [route.params.initialMessage, route.params.initialStyleId, route.params.initialTryOnJobId, styleMessageMutation, thread?.can_send, tryOnResultMessageMutation]);
 
   const insertEmoji = (emoji: string) => {
     const start = selection.start ?? message.length;
@@ -317,6 +369,11 @@ export function DirectMessageScreen() {
                     },
                   ]}
                 >
+                  {item.image_url && item.shared_style ? (
+                    <Text style={[styles.tryOnImageLabel, { color: item.is_mine ? "rgba(255,255,255,0.82)" : colors.subtext }]}>
+                      焕甲结果图
+                    </Text>
+                  ) : null}
                   {item.image_url ? (
                     <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={styles.messageImage} />
                   ) : null}
@@ -471,7 +528,7 @@ export function DirectMessageScreen() {
                           key={style.id}
                           style={[styles.likedStyleCard, { backgroundColor: colors.background }]}
                           disabled={styleMessageMutation.isPending}
-                          onPress={() => styleMessageMutation.mutate(style.id)}
+                          onPress={() => styleMessageMutation.mutate({ styleId: style.id })}
                         >
                           <Image source={{ uri: resolveAssetUrl(style.image_url) }} style={styles.likedStyleImage} />
                           <Text style={[styles.likedStyleTitle, { color: colors.text }]} numberOfLines={2}>
@@ -614,6 +671,10 @@ const styles = StyleSheet.create({
     width: 180,
     height: 180,
     borderRadius: 16,
+  },
+  tryOnImageLabel: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   sharedStyleCard: {
     width: 220,

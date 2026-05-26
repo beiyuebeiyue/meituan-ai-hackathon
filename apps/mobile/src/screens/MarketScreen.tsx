@@ -75,6 +75,12 @@ export function MarketScreen() {
             </Text>
             <Text style={[styles.resultDistance, { color: colors.subtext }]}>{formatMarketDistance(item.distance_meters)}</Text>
           </View>
+          {item.can_do_style ? (
+            <View style={[styles.claimBadge, { borderColor: colors.accent }]}>
+              <Ionicons name="checkmark-circle" size={13} color={colors.accent} />
+              <Text style={[styles.claimBadgeText, { color: colors.accent }]}>可做这款</Text>
+            </View>
+          ) : null}
           <View style={styles.ratingRow}>
             {rating ? (
               <>
@@ -346,6 +352,20 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingText: { color: "#ff6b26", fontSize: 15, fontWeight: "900" },
+  claimBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  claimBadgeText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
   resultMeta: { fontSize: 13, lineHeight: 18 },
   addressText: { fontSize: 12, lineHeight: 17 },
   emptyText: {

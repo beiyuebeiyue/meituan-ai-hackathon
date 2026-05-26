@@ -227,6 +227,7 @@ export function AskAIScreen() {
   } = useAskAIStore();
   const token = useAuthStore((state) => state.token);
   const setPendingBookingStyleId = useMarketStore((state) => state.setPendingBookingStyleId);
+  const setPendingBookingTryOnJobId = useMarketStore((state) => state.setPendingBookingTryOnJobId);
 
   const [askedQuery, setAskedQuery] = useState("");
   const [chatMessages, setChatMessages] = useState<AIChatMessage[]>([]);
@@ -592,6 +593,7 @@ export function AskAIScreen() {
     if (!styleId || !activeStyleQuery.data) return;
     if (isHandmadeNail(activeStyleQuery.data.nail_type)) {
       setPendingBookingStyleId(styleId);
+      setPendingBookingTryOnJobId(tryOnJobQuery.data?.job_id ?? null);
       navigation.navigate("MainTabs", { screen: "Market" });
       return;
     }

@@ -23,29 +23,51 @@ class StyleService:
     def __init__(self) -> None:
         self.block_service = BlockService()
 
-    def list_hot(self, db: Session, page: int, page_size: int, viewer: User | None = None) -> tuple[list[NailStyle], int]:
+    def list_hot(
+        self,
+        db: Session,
+        page: int,
+        page_size: int,
+        viewer: User | None = None,
+        include_xhs_posts: bool = True,
+    ) -> tuple[list[NailStyle], int]:
         ordered = list(
             db.scalars(
                 select(NailStyle).order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
             )
         )
-        visible = self.filter_visible_styles(db, ordered, viewer)
+        visible = self.filter_visible_styles(db, ordered, viewer, include_xhs_posts=include_xhs_posts)
         total = len(visible)
         offset = (page - 1) * page_size
         return visible[offset : offset + page_size], total
 
-    def list_latest(self, db: Session, page: int, page_size: int, viewer: User | None = None) -> tuple[list[NailStyle], int]:
+    def list_latest(
+        self,
+        db: Session,
+        page: int,
+        page_size: int,
+        viewer: User | None = None,
+        include_xhs_posts: bool = True,
+    ) -> tuple[list[NailStyle], int]:
         ordered = list(db.scalars(select(NailStyle).order_by(NailStyle.created_at.desc())))
-        visible = self.filter_visible_styles(db, ordered, viewer)
+        visible = self.filter_visible_styles(db, ordered, viewer, include_xhs_posts=include_xhs_posts)
         total = len(visible)
         offset = (page - 1) * page_size
         return visible[offset : offset + page_size], total
 
-    def list_following(self, db: Session, user: User, following_ids: set[str], page: int, page_size: int) -> tuple[list[NailStyle], int]:
+    def list_following(
+        self,
+        db: Session,
+        user: User,
+        following_ids: set[str],
+        page: int,
+        page_size: int,
+        include_xhs_posts: bool = True,
+    ) -> tuple[list[NailStyle], int]:
         ordered_styles = list(db.scalars(select(NailStyle).order_by(NailStyle.created_at.desc())))
         matched: list[NailStyle] = []
         for style in ordered_styles:
-            if not self.is_style_visible(db, style, user):
+            if not self.is_style_visible(db, style, user, include_xhs_posts=include_xhs_posts):
                 continue
             author = self.resolve_style_author_user(db, style)
             if author is None:
@@ -58,12 +80,20 @@ class StyleService:
         offset = (page - 1) * page_size
         return matched[offset : offset + page_size], total
 
-    def list_local(self, db: Session, city: str, page: int, page_size: int, viewer: User | None = None) -> tuple[list[NailStyle], int]:
+    def list_local(
+        self,
+        db: Session,
+        city: str,
+        page: int,
+        page_size: int,
+        viewer: User | None = None,
+        include_xhs_posts: bool = True,
+    ) -> tuple[list[NailStyle], int]:
         normalized_city = city.strip().replace("市", "") or "深圳"
         ordered_styles = list(db.scalars(select(NailStyle).order_by(NailStyle.created_at.desc())))
         matched = []
         for style in ordered_styles:
-            if not self.is_style_visible(db, style, viewer):
+            if not self.is_style_visible(db, style, viewer, include_xhs_posts=include_xhs_posts):
                 continue
             shop_city = style.shop.city if style.shop is not None else None
             if shop_city and normalized_city in shop_city.replace("市", ""):
@@ -79,6 +109,7 @@ class StyleService:
         page: int,
         page_size: int,
         viewer: User | None = None,
+        include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
         ordered = list(
             db.scalars(
@@ -87,16 +118,24 @@ class StyleService:
                 .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
             )
         )
-        visible = self.filter_visible_styles(db, ordered, viewer)
+        visible = self.filter_visible_styles(db, ordered, viewer, include_xhs_posts=include_xhs_posts)
         total = len(visible)
         offset = (page - 1) * page_size
         return visible[offset : offset + page_size], total
 
-    def search_styles(self, db: Session, query_text: str, page: int, page_size: int, viewer: User | None = None) -> tuple[list[NailStyle], int]:
+    def search_styles(
+        self,
+        db: Session,
+        query_text: str,
+        page: int,
+        page_size: int,
+        viewer: User | None = None,
+        include_xhs_posts: bool = True,
+    ) -> tuple[list[NailStyle], int]:
         normalized_query = query_text.strip().lower().replace("＃", "#")
         tokens = [token for token in re.split(r"[\s#]+", normalized_query) if token]
         if not tokens:
-            return self.list_latest(db, page, page_size, viewer=viewer)
+            return self.list_latest(db, page, page_size, viewer=viewer, include_xhs_posts=include_xhs_posts)
 
         ordered_styles = self.filter_visible_styles(
             db,
@@ -110,6 +149,7 @@ class StyleService:
                 )
             ),
             viewer,
+            include_xhs_posts=include_xhs_posts,
         )
 
         scored: list[tuple[float, NailStyle]] = []
@@ -235,7 +275,15 @@ class StyleService:
             return db.get(UserPost, post_id)
         return None
 
-    def is_style_visible(self, db: Session, style: NailStyle, viewer: User | None = None) -> bool:
+    def is_style_visible(
+        self,
+        db: Session,
+        style: NailStyle,
+        viewer: User | None = None,
+        include_xhs_posts: bool = True,
+    ) -> bool:
+        if not include_xhs_posts and style.source_type == "xhs_note":
+            return False
         author = self.resolve_style_author_user(db, style)
         if viewer is not None and author is not None:
             if self.block_service.has_blocked(db, author.id, viewer.id):
@@ -247,8 +295,14 @@ class StyleService:
             return True
         return bool(viewer and viewer.id == post.user_id)
 
-    def filter_visible_styles(self, db: Session, styles: list[NailStyle], viewer: User | None = None) -> list[NailStyle]:
-        return [style for style in styles if self.is_style_visible(db, style, viewer)]
+    def filter_visible_styles(
+        self,
+        db: Session,
+        styles: list[NailStyle],
+        viewer: User | None = None,
+        include_xhs_posts: bool = True,
+    ) -> list[NailStyle]:
+        return [style for style in styles if self.is_style_visible(db, style, viewer, include_xhs_posts=include_xhs_posts)]
 
     def get_styles_for_post(self, db: Session, post_id: str) -> list[NailStyle]:
         styles = list(db.scalars(select(NailStyle)))
@@ -267,8 +321,14 @@ class StyleService:
             style.image_url = post.image_url
             style.local_image_path = post.local_image_path
             style.nail_type = post.nail_type
+            style.source_type = post.source_type
             style.shop_id = post.shop_id
             style.verified_booking_id = post.verified_booking_id
+            metadata = style.style_metadata_json if isinstance(style.style_metadata_json, dict) else {}
+            metadata.update(post.source_metadata_json or {})
+            metadata["author_user_id"] = post.user_id
+            metadata["from_post_id"] = post.id
+            style.style_metadata_json = metadata
             db.add(style)
 
     def create_style_from_post(self, db: Session, user: User, post: UserPost) -> NailStyle:
@@ -280,10 +340,10 @@ class StyleService:
             image_url=post.image_url,
             local_image_path=post.local_image_path,
             nail_type=post.nail_type,
-            source_type="user_upload",
+            source_type=post.source_type,
             tags_json=post.tags_json,
             dominant_colors_json=[],
-            style_metadata_json={"author_user_id": user.id, "from_post_id": post.id},
+            style_metadata_json={"author_user_id": user.id, "from_post_id": post.id, **(post.source_metadata_json or {})},
             popularity_score=0.0,
             is_trending=False,
         )

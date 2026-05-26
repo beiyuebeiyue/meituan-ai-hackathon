@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { useAuthStore } from "../store/useAuthStore";
+import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import {
   AIChatMessage,
   AIChatResponse,
@@ -11,6 +12,7 @@ import {
   DirectMessageThread,
   MessageInboxResponse,
   MessageInboxThread,
+  MerchantTrendNotification,
   MerchantShop,
   MyStyleCommentListResponse,
   NailStyleListResponse,
@@ -31,6 +33,12 @@ import {
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
 const AUTH_FAILURE_EXEMPT_PATHS = new Set(["/auth/login", "/auth/register"]);
+
+function withXhsPreference(path: string) {
+  const includeXhsPosts = useContentPreferenceStore.getState().includeXhsPosts;
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}include_xhs_posts=${includeXhsPosts ? "true" : "false"}`;
+}
 
 function buildHeaders(extra?: HeadersInit) {
   const token = useAuthStore.getState().token;
@@ -107,15 +115,15 @@ export const api = {
     }
     return request<User>("/users/me", { method: "PUT", body: form });
   },
-  getHot: () => request<NailStyleListResponse>("/nails/hot?page=1&page_size=20"),
-  getDiscover: () => request<NailStyleListResponse>("/nails/discover?page=1&page_size=20"),
-  getDefaultGalleryStyles: () => request<NailStyleListResponse>("/nails/discover?page=1&page_size=30"),
+  getHot: () => request<NailStyleListResponse>(withXhsPreference("/nails/hot?page=1&page_size=20")),
+  getDiscover: () => request<NailStyleListResponse>(withXhsPreference("/nails/discover?page=1&page_size=20")),
+  getDefaultGalleryStyles: () => request<NailStyleListResponse>(withXhsPreference("/nails/discover?page=1&page_size=30")),
   getShopStyles: (shopId: string) => request<NailStyleListResponse>(`/nails/by-shop/${shopId}?page=1&page_size=30`),
-  searchStyles: (query: string) => request<NailStyleListResponse>(`/nails/search?query=${encodeURIComponent(query)}&page=1&page_size=20`),
+  searchStyles: (query: string) => request<NailStyleListResponse>(withXhsPreference(`/nails/search?query=${encodeURIComponent(query)}&page=1&page_size=20`)),
   searchUsers: (query: string) => request<{ items: UserSummary[] }>(`/users/search?query=${encodeURIComponent(query)}&limit=30`),
-  getFollowingStyles: () => request<NailStyleListResponse>("/nails/following?page=1&page_size=20"),
-  getLatest: () => request<NailStyleListResponse>("/nails/latest?page=1&page_size=20"),
-  getLocalStyles: (city: string) => request<NailStyleListResponse>(`/nails/local?city=${encodeURIComponent(city)}&page=1&page_size=20`),
+  getFollowingStyles: () => request<NailStyleListResponse>(withXhsPreference("/nails/following?page=1&page_size=20")),
+  getLatest: () => request<NailStyleListResponse>(withXhsPreference("/nails/latest?page=1&page_size=20")),
+  getLocalStyles: (city: string) => request<NailStyleListResponse>(withXhsPreference(`/nails/local?city=${encodeURIComponent(city)}&page=1&page_size=20`)),
   getStyle: (styleId: string) => request<StyleDetail>(`/nails/${styleId}`),
   recordStyleView: (styleId: string) => request<{ message: string }>(`/nails/${styleId}/views`, { method: "POST" }),
   getStyleComments: (styleId: string) => request<{ items: StyleComment[] }>(`/nails/${styleId}/comments`),
@@ -201,6 +209,7 @@ export const api = {
     lng?: number | null;
     sort?: "default" | "distance";
     view?: "list" | "map";
+    styleId?: string | null;
   }) => {
     const search = new URLSearchParams();
     if (params.place) search.set("place", params.place);
@@ -210,8 +219,17 @@ export const api = {
     if (params.lng !== undefined && params.lng !== null) search.set("lng", String(params.lng));
     if (params.sort) search.set("sort", params.sort);
     if (params.view) search.set("view", params.view);
+    if (params.styleId) search.set("style_id", params.styleId);
     return request<NearbyShopSearchResponse>(`/market/shops/nearby?${search.toString()}`);
   },
+  getMerchantTrendNotifications: () => request<{ items: MerchantTrendNotification[] }>("/merchant/trend-notifications"),
+  claimMerchantTrend: (styleId: string, campaignId?: string | null) =>
+    request<{ style_id: string; shop_id: string; campaign_id?: string | null; can_do_style: boolean }>("/merchant/trend-claims", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ style_id: styleId, campaign_id: campaignId ?? null }),
+    }),
+  deleteMerchantTrendClaim: (styleId: string) => request<void>(`/merchant/trend-claims/${styleId}`, { method: "DELETE" }),
   getMessageInbox: () => request<MessageInboxResponse>("/messages/inbox"),
   getStrangerMessages: () => request<{ items: MessageInboxThread[] }>("/messages/strangers"),
   markAllMessagesRead: () => request<{ updated: number }>("/messages/read-all", { method: "POST" }),
@@ -227,6 +245,12 @@ export const api = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ style_id: styleId, content }),
+    }),
+  sendTryOnResultMessage: (userId: string, tryOnJobId: string, content = "") =>
+    request<DirectMessage>(`/messages/conversations/${userId}/tryon-results`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tryon_job_id: tryOnJobId, content }),
     }),
   sendBookingInviteMessage: (userId: string, shopId?: string | null, content = "") =>
     request<DirectMessage>(`/messages/conversations/${userId}/booking-invites`, {

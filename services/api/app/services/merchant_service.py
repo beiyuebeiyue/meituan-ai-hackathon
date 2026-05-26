@@ -73,10 +73,24 @@ class MerchantShopService:
         is_default: bool = True,
     ) -> MerchantShop:
         require_merchant(user)
-        if is_default:
-            for item in self.list_for_merchant(db, user):
-                item.is_default = False
-                db.add(item)
+        existing = db.scalar(
+            select(MerchantShop)
+            .where(MerchantShop.merchant_user_id == user.id)
+            .order_by(MerchantShop.is_default.desc(), MerchantShop.created_at.asc())
+        )
+        if existing is not None:
+            existing.name = name.strip()
+            existing.city = city.strip() or "深圳"
+            existing.address = address.strip()
+            existing.latitude = latitude
+            existing.longitude = longitude
+            existing.contact_phone = contact_phone
+            existing.is_default = True
+            db.add(existing)
+            db.commit()
+            db.refresh(existing)
+            return existing
+
         shop = MerchantShop(
             merchant_user_id=user.id,
             name=name.strip(),
@@ -85,7 +99,7 @@ class MerchantShopService:
             latitude=latitude,
             longitude=longitude,
             contact_phone=contact_phone,
-            is_default=is_default,
+            is_default=True,
         )
         db.add(shop)
         db.commit()

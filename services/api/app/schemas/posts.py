@@ -9,6 +9,7 @@ class UserPostRead(BaseModel):
     description: str
     image_url: str
     nail_type: str = "press_on"
+    source_type: str = "user_upload"
     tags: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
@@ -24,6 +25,7 @@ class AuthorPostRead(BaseModel):
     description: str
     image_url: str
     nail_type: str = "press_on"
+    source_type: str = "user_upload"
     tags: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime

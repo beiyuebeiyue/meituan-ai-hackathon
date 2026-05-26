@@ -14,12 +14,14 @@ from app.schemas.messages import (
     DirectMessageStyleCreateRequest,
     DirectMessageTargetRead,
     DirectMessageThreadRead,
+    DirectMessageTryOnResultCreateRequest,
     MessageBadgeSummaryRead,
     MessageInboxRead,
     MessageInboxThreadRead,
     StrangerBucketSummaryRead,
     StrangerMessageListRead,
 )
+from app.models.tryon_job import TryOnJob
 from app.services.merchant_service import MerchantShopService
 from app.services.message_service import MessageService, MessageThreadSummary
 from app.services.style_service import StyleService
@@ -220,6 +222,29 @@ def create_booking_invite_message(
         target_user_id,
         content=payload.content,
         booking_invite_shop_id=shop.id,
+    )
+    return _serialize_message(db, user, item)
+
+
+@router.post("/conversations/{target_user_id}/tryon-results", response_model=DirectMessageRead)
+def create_tryon_result_message(
+    target_user_id: str,
+    payload: DirectMessageTryOnResultCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> DirectMessageRead:
+    job = db.get(TryOnJob, payload.tryon_job_id)
+    if job is None or job.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="焕甲结果不存在")
+    if not job.result_image_url:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="焕甲结果还没有生成")
+    item = message_service.send_message(
+        db,
+        user,
+        target_user_id,
+        content=payload.content or "这是我的焕甲效果图，想咨询能否做这款。",
+        image_url=job.result_image_url,
+        shared_style_id=job.selected_style_id,
     )
     return _serialize_message(db, user, item)
 

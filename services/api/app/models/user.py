@@ -19,6 +19,8 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_login_ip_location: Mapped[str | None] = mapped_column(String(120), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default="consumer", nullable=False)
+    source_type: Mapped[str] = mapped_column(String(40), default="native", nullable=False)
+    source_external_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
 
     browse_histories = relationship("UserBrowseHistory", back_populates="user", cascade="all, delete-orphan")
     favorites = relationship("UserFavorite", back_populates="user", cascade="all, delete-orphan")

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class NearbyShopRead(BaseModel):
     id: str
     platform_shop_id: str | None = None
+    merchant_user_id: str | None = None
     name: str
     cover_image_url: str | None = None
     city: str
@@ -19,6 +20,7 @@ class NearbyShopRead(BaseModel):
     average_price_text: str
     business_time_text: str | None = None
     phone_text: str | None = None
+    can_do_style: bool = False
 
 
 class NearbyShopSearchResponse(BaseModel):

@@ -31,10 +31,12 @@ from app.schemas.ops import (
     OpsUserListItem,
     OpsUserListResponse,
 )
+from app.schemas.trends import OpsTrendCampaignCreateRequest, OpsTrendCampaignRead, OpsTrendNailCandidateListResponse
 from app.services.ops_admin_service import OpsAdminService
 from app.services.analytics_service import AnalyticsService
 from app.services.ops_chat_service import OpsChatService
 from app.services.report_service import ReportService
+from app.services.trend_nail_service import TrendNailService
 
 
 router = APIRouter(prefix="/ops", tags=["ops-admin"])
@@ -42,6 +44,7 @@ ops_admin_service = OpsAdminService()
 ops_chat_service = OpsChatService()
 report_service = ReportService()
 analytics_service = AnalyticsService()
+trend_nail_service = TrendNailService()
 
 
 @router.post("/auth/login", response_model=OpsTokenResponse)
@@ -77,6 +80,33 @@ def chat_with_ops_ai(
     db: Session = Depends(get_db),
 ) -> OpsChatResponse:
     return ops_chat_service.chat(db, payload.messages)
+
+
+@router.get("/trend-nails/candidates", response_model=OpsTrendNailCandidateListResponse)
+def list_trend_nail_candidates(
+    limit: int = Query(default=20, ge=1, le=100),
+    _ops_admin: str = Depends(require_ops_admin),
+    db: Session = Depends(get_db),
+) -> OpsTrendNailCandidateListResponse:
+    return OpsTrendNailCandidateListResponse(items=trend_nail_service.list_candidates(db, limit=limit))
+
+
+@router.post("/trend-nail-campaigns", response_model=OpsTrendCampaignRead)
+def create_trend_nail_campaign(
+    payload: OpsTrendCampaignCreateRequest,
+    ops_admin: str = Depends(require_ops_admin),
+    db: Session = Depends(get_db),
+) -> OpsTrendCampaignRead:
+    return trend_nail_service.create_campaign(db, payload, created_by=ops_admin)
+
+
+@router.get("/trend-nail-campaigns/{campaign_id}", response_model=OpsTrendCampaignRead)
+def get_trend_nail_campaign(
+    campaign_id: str,
+    _ops_admin: str = Depends(require_ops_admin),
+    db: Session = Depends(get_db),
+) -> OpsTrendCampaignRead:
+    return trend_nail_service.get_campaign(db, campaign_id)
 
 
 @router.post("/reports/generate", response_model=ReportGenerateResponse)

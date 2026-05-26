@@ -60,10 +60,11 @@ def build_style_payloads(db: Session, items: list, user: User | None) -> list[Na
 def list_hot(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=30),
+    include_xhs_posts: bool = Query(default=True),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
-    items, total = style_service.list_hot(db, page, page_size, viewer=user)
+    items, total = style_service.list_hot(db, page, page_size, viewer=user, include_xhs_posts=include_xhs_posts)
     return NailStyleListResponse(
         page=page,
         page_size=page_size,
@@ -76,10 +77,11 @@ def list_hot(
 def list_discover(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=30),
+    include_xhs_posts: bool = Query(default=True),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
-    items, total = style_service.list_latest(db, page, page_size, viewer=user)
+    items, total = style_service.list_latest(db, page, page_size, viewer=user, include_xhs_posts=include_xhs_posts)
     return NailStyleListResponse(
         page=page,
         page_size=page_size,
@@ -93,10 +95,11 @@ def search_styles(
     query: str = Query(min_length=1, max_length=100),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
+    include_xhs_posts: bool = Query(default=True),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
-    items, total = style_service.search_styles(db, query, page, page_size, viewer=user)
+    items, total = style_service.search_styles(db, query, page, page_size, viewer=user, include_xhs_posts=include_xhs_posts)
     return NailStyleListResponse(
         page=page,
         page_size=page_size,
@@ -109,21 +112,23 @@ def search_styles(
 def list_latest(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=30),
+    include_xhs_posts: bool = Query(default=True),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
-    return list_discover(page=page, page_size=page_size, db=db, user=user)
+    return list_discover(page=page, page_size=page_size, include_xhs_posts=include_xhs_posts, db=db, user=user)
 
 
 @router.get("/following", response_model=NailStyleListResponse)
 def list_following(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=30),
+    include_xhs_posts: bool = Query(default=True),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> NailStyleListResponse:
     following_ids = follow_service.get_following_ids(db, user.id)
-    items, total = style_service.list_following(db, user, following_ids, page, page_size)
+    items, total = style_service.list_following(db, user, following_ids, page, page_size, include_xhs_posts=include_xhs_posts)
     return NailStyleListResponse(
         page=page,
         page_size=page_size,
@@ -137,10 +142,11 @@ def list_local(
     city: str = Query(default="深圳", min_length=1, max_length=80),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
+    include_xhs_posts: bool = Query(default=True),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
-    items, total = style_service.list_local(db, city, page, page_size, viewer=user)
+    items, total = style_service.list_local(db, city, page, page_size, viewer=user, include_xhs_posts=include_xhs_posts)
     return NailStyleListResponse(
         page=page,
         page_size=page_size,

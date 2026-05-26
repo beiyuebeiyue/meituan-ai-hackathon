@@ -42,6 +42,9 @@ class PostService:
         nail_type: str = "press_on",
         shop_id: str | None = None,
         verified_booking_id: str | None = None,
+        source_type: str = "user_upload",
+        source_external_id: str | None = None,
+        source_metadata: dict[str, object] | None = None,
     ) -> UserPost:
         now = utcnow()
         post = UserPost(
@@ -54,6 +57,9 @@ class PostService:
             nail_type=nail_type,
             tags_json=tags,
             verified_booking_id=verified_booking_id,
+            source_type=source_type,
+            source_external_id=source_external_id,
+            source_metadata_json=source_metadata or {},
             created_at=now,
             updated_at=now,
         )

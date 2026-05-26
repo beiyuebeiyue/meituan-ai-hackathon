@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, Float, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
@@ -9,6 +9,7 @@ from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 class MerchantShop(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "merchant_shops"
+    __table_args__ = (UniqueConstraint("merchant_user_id", name="uq_merchant_shops_merchant_user_id"),)
 
     merchant_user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)

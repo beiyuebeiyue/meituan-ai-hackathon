@@ -13,6 +13,7 @@ import { MonitorPage } from "./pages/MonitorPage";
 import { PostsPage } from "./pages/PostsPage";
 import { ProfileSettingsPage } from "./pages/ProfileSettingsPage";
 import { ReportsPage } from "./pages/ReportsPage";
+import { TrendNailsPage } from "./pages/TrendNailsPage";
 import { UsersPage } from "./pages/UsersPage";
 
 function RequireAuth() {
@@ -31,6 +32,7 @@ export default function App() {
         { name: "merchant-users", list: "/merchant-users" },
         { name: "merchants", list: "/merchants" },
         { name: "posts", list: "/posts" },
+        { name: "trend-nails", list: "/trend-nails" },
         { name: "coupons", list: "/coupons" },
         { name: "reports", list: "/reports" },
         { name: "chatbot", list: "/chatbot" },
@@ -49,6 +51,7 @@ export default function App() {
             <Route path="/merchant-users" element={<MerchantUsersPage />} />
             <Route path="/merchants" element={<MerchantsPage />} />
             <Route path="/posts" element={<PostsPage />} />
+            <Route path="/trend-nails" element={<TrendNailsPage />} />
             <Route path="/coupons" element={<CouponsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/chatbot" element={<ChatbotPage />} />

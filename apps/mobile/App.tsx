@@ -9,6 +9,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthSessionGate } from "./src/components/AuthSessionGate";
 import { RootNavigator } from "./src/navigation/RootNavigator";
 import { bootstrapAppearance, useAppearanceStore } from "./src/store/useAppearanceStore";
+import { bootstrapContentPreferences } from "./src/store/useContentPreferenceStore";
 import { hydrateAuthFromStorage } from "./src/store/useAuthStore";
 import { initAnalytics, trackEvent } from "./src/utils/analytics";
 import { getNavigationTheme } from "./src/utils/theme";
@@ -30,6 +31,7 @@ export default function App() {
       await trackEvent("app_open", { screen: "app", source: "startup" });
     })();
     void bootstrapAppearance();
+    void bootstrapContentPreferences();
   }, []);
 
   useEffect(() => {

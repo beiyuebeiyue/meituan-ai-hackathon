@@ -1,5 +1,6 @@
 import {
   BellOutlined,
+  FireOutlined,
   GlobalOutlined,
   DashboardOutlined,
   RobotOutlined,
@@ -41,6 +42,7 @@ const navItems = [
       { key: "/merchant-users", label: "商家用户" },
       { key: "/merchants", label: "门店" },
       { key: "/posts", label: "帖子" },
+      { key: "/trend-nails", icon: <FireOutlined />, label: "热门推款" },
     ],
   },
   { key: "/coupons", icon: <TagsOutlined />, label: "发券记录" },

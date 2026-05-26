@@ -51,6 +51,11 @@ export function MessagesInboxScreen({ asTab = false }: MessagesInboxScreenProps)
     queryFn: () => api.getMessageInbox(),
     enabled: Boolean(token),
   });
+  const trendNotificationsQuery = useQuery({
+    queryKey: ["merchant-trend-notifications"],
+    queryFn: () => api.getMerchantTrendNotifications(),
+    enabled: Boolean(token && user?.role === "merchant"),
+  });
 
   const unreadCount = (query.data?.badge.main_unread_count ?? 0) + (query.data?.stranger_bucket?.unread_count ?? 0);
   const readAllMutation = useMutation({
@@ -132,6 +137,26 @@ export function MessagesInboxScreen({ asTab = false }: MessagesInboxScreenProps)
                       </Pressable>
                     ))}
                   </View>
+
+                  {user?.role === "merchant" ? (
+                    <Pressable
+                      style={[styles.trendNoticeRow, { backgroundColor: colors.surface }]}
+                      onPress={() => navigation.navigate("MerchantTrendNotifications", { entryEdge: "right" })}
+                    >
+                      <View style={[styles.trendNoticeIcon, { backgroundColor: colors.accentSoft }]}>
+                        <Ionicons name="flame-outline" size={22} color={colors.accent} />
+                      </View>
+                      <View style={styles.strangerText}>
+                        <Text style={[styles.strangerTitle, { color: colors.text }]}>运营热门手工甲推送</Text>
+                        <Text style={[styles.strangerPreview, { color: colors.subtext }]} numberOfLines={1}>
+                          {(trendNotificationsQuery.data?.items.length ?? 0) > 0
+                            ? `${trendNotificationsQuery.data?.items.length ?? 0} 条推送，可登记你能做的款式`
+                            : "暂无新的趋势推送"}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
+                    </Pressable>
+                  ) : null}
 
                   {query.data?.stranger_bucket ? (
                     <Pressable
@@ -268,6 +293,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  trendNoticeRow: {
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  trendNoticeIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
   strangerText: {
     flex: 1,

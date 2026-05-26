@@ -269,6 +269,30 @@ export type PerformanceMetrics = {
   low_impression_high_ctr: Array<Record<string, unknown>>;
 };
 
+export type TrendNailStyle = {
+  id: string;
+  title: string;
+  description: string;
+  image_url: string;
+  tags: string[];
+  popularity_score: number;
+  like_count: number;
+  claim_count: number;
+  can_do_style: boolean;
+};
+
+export type TrendNailCampaign = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  created_by: string;
+  created_at: string;
+  merchant_count: number;
+  claim_count: number;
+  styles: TrendNailStyle[];
+};
+
 const XHS_REPORT_FILE = "xhs_daily_nail_report.md";
 
 function shanghaiDateKey(value: Date): string {
@@ -356,6 +380,10 @@ export const api = {
   getTodayXhsNailReport: () => fetchXhsMarkdownReport(shanghaiDateKey(new Date()), XHS_REPORT_FILE),
   getXhsNailReportHistory: () => fetchXhsMarkdownReportHistory(XHS_REPORT_FILE),
   getPerformance: () => request<PerformanceMetrics>("/ops/metrics/performance"),
+  getTrendNailCandidates: (limit = 20) => request<{ items: TrendNailStyle[] }>(`/ops/trend-nails/candidates?limit=${limit}`),
+  createTrendNailCampaign: (payload: { title: string; description: string; style_ids: string[]; merchant_user_ids?: string[] | null }) =>
+    request<TrendNailCampaign>("/ops/trend-nail-campaigns", { method: "POST", body: JSON.stringify(payload) }),
+  getTrendNailCampaign: (id: string) => request<TrendNailCampaign>(`/ops/trend-nail-campaigns/${id}`),
 };
 
 export function resolveAssetUrl(value?: string | null): string {

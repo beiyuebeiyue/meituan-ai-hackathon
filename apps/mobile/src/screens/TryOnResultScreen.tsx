@@ -28,6 +28,7 @@ export function TryOnResultScreen() {
   const route = useRoute<ScreenRoute>();
   const colors = useThemeColors();
   const setPendingBookingStyleId = useMarketStore((state) => state.setPendingBookingStyleId);
+  const setPendingBookingTryOnJobId = useMarketStore((state) => state.setPendingBookingTryOnJobId);
   const query = useQuery({
     queryKey: ["tryon-job", route.params.jobId],
     queryFn: () => api.getTryOnJob(route.params.jobId),
@@ -54,6 +55,7 @@ export function TryOnResultScreen() {
     if (!styleId || !styleQuery.data) return;
     if (isHandmadeNail(styleQuery.data.nail_type)) {
       setPendingBookingStyleId(styleId);
+      setPendingBookingTryOnJobId(query.data?.job_id ?? null);
       navigation.navigate("MainTabs", { screen: "Market" });
       return;
     }

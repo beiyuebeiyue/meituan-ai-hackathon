@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { OverlayContent } from "../components/OverlayContent";
 import { useAppearanceStore } from "../store/useAppearanceStore";
 import { useAuthStore } from "../store/useAuthStore";
+import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 const helpItems = [
@@ -25,6 +26,8 @@ export function ProfileSettingsScreen() {
   const currentUser = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const setMode = useAppearanceStore((state) => state.setMode);
+  const includeXhsPosts = useContentPreferenceStore((state) => state.includeXhsPosts);
+  const setIncludeXhsPosts = useContentPreferenceStore((state) => state.setIncludeXhsPosts);
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
   const visibleAccountItems = currentUser?.role === "consumer" ? accountItems : accountItems.filter((item) => item.key !== "profile-info");
@@ -68,7 +71,7 @@ export function ProfileSettingsScreen() {
     <OverlayContent.Scroll>
       <Text style={[styles.sectionTitle, { color: colors.subtext }]}>通用设置</Text>
       <View style={[styles.card, { backgroundColor: colors.surface }]}>
-        <View style={styles.row}>
+        <View style={[styles.row, styles.rowBorder, { borderBottomColor: colors.border }]}>
           <View style={styles.rowText}>
             <Text style={[styles.rowTitle, { color: colors.text }]}>深色模式</Text>
             <Text style={[styles.rowSubtitle, { color: colors.subtext }]}>开启后界面会切换为墨黑色基调</Text>
@@ -83,6 +86,33 @@ export function ProfileSettingsScreen() {
             ]}
             onPress={() => {
               void setMode(isDark ? "light" : "dark");
+            }}
+          >
+            <View style={styles.toggleThumb} />
+          </Pressable>
+        </View>
+        <View style={styles.row}>
+          <View style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: colors.text }]}>显示小红书内容</Text>
+            <Text style={[styles.rowSubtitle, { color: colors.subtext }]}>关闭后，浏览和搜索中不展示小红书导入作品</Text>
+          </View>
+          <Pressable
+            style={[
+              styles.toggleTrack,
+              {
+                backgroundColor: includeXhsPosts ? colors.accent : colors.border,
+                justifyContent: includeXhsPosts ? "flex-end" : "flex-start",
+              },
+            ]}
+            onPress={() => {
+              void (async () => {
+                await setIncludeXhsPosts(!includeXhsPosts);
+                await Promise.all([
+                  queryClient.invalidateQueries({ queryKey: ["browse"] }),
+                  queryClient.invalidateQueries({ queryKey: ["browse-search"] }),
+                  queryClient.invalidateQueries({ queryKey: ["hashtag"] }),
+                ]);
+              })();
             }}
           >
             <View style={styles.toggleThumb} />

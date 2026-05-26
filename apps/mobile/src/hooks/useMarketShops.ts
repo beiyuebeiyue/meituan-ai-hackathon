@@ -39,6 +39,7 @@ export function useMarketShops(view: "list" | "map") {
   const setSubmittedPlace = useMarketStore((state) => state.setSubmittedPlace);
   const selectedShopId = useMarketStore((state) => state.selectedShopId);
   const setSelectedShopId = useMarketStore((state) => state.setSelectedShopId);
+  const pendingBookingStyleId = useMarketStore((state) => state.pendingBookingStyleId);
   const clearSearchState = useMarketStore((state) => state.clearSearch);
   const [detectedCity, setDetectedCity] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -114,6 +115,7 @@ export function useMarketShops(view: "list" | "map") {
       sort,
       requestPlace || "nearby",
       shouldUsePlaceSearch ? "place" : `${requestCoords.lat}:${requestCoords.lng}`,
+      pendingBookingStyleId ?? "any-style",
     ],
     queryFn: () =>
       api.getNearbyShops({
@@ -123,6 +125,7 @@ export function useMarketShops(view: "list" | "map") {
         lng: shouldUsePlaceSearch ? null : requestCoords.lng,
         sort,
         view,
+        styleId: pendingBookingStyleId,
       }),
     enabled: locationBootstrapped,
   });

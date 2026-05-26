@@ -29,6 +29,7 @@ import { MerchantMarketDataScreen } from "../screens/MerchantMarketDataScreen";
 import { MerchantOrdersScreen } from "../screens/MerchantOrdersScreen";
 import { MerchantOverviewScreen } from "../screens/MerchantOverviewScreen";
 import { MerchantShopScreen } from "../screens/MerchantShopScreen";
+import { MerchantTrendNotificationsScreen } from "../screens/MerchantTrendNotificationsScreen";
 import { MessagesInboxScreen } from "../screens/MessagesInboxScreen";
 import { MyPostsScreen } from "../screens/MyPostsScreen";
 import { ProfileEditScreen } from "../screens/ProfileEditScreen";
@@ -79,6 +80,7 @@ export type RootStackParamList = {
   MerchantMarketData: OverlayEntryParams | undefined;
   MerchantOrders: OverlayEntryParams | undefined;
   MerchantShop: OverlayEntryParams | undefined;
+  MerchantTrendNotifications: OverlayEntryParams | undefined;
   ProfileSettings: OverlayEntryParams | undefined;
   PrivacySettings: OverlayEntryParams | undefined;
   ProfileInfo: OverlayEntryParams | undefined;
@@ -87,7 +89,7 @@ export type RootStackParamList = {
   ProfileEdit: OverlayEntryParams | undefined;
   MyPosts: OverlayEntryParams | undefined;
   AuthorProfile: { authorId: string; initialTab?: "posts" | "comments" | "liked" } & OverlayEntryParams;
-  DirectMessage: { userId: string } & OverlayEntryParams;
+  DirectMessage: ({ userId: string; initialStyleId?: string; initialTryOnJobId?: string; initialMessage?: string } & OverlayEntryParams);
   StylePreview: { styleId: string } & OverlayEntryParams;
   TryOnResult: { jobId: string } & OverlayEntryParams;
   WearableStore: { styleId: string } & OverlayEntryParams;
@@ -144,6 +146,7 @@ const ProfileInfoOverlayScreen = createOverlayComponent(ProfileInfoScreen, { sho
 const MerchantMarketDataOverlayScreen = createOverlayComponent(MerchantMarketDataScreen, { showHeader: true, title: "市场数据" });
 const MerchantOrdersOverlayScreen = createOverlayComponent(MerchantOrdersScreen, { showHeader: true, title: "订单管理" });
 const MerchantShopOverlayScreen = createOverlayComponent(MerchantShopScreen, { showHeader: true, title: "店铺资料" });
+const MerchantTrendNotificationsOverlayScreen = createOverlayComponent(MerchantTrendNotificationsScreen, { showHeader: true, title: "热门手工甲" });
 const PrivacySettingsOverlayScreen = createOverlayComponent(PrivacySettingsScreen, { showHeader: true, title: "隐私设置" });
 const BlockedUsersOverlayScreen = createOverlayComponent(BlockedUsersScreen, { showHeader: true, title: "不再看她" });
 const FollowListOverlayScreen = createOverlayComponent(FollowListScreen);
@@ -379,6 +382,7 @@ export function RootNavigator() {
       <Stack.Screen name="MerchantMarketData" component={MerchantMarketDataOverlayScreen} options={overlayOptions} />
       <Stack.Screen name="MerchantOrders" component={MerchantOrdersOverlayScreen} options={overlayOptions} />
       <Stack.Screen name="MerchantShop" component={MerchantShopOverlayScreen} options={overlayOptions} />
+      <Stack.Screen name="MerchantTrendNotifications" component={MerchantTrendNotificationsOverlayScreen} options={overlayOptions} />
       <Stack.Screen name="ProfileSettings" component={ProfileSettingsOverlayScreen} options={overlayOptions} />
       <Stack.Screen name="ProfileInfo" component={ProfileInfoOverlayScreen} options={overlayOptions} />
       <Stack.Screen name="PrivacySettings" component={PrivacySettingsOverlayScreen} options={overlayOptions} />

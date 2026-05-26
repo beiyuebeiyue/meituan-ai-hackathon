@@ -48,6 +48,7 @@ export type UserHandPhoto = {
 };
 
 export type NailType = "handmade" | "press_on";
+export type ContentSourceType = "seed_xlsx" | "user_upload" | "xhs_note" | string;
 
 export type BrowseHistoryItem = {
   id: string;
@@ -65,6 +66,7 @@ export type NailStyle = {
   popularity_score: number;
   is_trending: boolean;
   nail_type: NailType;
+  source_type: ContentSourceType;
   is_liked: boolean;
   like_count: number;
   is_favorited: boolean;
@@ -209,6 +211,7 @@ export type UserPost = {
   description: string;
   image_url: string;
   nail_type: NailType;
+  source_type: ContentSourceType;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -224,6 +227,7 @@ export type AuthorPost = {
   description: string;
   image_url: string;
   nail_type: NailType;
+  source_type: ContentSourceType;
   tags: string[];
   created_at: string;
   updated_at: string;
@@ -267,6 +271,7 @@ export type AuthorProfile = {
 export type NearbyShop = {
   id: string;
   platform_shop_id?: string | null;
+  merchant_user_id?: string | null;
   name: string;
   cover_image_url?: string | null;
   city: string;
@@ -280,6 +285,29 @@ export type NearbyShop = {
   average_price_text: string;
   business_time_text?: string | null;
   phone_text?: string | null;
+  can_do_style?: boolean;
+};
+
+export type TrendNailStyle = {
+  id: string;
+  title: string;
+  description: string;
+  image_url: string;
+  tags: string[];
+  popularity_score: number;
+  like_count: number;
+  claim_count: number;
+  can_do_style: boolean;
+};
+
+export type MerchantTrendNotification = {
+  id: string;
+  campaign_id?: string | null;
+  title: string;
+  body: string;
+  read_at?: string | null;
+  created_at: string;
+  styles: TrendNailStyle[];
 };
 
 export type NearbyShopSearchResponse = {

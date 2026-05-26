@@ -19,6 +19,7 @@ import { api, resolveAssetUrl } from "../api/client";
 import { BrowseFeedCard } from "../components/BrowseFeedCard";
 import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
+import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import { useSearchHistoryStore } from "../store/useSearchHistoryStore";
 import { NailStyle, UserSummary } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
@@ -69,6 +70,8 @@ export function BrowseSearchScreen() {
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
   const hydrated = useAuthStore((state) => state.hydrated);
+  const includeXhsPosts = useContentPreferenceStore((state) => state.includeXhsPosts);
+  const contentPreferenceHydrated = useContentPreferenceStore((state) => state.hydrated);
   const hasToken = Boolean(token);
   const authScope = !hydrated ? "booting" : hasToken ? "authed" : "anon";
   const colors = useThemeColors();
@@ -107,9 +110,9 @@ export function BrowseSearchScreen() {
   }, [addHistoryItem, route.params?.initialQuery]);
 
   const stylesQuery = useQuery({
-    queryKey: ["browse-search", submittedQuery, authScope],
+    queryKey: ["browse-search", submittedQuery, authScope, includeXhsPosts],
     queryFn: () => api.searchStyles(submittedQuery),
-    enabled: hydrated && submittedQuery.length > 0 && resultMode === "posts",
+    enabled: hydrated && contentPreferenceHydrated && submittedQuery.length > 0 && resultMode === "posts",
   });
 
   const usersQuery = useQuery({

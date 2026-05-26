@@ -67,6 +67,11 @@ class DirectMessageBookingInviteCreateRequest(BaseModel):
     content: str = ""
 
 
+class DirectMessageTryOnResultCreateRequest(BaseModel):
+    tryon_job_id: str
+    content: str = ""
+
+
 class MessageInboxThreadRead(BaseModel):
     target: DirectMessageTargetRead
     last_message_preview: str

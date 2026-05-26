@@ -4,12 +4,14 @@ from app.models.direct_message import DirectMessage
 from app.models.image_processing_artifact import ImageProcessingArtifact
 from app.models.job_log import JobLog
 from app.models.merchant_shop import MerchantShop
+from app.models.merchant_trend import MerchantNotification, MerchantTrendClaim
 from app.models.nail_style import NailStyle
 from app.models.ops_coupon_grant import OpsCouponGrant
 from app.models.ops_report import OpsReport
 from app.models.style_comment import StyleComment
 from app.models.style_event_daily import StyleEventDaily
 from app.models.trend_snapshot import TrendSnapshot
+from app.models.trend_nail_campaign import TrendNailCampaign, TrendNailCampaignStyle
 from app.models.tryon_job import TryOnJob
 from app.models.user_browse_history import UserBrowseHistory
 from app.models.user import User
@@ -29,12 +31,16 @@ __all__ = [
     "ImageProcessingArtifact",
     "JobLog",
     "MerchantShop",
+    "MerchantNotification",
+    "MerchantTrendClaim",
     "NailStyle",
     "OpsCouponGrant",
     "OpsReport",
     "StyleComment",
     "StyleEventDaily",
     "TrendSnapshot",
+    "TrendNailCampaign",
+    "TrendNailCampaignStyle",
     "TryOnJob",
     "UserBrowseHistory",
     "User",

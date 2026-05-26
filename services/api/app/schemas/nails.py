@@ -13,6 +13,7 @@ class NailStyleRead(BaseModel):
     popularity_score: float = 0.0
     is_trending: bool = False
     nail_type: str = "press_on"
+    source_type: str = "seed_xlsx"
     is_liked: bool = False
     like_count: int = 0
     is_favorited: bool = False

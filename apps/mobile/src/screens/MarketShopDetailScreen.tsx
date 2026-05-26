@@ -92,7 +92,9 @@ export function MarketShopDetailScreen() {
   const token = useAuthStore((state) => state.token);
   const currentUser = useAuthStore((state) => state.user);
   const pendingBookingStyleId = useMarketStore((state) => state.pendingBookingStyleId);
+  const pendingBookingTryOnJobId = useMarketStore((state) => state.pendingBookingTryOnJobId);
   const setPendingBookingStyleId = useMarketStore((state) => state.setPendingBookingStyleId);
+  const setPendingBookingTryOnJobId = useMarketStore((state) => state.setPendingBookingTryOnJobId);
   const shop = route.params?.shop;
   const authScope = !hydrated ? "booting" : token ? "authed" : "anon";
   const platformShopId = shop?.platform_shop_id ?? null;
@@ -152,7 +154,21 @@ export function MarketShopDetailScreen() {
   };
 
   const handleConsult = () => {
-    Alert.alert("在线咨询", "后续会接入门店客服会话。");
+    if (!shop?.merchant_user_id) {
+      Alert.alert("暂不支持咨询", "该门店暂未入驻焕甲，暂不支持在线私信。");
+      return;
+    }
+    if (!token) {
+      navigation.navigate("Login", { entryEdge: "right" });
+      return;
+    }
+    navigation.navigate("DirectMessage", {
+      userId: shop.merchant_user_id,
+      entryEdge: "right",
+      initialStyleId: pendingBookingStyleId ?? undefined,
+      initialTryOnJobId: pendingBookingTryOnJobId ?? undefined,
+      initialMessage: pendingBookingStyleId ? "你好，想咨询这款美甲你们能做吗？" : undefined,
+    });
   };
 
   const handleNavigationShortcut = () => {
@@ -273,6 +289,12 @@ export function MarketShopDetailScreen() {
             ) : null}
             <Text style={[styles.distanceText, { color: colors.subtext }]}>{formatDistance(shop.distance_meters)}</Text>
           </View>
+          {shop.can_do_style ? (
+            <View style={[styles.canDoBanner, { backgroundColor: colors.surfaceAlt }]}>
+              <Ionicons name="checkmark-circle" size={17} color={colors.accent} />
+              <Text style={[styles.canDoText, { color: colors.text }]}>该门店已登记可做这款美甲</Text>
+            </View>
+          ) : null}
           {isPlatformShop ? (
             <View style={styles.shopCategoryRow}>
               <Text style={styles.shopCategoryTag}>美甲</Text>
@@ -427,7 +449,7 @@ export function MarketShopDetailScreen() {
           </Pressable>
           <Pressable style={styles.bottomMiniAction} onPress={handleConsult}>
             <Ionicons name="headset-outline" size={23} color={colors.text} />
-            <Text style={[styles.bottomMiniText, { color: colors.text }]}>在线咨询</Text>
+            <Text style={[styles.bottomMiniText, { color: colors.text }]}>咨询能否做</Text>
           </Pressable>
           <Pressable
             style={[styles.bottomBookButton, { backgroundColor: canBookShop ? "#596047" : colors.surfaceAlt }]}
@@ -444,7 +466,10 @@ export function MarketShopDetailScreen() {
         shopCity={shop.city}
         styleId={pendingBookingStyleId}
         onClose={() => setBookingVisible(false)}
-        onSuccess={() => setPendingBookingStyleId(null)}
+        onSuccess={() => {
+          setPendingBookingStyleId(null);
+          setPendingBookingTryOnJobId(null);
+        }}
       />
     </SafeAreaView>
   );
@@ -598,6 +623,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     fontWeight: "700",
+  },
+  canDoBanner: {
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  canDoText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "800",
   },
   infoTopRow: {
     flexDirection: "row",
