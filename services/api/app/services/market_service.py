@@ -101,8 +101,8 @@ def _first_photo_url(record: dict[str, Any]) -> str | None:
 
 def _safe_photo_url(url: str) -> str | None:
     parsed = urlparse(url)
-    if parsed.netloc.endswith("store.is.autonavi.com"):
-        return None
+    if parsed.scheme == "http" and parsed.netloc.endswith("store.is.autonavi.com"):
+        return url.replace("http://", "https://", 1)
     return url
 
 

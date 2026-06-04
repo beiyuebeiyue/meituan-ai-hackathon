@@ -92,7 +92,7 @@ def test_gaode_provider_maps_success_response(monkeypatch):
     assert result.items[0].phone_text == "0755-12345678"
 
 
-def test_gaode_provider_does_not_fake_unreachable_autonavi_photo_urls(monkeypatch):
+def test_gaode_provider_keeps_autonavi_photo_urls_as_https(monkeypatch):
     class FakeResponse:
         def raise_for_status(self):
             return None
@@ -122,7 +122,7 @@ def test_gaode_provider_does_not_fake_unreachable_autonavi_photo_urls(monkeypatc
 
     result = provider.search_nearby(place=None, city="深圳", region=None, lat=22.5431, lng=114.0579, sort="distance")
 
-    assert result.items[0].cover_image_url is None
+    assert result.items[0].cover_image_url == "https://store.is.autonavi.com/showpic/e23ace19551f7cd0291d05d6bb841bcf"
 
 
 def test_gaode_provider_uses_fixed_nail_keyword(monkeypatch):
