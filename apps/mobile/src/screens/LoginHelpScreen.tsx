@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { Alert, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { OverlayContent } from "../components/OverlayContent";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
@@ -46,34 +47,60 @@ export function LoginHelpScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <OverlayContent.Header title="遇到问题" onBack={() => dismissOverlay?.() ?? navigation.goBack()} />
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <OverlayContent.Header
+        title="遇到问题"
+        onBack={() => dismissOverlay?.() ?? navigation.goBack()}
+      />
 
       <OverlayContent.Scroll contentStyle={styles.content}>
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
           {primaryIssues.map((item, index) => (
             <Pressable
               key={item.title}
-              style={[styles.issueRow, index < primaryIssues.length - 1 && styles.issueRowBorder, { borderBottomColor: colors.border }]}
+              style={[
+                styles.issueRow,
+                index < primaryIssues.length - 1 && styles.issueRowBorder,
+                { borderBottomColor: colors.border },
+              ]}
               onPress={() => openPlaceholder(item.title)}
             >
               <View style={styles.issueText}>
                 <View style={styles.issueTitleRow}>
-                  <Text style={[styles.issueTitle, { color: colors.text }]}>{item.title}</Text>
-                  {item.badge ? <Text style={styles.issueBadge}>{item.badge}</Text> : null}
+                  <Text style={[styles.issueTitle, { color: colors.text }]}>
+                    {item.title}
+                  </Text>
+                  {item.badge ? (
+                    <Text style={styles.issueBadge}>{item.badge}</Text>
+                  ) : null}
                 </View>
-                <Text style={[styles.issueSubtitle, { color: colors.subtext }]}>{item.subtitle}</Text>
+                <Text style={[styles.issueSubtitle, { color: colors.subtext }]}>
+                  {item.subtitle}
+                </Text>
               </View>
-              <Ionicons name="chevron-forward" size={24} color={colors.subtext} />
+              <Ionicons
+                name="chevron-forward"
+                size={24}
+                color={colors.subtext}
+              />
             </Pressable>
           ))}
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.subtext }]}>常见问题</Text>
+          <Text style={[styles.sectionTitle, { color: colors.subtext }]}>
+            常见问题
+          </Text>
           <Pressable onPress={() => openPlaceholder("查看更多常见问题")}>
             <Text style={[styles.sectionAction, { color: colors.subtext }]}>
-              查看更多 <Ionicons name="chevron-forward" size={16} color={colors.subtext} />
+              查看更多{" "}
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.subtext}
+              />
             </Text>
           </Pressable>
         </View>
@@ -82,19 +109,37 @@ export function LoginHelpScreen() {
           {faqIssues.map((title, index) => (
             <Pressable
               key={title}
-              style={[styles.issueRow, index < faqIssues.length - 1 && styles.issueRowBorder, { borderBottomColor: colors.border }]}
+              style={[
+                styles.issueRow,
+                index < faqIssues.length - 1 && styles.issueRowBorder,
+                { borderBottomColor: colors.border },
+              ]}
               onPress={() => openPlaceholder(title)}
             >
               <View style={styles.issueText}>
-                <Text style={[styles.faqTitle, { color: colors.text }]}>{title}</Text>
+                <Text style={[styles.faqTitle, { color: colors.text }]}>
+                  {title}
+                </Text>
               </View>
-              <Ionicons name="chevron-forward" size={24} color={colors.subtext} />
+              <Ionicons
+                name="chevron-forward"
+                size={24}
+                color={colors.subtext}
+              />
             </Pressable>
           ))}
         </View>
 
         <Text style={[styles.footerText, { color: colors.subtext }]}>
-          问题还没有解决？点击 <Text style={[styles.footerLink, { color: isDark ? "#7ab5ff" : "#4a93df" }]}>联系在线客服小美</Text>
+          问题还没有解决？点击{" "}
+          <Text
+            style={[
+              styles.footerLink,
+              { color: isDark ? "#7ab5ff" : "#4a93df" },
+            ]}
+          >
+            联系在线客服小美
+          </Text>
         </Text>
       </OverlayContent.Scroll>
     </SafeAreaView>

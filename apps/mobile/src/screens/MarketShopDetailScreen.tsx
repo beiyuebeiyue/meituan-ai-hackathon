@@ -2,7 +2,16 @@ import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { BookingSheet } from "../components/BookingSheet";
 import { BrowseFeedCard } from "../components/BrowseFeedCard";
@@ -71,7 +80,8 @@ function isReviewWithinLastYear(item: NailStyle) {
 
 function sortReviewsByHot(a: NailStyle, b: NailStyle) {
   if (b.like_count !== a.like_count) return b.like_count - a.like_count;
-  if (b.comment_count !== a.comment_count) return b.comment_count - a.comment_count;
+  if (b.comment_count !== a.comment_count)
+    return b.comment_count - a.comment_count;
   return getCreatedTime(b) - getCreatedTime(a);
 }
 
@@ -91,10 +101,18 @@ export function MarketShopDetailScreen() {
   const hydrated = useAuthStore((state) => state.hydrated);
   const token = useAuthStore((state) => state.token);
   const currentUser = useAuthStore((state) => state.user);
-  const pendingBookingStyleId = useMarketStore((state) => state.pendingBookingStyleId);
-  const pendingBookingTryOnJobId = useMarketStore((state) => state.pendingBookingTryOnJobId);
-  const setPendingBookingStyleId = useMarketStore((state) => state.setPendingBookingStyleId);
-  const setPendingBookingTryOnJobId = useMarketStore((state) => state.setPendingBookingTryOnJobId);
+  const pendingBookingStyleId = useMarketStore(
+    (state) => state.pendingBookingStyleId,
+  );
+  const pendingBookingTryOnJobId = useMarketStore(
+    (state) => state.pendingBookingTryOnJobId,
+  );
+  const setPendingBookingStyleId = useMarketStore(
+    (state) => state.setPendingBookingStyleId,
+  );
+  const setPendingBookingTryOnJobId = useMarketStore(
+    (state) => state.setPendingBookingTryOnJobId,
+  );
   const shop = route.params?.shop;
   const authScope = !hydrated ? "booting" : token ? "authed" : "anon";
   const platformShopId = shop?.platform_shop_id ?? null;
@@ -112,7 +130,8 @@ export function MarketShopDetailScreen() {
   });
 
   const toggleLikeMutation = useMutation({
-    mutationFn: (item: NailStyle) => (item.is_liked ? api.unlikeStyle(item.id) : api.likeStyle(item.id)),
+    mutationFn: (item: NailStyle) =>
+      item.is_liked ? api.unlikeStyle(item.id) : api.likeStyle(item.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["market-shop-gallery"] });
       queryClient.invalidateQueries({ queryKey: ["browse"] });
@@ -167,7 +186,9 @@ export function MarketShopDetailScreen() {
       entryEdge: "right",
       initialStyleId: pendingBookingStyleId ?? undefined,
       initialTryOnJobId: pendingBookingTryOnJobId ?? undefined,
-      initialMessage: pendingBookingStyleId ? "你好，想咨询这款美甲你们能做吗？" : undefined,
+      initialMessage: pendingBookingStyleId
+        ? "你好，想咨询这款美甲你们能做吗？"
+        : undefined,
     });
   };
 
@@ -185,15 +206,26 @@ export function MarketShopDetailScreen() {
 
   if (!shop) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
         <View style={styles.header}>
-          <Pressable style={[styles.iconButton, { backgroundColor: colors.surface }]} onPress={goBack}>
+          <Pressable
+            style={[styles.iconButton, { backgroundColor: colors.surface }]}
+            onPress={goBack}
+          >
             <Ionicons name="chevron-back" size={28} color={colors.text} />
           </Pressable>
         </View>
         <View style={styles.emptyWrap}>
-          <Ionicons name="storefront-outline" size={40} color={colors.subtext} />
-          <Text style={[styles.emptyText, { color: colors.subtext }]}>门店信息不可用</Text>
+          <Ionicons
+            name="storefront-outline"
+            size={40}
+            color={colors.subtext}
+          />
+          <Text style={[styles.emptyText, { color: colors.subtext }]}>
+            门店信息不可用
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -204,51 +236,135 @@ export function MarketShopDetailScreen() {
   const galleryItems = galleryQuery.data?.items ?? [];
   const reviewItems = galleryItems.filter((item) => item.verified_consumption);
   const featuredReviewItems = pickFeaturedReviews(reviewItems);
-  const merchantGalleryItems = galleryItems.filter((item) => !item.verified_consumption).slice(0, 2);
-  const heroSourceUri = shop.cover_image_url || (isPlatformShop ? merchantGalleryItems[0]?.image_url || reviewItems[0]?.image_url : null);
+  const merchantGalleryItems = galleryItems
+    .filter((item) => !item.verified_consumption)
+    .slice(0, 2);
+  const heroSourceUri =
+    shop.cover_image_url ||
+    (isPlatformShop
+      ? merchantGalleryItems[0]?.image_url || reviewItems[0]?.image_url
+      : null);
   const heroUri = heroSourceUri ? resolveAssetUrl(heroSourceUri) : null;
-  const priceAndTime = joinMeta([shop.average_price_text, shop.business_time_text]);
+  const priceAndTime = joinMeta([
+    shop.average_price_text,
+    shop.business_time_text,
+  ]);
   const galleryCopy = "精选该店当前热门作品。";
-  const hasRecentFeaturedReview = featuredReviewItems.some(isReviewWithinLastYear);
+  const hasRecentFeaturedReview = featuredReviewItems.some(
+    isReviewWithinLastYear,
+  );
   const reviewCopy =
     reviewItems.length > 0
       ? `${hasRecentFeaturedReview ? "近一年高赞评价" : "历史高赞评价"} · 共 ${reviewItems.length} 条`
       : "当前店还没有评论";
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <ScrollView
-        contentContainerStyle={[styles.content, !isPlatformShop ? styles.contentNoBottomBar : null]}
+        contentContainerStyle={[
+          styles.content,
+          !isPlatformShop ? styles.contentNoBottomBar : null,
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroWrap}>
           {heroUri ? (
-            <Image source={{ uri: heroUri }} style={[styles.heroImage, { backgroundColor: colors.surfaceAlt }]} />
+            <Image
+              source={{ uri: heroUri }}
+              style={[styles.heroImage, { backgroundColor: colors.surfaceAlt }]}
+            />
           ) : (
-            <View style={[styles.heroPhotoPlaceholder, { backgroundColor: colors.surfaceAlt }]}>
-              <Ionicons name="storefront-outline" size={42} color={colors.subtext} />
-              <Text style={[styles.heroPhotoPlaceholderText, { color: colors.subtext }]}>暂无门店照片</Text>
+            <View
+              style={[
+                styles.heroPhotoPlaceholder,
+                { backgroundColor: colors.surfaceAlt },
+              ]}
+            >
+              <Ionicons
+                name="storefront-outline"
+                size={42}
+                color={colors.subtext}
+              />
+              <Text
+                style={[
+                  styles.heroPhotoPlaceholderText,
+                  { color: colors.subtext },
+                ]}
+              >
+                暂无门店照片
+              </Text>
             </View>
           )}
           <View style={styles.heroOverlay} />
           <View style={styles.header}>
-            <Pressable style={[styles.iconButton, { backgroundColor: isDark ? "rgba(27,28,32,0.78)" : "rgba(255,255,255,0.84)" }]} onPress={goBack}>
+            <Pressable
+              style={[
+                styles.iconButton,
+                {
+                  backgroundColor: isDark
+                    ? "rgba(27,28,32,0.78)"
+                    : "rgba(255,255,255,0.84)",
+                },
+              ]}
+              onPress={goBack}
+            >
               <Ionicons name="chevron-back" size={28} color={colors.text} />
             </Pressable>
             {isPlatformShop ? (
               <>
-                <View style={[styles.heroSearch, { backgroundColor: isDark ? "rgba(27,28,32,0.66)" : "rgba(255,255,255,0.62)" }]}>
-                  <Ionicons name="search" size={18} color="rgba(255,255,255,0.92)" />
+                <View
+                  style={[
+                    styles.heroSearch,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(27,28,32,0.66)"
+                        : "rgba(255,255,255,0.62)",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="search"
+                    size={18}
+                    color="rgba(255,255,255,0.92)"
+                  />
                   <Text style={styles.heroSearchText} numberOfLines={1}>
                     搜索店内美甲
                   </Text>
                 </View>
                 <View style={styles.heroActions}>
-                  <Pressable style={[styles.actionButton, { backgroundColor: isDark ? "rgba(27,28,32,0.7)" : "rgba(255,255,255,0.72)" }]}>
-                    <Ionicons name="star-outline" size={22} color={colors.text} />
+                  <Pressable
+                    style={[
+                      styles.actionButton,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(27,28,32,0.7)"
+                          : "rgba(255,255,255,0.72)",
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="star-outline"
+                      size={22}
+                      color={colors.text}
+                    />
                   </Pressable>
-                  <Pressable style={[styles.actionButton, { backgroundColor: isDark ? "rgba(27,28,32,0.7)" : "rgba(255,255,255,0.72)" }]}>
-                    <Ionicons name="arrow-redo-outline" size={22} color={colors.text} />
+                  <Pressable
+                    style={[
+                      styles.actionButton,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(27,28,32,0.7)"
+                          : "rgba(255,255,255,0.72)",
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="arrow-redo-outline"
+                      size={22}
+                      color={colors.text}
+                    />
                   </Pressable>
                 </View>
               </>
@@ -257,13 +373,31 @@ export function MarketShopDetailScreen() {
           {isPlatformShop ? (
             <View style={styles.coverTabs}>
               {SHOP_COVER_TABS.map((tab, index) => (
-                <View key={tab} style={[styles.coverTab, index === 0 ? styles.coverTabActive : null]}>
-                  <Text style={[styles.coverTabText, index === 0 ? styles.coverTabTextActive : null]}>{tab}</Text>
+                <View
+                  key={tab}
+                  style={[
+                    styles.coverTab,
+                    index === 0 ? styles.coverTabActive : null,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.coverTabText,
+                      index === 0 ? styles.coverTabTextActive : null,
+                    ]}
+                  >
+                    {tab}
+                  </Text>
                 </View>
               ))}
             </View>
           ) : null}
-          <View style={[styles.heroInfo, !isPlatformShop ? styles.heroInfoCompact : null]}>
+          <View
+            style={[
+              styles.heroInfo,
+              !isPlatformShop ? styles.heroInfoCompact : null,
+            ]}
+          >
             <Text style={styles.shopName} numberOfLines={2}>
               {shop.name}
             </Text>
@@ -275,9 +409,22 @@ export function MarketShopDetailScreen() {
 
         <View style={[styles.infoCard, { backgroundColor: colors.surface }]}>
           {pendingBookingStyleId && isPlatformShop ? (
-            <View style={[styles.pendingBookingBanner, { backgroundColor: colors.surfaceAlt }]}>
-              <Ionicons name="calendar-outline" size={17} color={colors.accent} />
-              <Text style={[styles.pendingBookingText, { color: colors.subtext }]}>将为刚才试戴的手工甲创建预约。</Text>
+            <View
+              style={[
+                styles.pendingBookingBanner,
+                { backgroundColor: colors.surfaceAlt },
+              ]}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={17}
+                color={colors.accent}
+              />
+              <Text
+                style={[styles.pendingBookingText, { color: colors.subtext }]}
+              >
+                将为刚才试戴的手工甲创建预约。
+              </Text>
             </View>
           ) : null}
           <View style={styles.infoTopRow}>
@@ -287,12 +434,25 @@ export function MarketShopDetailScreen() {
                 <Text style={styles.ratingText}>{rating}</Text>
               </View>
             ) : null}
-            <Text style={[styles.distanceText, { color: colors.subtext }]}>{formatDistance(shop.distance_meters)}</Text>
+            <Text style={[styles.distanceText, { color: colors.subtext }]}>
+              {formatDistance(shop.distance_meters)}
+            </Text>
           </View>
           {shop.can_do_style ? (
-            <View style={[styles.canDoBanner, { backgroundColor: colors.surfaceAlt }]}>
-              <Ionicons name="checkmark-circle" size={17} color={colors.accent} />
-              <Text style={[styles.canDoText, { color: colors.text }]}>该门店已登记可做这款美甲</Text>
+            <View
+              style={[
+                styles.canDoBanner,
+                { backgroundColor: colors.surfaceAlt },
+              ]}
+            >
+              <Ionicons
+                name="checkmark-circle"
+                size={17}
+                color={colors.accent}
+              />
+              <Text style={[styles.canDoText, { color: colors.text }]}>
+                该门店已登记可做这款美甲
+              </Text>
             </View>
           ) : null}
           {isPlatformShop ? (
@@ -302,61 +462,125 @@ export function MarketShopDetailScreen() {
             </View>
           ) : null}
           {priceAndTime ? (
-            <Text style={[styles.infoLine, { color: colors.text }]} numberOfLines={2}>
+            <Text
+              style={[styles.infoLine, { color: colors.text }]}
+              numberOfLines={2}
+            >
               {priceAndTime}
             </Text>
           ) : null}
           {shop.heat_text ? (
-            <Text style={[styles.infoLine, { color: colors.subtext }]} numberOfLines={1}>
+            <Text
+              style={[styles.infoLine, { color: colors.subtext }]}
+              numberOfLines={1}
+            >
               商圈：{shop.heat_text}
             </Text>
           ) : null}
           {shop.phone_text ? (
-            <Text style={[styles.infoLine, { color: colors.subtext }]} numberOfLines={1}>
+            <Text
+              style={[styles.infoLine, { color: colors.subtext }]}
+              numberOfLines={1}
+            >
               电话：{shop.phone_text}
             </Text>
           ) : null}
           {isPlatformShop ? (
             <View style={styles.tagRow}>
               {SHOP_TAGS.map((tag) => (
-                <Text key={tag} style={[styles.facilityTag, { color: colors.subtext, backgroundColor: colors.surfaceAlt }]}>
+                <Text
+                  key={tag}
+                  style={[
+                    styles.facilityTag,
+                    {
+                      color: colors.subtext,
+                      backgroundColor: colors.surfaceAlt,
+                    },
+                  ]}
+                >
                   {tag}
                 </Text>
               ))}
             </View>
           ) : null}
-          <View style={[styles.addressBox, { backgroundColor: colors.surfaceAlt }]}>
+          <View
+            style={[styles.addressBox, { backgroundColor: colors.surfaceAlt }]}
+          >
             <Ionicons name="location-outline" size={17} color={colors.accent} />
-            <Text style={[styles.addressText, { color: colors.text }]}>{formatLocationLine(shop.region, shop.address)}</Text>
+            <Text style={[styles.addressText, { color: colors.text }]}>
+              {formatLocationLine(shop.region, shop.address)}
+            </Text>
             <Pressable
-              style={[styles.navigationShortcut, { backgroundColor: colors.surface }]}
+              style={[
+                styles.navigationShortcut,
+                { backgroundColor: colors.surface },
+              ]}
               onPress={handleNavigationShortcut}
             >
-              <Ionicons name="navigate-outline" size={15} color={colors.accent} />
-              <Text style={[styles.navigationShortcutText, { color: colors.accent }]}>导航</Text>
+              <Ionicons
+                name="navigate-outline"
+                size={15}
+                color={colors.accent}
+              />
+              <Text
+                style={[
+                  styles.navigationShortcutText,
+                  { color: colors.accent },
+                ]}
+              >
+                导航
+              </Text>
             </Pressable>
           </View>
         </View>
 
         {!isPlatformShop ? (
-          <View style={[styles.notJoinedCard, { backgroundColor: colors.surface }]}>
-            <Ionicons name="information-circle-outline" size={22} color={colors.subtext} />
-            <Text style={[styles.notJoinedText, { color: colors.subtext }]}>店铺尚未接入</Text>
+          <View
+            style={[styles.notJoinedCard, { backgroundColor: colors.surface }]}
+          >
+            <Ionicons
+              name="information-circle-outline"
+              size={22}
+              color={colors.subtext}
+            />
+            <Text style={[styles.notJoinedText, { color: colors.subtext }]}>
+              店铺尚未接入
+            </Text>
           </View>
         ) : (
           <>
-            <View style={[styles.sectionTabs, { backgroundColor: colors.surface }]}>
+            <View
+              style={[styles.sectionTabs, { backgroundColor: colors.surface }]}
+            >
               {SHOP_SECTION_TABS.map((tab, index) => (
                 <View key={tab} style={styles.sectionTab}>
-                  <Text style={[styles.sectionTabText, { color: index === 0 ? colors.text : colors.subtext }]}>{tab}</Text>
-                  {index === 0 ? <View style={[styles.sectionTabUnderline, { backgroundColor: colors.accent }]} /> : null}
+                  <Text
+                    style={[
+                      styles.sectionTabText,
+                      { color: index === 0 ? colors.text : colors.subtext },
+                    ]}
+                  >
+                    {tab}
+                  </Text>
+                  {index === 0 ? (
+                    <View
+                      style={[
+                        styles.sectionTabUnderline,
+                        { backgroundColor: colors.accent },
+                      ]}
+                    />
+                  ) : null}
                 </View>
               ))}
             </View>
 
             <View style={styles.galleryHeader}>
-              <Text style={[styles.galleryTitle, { color: colors.text }]}>热门美甲</Text>
-              <Text style={[styles.galleryCopy, { color: colors.subtext }]}>{galleryCopy}</Text>
+              <Text style={[styles.galleryTitle, { color: colors.text }]}>
+                热门美甲
+              </Text>
+              <Text style={[styles.galleryCopy, { color: colors.subtext }]}>
+                {galleryCopy}
+              </Text>
             </View>
 
             <View style={styles.galleryGrid}>
@@ -364,7 +588,9 @@ export function MarketShopDetailScreen() {
                 <View key={item.id} style={styles.galleryItem}>
                   <BrowseFeedCard
                     item={item}
-                    onPress={() => navigation.navigate("StylePreview", { styleId: item.id })}
+                    onPress={() =>
+                      navigation.navigate("StylePreview", { styleId: item.id })
+                    }
                     onToggleLike={() => toggleLikeMutation.mutate(item)}
                   />
                 </View>
@@ -372,7 +598,9 @@ export function MarketShopDetailScreen() {
             </View>
 
             {galleryQuery.isLoading ? (
-              <Text style={[styles.loadingText, { color: colors.subtext }]}>正在加载店铺美甲...</Text>
+              <Text style={[styles.loadingText, { color: colors.subtext }]}>
+                正在加载店铺美甲...
+              </Text>
             ) : null}
             {!galleryQuery.isLoading && merchantGalleryItems.length === 0 ? (
               <Text style={[styles.loadingText, { color: colors.subtext }]}>
@@ -381,8 +609,12 @@ export function MarketShopDetailScreen() {
             ) : null}
 
             <View style={styles.galleryHeader}>
-              <Text style={[styles.galleryTitle, { color: colors.text }]}>用户评价</Text>
-              <Text style={[styles.galleryCopy, { color: colors.subtext }]}>{reviewCopy}</Text>
+              <Text style={[styles.galleryTitle, { color: colors.text }]}>
+                用户评价
+              </Text>
+              <Text style={[styles.galleryCopy, { color: colors.subtext }]}>
+                {reviewCopy}
+              </Text>
             </View>
 
             <View style={styles.reviewList}>
@@ -392,38 +624,101 @@ export function MarketShopDetailScreen() {
                 return (
                   <Pressable
                     key={item.id}
-                    style={[styles.reviewCard, { backgroundColor: colors.surface }]}
-                    onPress={() => navigation.navigate("StylePreview", { styleId: item.id })}
+                    style={[
+                      styles.reviewCard,
+                      { backgroundColor: colors.surface },
+                    ]}
+                    onPress={() =>
+                      navigation.navigate("StylePreview", { styleId: item.id })
+                    }
                   >
                     <View style={styles.reviewTopRow}>
-                      <Image source={avatarUri ? { uri: avatarUri } : fallbackAvatar} style={styles.reviewAvatar} />
+                      <Image
+                        source={avatarUri ? { uri: avatarUri } : fallbackAvatar}
+                        style={styles.reviewAvatar}
+                      />
                       <View style={styles.reviewAuthorBlock}>
-                        <Text style={[styles.reviewAuthor, { color: colors.text }]} numberOfLines={1}>
+                        <Text
+                          style={[styles.reviewAuthor, { color: colors.text }]}
+                          numberOfLines={1}
+                        >
                           {item.author_name}
                         </Text>
-                        <Text style={[styles.reviewDate, { color: colors.subtext }]}>{formatPostDate(item.created_at)}</Text>
+                        <Text
+                          style={[styles.reviewDate, { color: colors.subtext }]}
+                        >
+                          {formatPostDate(item.created_at)}
+                        </Text>
                       </View>
                       <View style={styles.verifiedBadge}>
-                        <Ionicons name="shield-checkmark" size={13} color={colors.accent} />
-                        <Text style={[styles.verifiedBadgeText, { color: colors.accent }]}>真实消费</Text>
+                        <Ionicons
+                          name="shield-checkmark"
+                          size={13}
+                          color={colors.accent}
+                        />
+                        <Text
+                          style={[
+                            styles.verifiedBadgeText,
+                            { color: colors.accent },
+                          ]}
+                        >
+                          真实消费
+                        </Text>
                       </View>
                     </View>
                     <View style={styles.reviewBody}>
-                      <Image source={{ uri: imageUri }} style={[styles.reviewImage, { backgroundColor: colors.surfaceAlt }]} />
+                      <Image
+                        source={{ uri: imageUri }}
+                        style={[
+                          styles.reviewImage,
+                          { backgroundColor: colors.surfaceAlt },
+                        ]}
+                      />
                       <View style={styles.reviewTextBlock}>
-                        <Text style={[styles.reviewTitle, { color: colors.text }]} numberOfLines={2}>
+                        <Text
+                          style={[styles.reviewTitle, { color: colors.text }]}
+                          numberOfLines={2}
+                        >
                           {item.title}
                         </Text>
                         {item.description ? (
-                          <Text style={[styles.reviewDescription, { color: colors.subtext }]} numberOfLines={3}>
+                          <Text
+                            style={[
+                              styles.reviewDescription,
+                              { color: colors.subtext },
+                            ]}
+                            numberOfLines={3}
+                          >
                             {item.description}
                           </Text>
                         ) : null}
                         <View style={styles.reviewMetaRow}>
-                          <Ionicons name="heart" size={14} color={item.is_liked ? "#ff6b8a" : colors.subtext} />
-                          <Text style={[styles.reviewMetaText, { color: colors.subtext }]}>{item.like_count}</Text>
-                          <Ionicons name="chatbubble-ellipses-outline" size={14} color={colors.subtext} />
-                          <Text style={[styles.reviewMetaText, { color: colors.subtext }]}>{item.comment_count}</Text>
+                          <Ionicons
+                            name="heart"
+                            size={14}
+                            color={item.is_liked ? "#ff6b8a" : colors.subtext}
+                          />
+                          <Text
+                            style={[
+                              styles.reviewMetaText,
+                              { color: colors.subtext },
+                            ]}
+                          >
+                            {item.like_count}
+                          </Text>
+                          <Ionicons
+                            name="chatbubble-ellipses-outline"
+                            size={14}
+                            color={colors.subtext}
+                          />
+                          <Text
+                            style={[
+                              styles.reviewMetaText,
+                              { color: colors.subtext },
+                            ]}
+                          >
+                            {item.comment_count}
+                          </Text>
                         </View>
                       </View>
                     </View>
@@ -432,30 +727,53 @@ export function MarketShopDetailScreen() {
               })}
             </View>
             {!galleryQuery.isLoading && reviewItems.length === 0 ? (
-              <Text style={[styles.loadingText, { color: colors.subtext }]}>当前店还没有评论</Text>
+              <Text style={[styles.loadingText, { color: colors.subtext }]}>
+                当前店还没有评论
+              </Text>
             ) : null}
           </>
         )}
       </ScrollView>
       {isPlatformShop ? (
-        <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+        <View
+          style={[
+            styles.bottomBar,
+            { backgroundColor: colors.surface, borderTopColor: colors.border },
+          ]}
+        >
           <Pressable style={styles.bottomMiniAction} onPress={handleAskAI}>
             <Ionicons name="sparkles-outline" size={23} color={colors.accent} />
-            <Text style={[styles.bottomMiniText, { color: colors.text }]}>问小嘉</Text>
+            <Text style={[styles.bottomMiniText, { color: colors.text }]}>
+              问小嘉
+            </Text>
           </Pressable>
           <Pressable style={styles.bottomMiniAction} onPress={handleCall}>
             <Ionicons name="call-outline" size={23} color={colors.text} />
-            <Text style={[styles.bottomMiniText, { color: colors.text }]}>打电话</Text>
+            <Text style={[styles.bottomMiniText, { color: colors.text }]}>
+              打电话
+            </Text>
           </Pressable>
           <Pressable style={styles.bottomMiniAction} onPress={handleConsult}>
             <Ionicons name="headset-outline" size={23} color={colors.text} />
-            <Text style={[styles.bottomMiniText, { color: colors.text }]}>咨询能否做</Text>
+            <Text style={[styles.bottomMiniText, { color: colors.text }]}>
+              咨询能否做
+            </Text>
           </Pressable>
           <Pressable
-            style={[styles.bottomBookButton, { backgroundColor: canBookShop ? "#596047" : colors.surfaceAlt }]}
+            style={[
+              styles.bottomBookButton,
+              { backgroundColor: canBookShop ? "#596047" : colors.surfaceAlt },
+            ]}
             onPress={openBooking}
           >
-            <Text style={[styles.bottomBookText, { color: canBookShop ? "#ffe5df" : colors.subtext }]}>立即预约</Text>
+            <Text
+              style={[
+                styles.bottomBookText,
+                { color: canBookShop ? "#ffe5df" : colors.subtext },
+              ]}
+            >
+              立即预约
+            </Text>
           </Pressable>
         </View>
       ) : null}

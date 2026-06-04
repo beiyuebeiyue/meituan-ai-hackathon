@@ -3,14 +3,8 @@ import * as MediaLibrary from "expo-media-library";
 import { useQuery } from "@tanstack/react-query";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { useEffect } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { trackEvent } from "../utils/analytics";
 import { PrimaryButton } from "../components/PrimaryButton";
@@ -27,14 +21,20 @@ export function TryOnResultScreen() {
   const dismissOverlay = useSlideOverlayDismiss();
   const route = useRoute<ScreenRoute>();
   const colors = useThemeColors();
-  const setPendingBookingStyleId = useMarketStore((state) => state.setPendingBookingStyleId);
-  const setPendingBookingTryOnJobId = useMarketStore((state) => state.setPendingBookingTryOnJobId);
+  const setPendingBookingStyleId = useMarketStore(
+    (state) => state.setPendingBookingStyleId,
+  );
+  const setPendingBookingTryOnJobId = useMarketStore(
+    (state) => state.setPendingBookingTryOnJobId,
+  );
   const query = useQuery({
     queryKey: ["tryon-job", route.params.jobId],
     queryFn: () => api.getTryOnJob(route.params.jobId),
     refetchInterval: (queryState) => {
       const data = queryState.state.data;
-      return data?.status === "succeeded" || data?.status === "failed" ? false : 2000;
+      return data?.status === "succeeded" || data?.status === "failed"
+        ? false
+        : 2000;
     },
   });
   const styleQuery = useQuery({
@@ -47,7 +47,10 @@ export function TryOnResultScreen() {
     if (!query.data?.result_image_url) return;
     const permission = await MediaLibrary.requestPermissionsAsync();
     if (!permission.granted) return;
-    const download = await FileSystem.downloadAsync(resolveAssetUrl(query.data.result_image_url), `${FileSystem.cacheDirectory}tryon-result.jpg`);
+    const download = await FileSystem.downloadAsync(
+      resolveAssetUrl(query.data.result_image_url),
+      `${FileSystem.cacheDirectory}tryon-result.jpg`,
+    );
     await MediaLibrary.saveToLibraryAsync(download.uri);
   };
   const openNextStep = () => {
@@ -74,8 +77,8 @@ export function TryOnResultScreen() {
     query.data?.stage === "preprocessing"
       ? "正在分析手部并分割美甲参考图，首次处理会稍慢"
       : query.data?.stage === "generating"
-      ? "正在生成焕甲结果"
-      : "AI 正在处理中，通常需要几秒钟";
+        ? "正在生成焕甲结果"
+        : "AI 正在处理中，通常需要几秒钟";
   const nextStepLabel = !styleQuery.data
     ? "正在确认款式类型..."
     : isHandmadeNail(styleQuery.data.nail_type)
@@ -83,30 +86,59 @@ export function TryOnResultScreen() {
       : "去焕甲生活超市下单";
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.surfaceAlt }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.surfaceAlt }]}
+    >
       <View style={styles.content}>
         {query.data?.status === "succeeded" && query.data.result_image_url ? (
           <>
-            <Image source={{ uri: resolveAssetUrl(query.data.result_image_url) }} style={[styles.resultImage, { backgroundColor: colors.accentSoft }]} />
+            <Image
+              source={{ uri: resolveAssetUrl(query.data.result_image_url) }}
+              style={[
+                styles.resultImage,
+                { backgroundColor: colors.accentSoft },
+              ]}
+            />
             {styleQuery.data ? (
-              <View style={[styles.typePill, { backgroundColor: colors.surface }]}>
-                <Text style={[styles.typePillText, { color: colors.subtext }]}>{getNailTypeLabel(styleQuery.data.nail_type)}</Text>
+              <View
+                style={[styles.typePill, { backgroundColor: colors.surface }]}
+              >
+                <Text style={[styles.typePillText, { color: colors.subtext }]}>
+                  {getNailTypeLabel(styleQuery.data.nail_type)}
+                </Text>
               </View>
             ) : null}
             <PrimaryButton label="保存到相册" onPress={saveResult} />
-            <PrimaryButton label={nextStepLabel} onPress={openNextStep} disabled={!styleQuery.data} />
-            <PrimaryButton label="返回继续挑选" onPress={() => dismissOverlay?.() ?? navigation.goBack()} variant="ghost" />
+            <PrimaryButton
+              label={nextStepLabel}
+              onPress={openNextStep}
+              disabled={!styleQuery.data}
+            />
+            <PrimaryButton
+              label="返回继续挑选"
+              onPress={() => dismissOverlay?.() ?? navigation.goBack()}
+              variant="ghost"
+            />
           </>
         ) : query.data?.status === "failed" ? (
           <>
-            <Text style={styles.error}>{query.data.error_message ?? "试戴失败，请稍后再试"}</Text>
-            <PrimaryButton label="返回重试" onPress={() => dismissOverlay?.() ?? navigation.goBack()} />
+            <Text style={styles.error}>
+              {query.data.error_message ?? "试戴失败，请稍后再试"}
+            </Text>
+            <PrimaryButton
+              label="返回重试"
+              onPress={() => dismissOverlay?.() ?? navigation.goBack()}
+            />
           </>
         ) : (
           <>
-            <View style={[styles.loadingCard, { backgroundColor: colors.surface }]}>
+            <View
+              style={[styles.loadingCard, { backgroundColor: colors.surface }]}
+            >
               <ActivityIndicator size="large" color={colors.accent} />
-              <Text style={[styles.loadingText, { color: colors.subtext }]}>{loadingText}</Text>
+              <Text style={[styles.loadingText, { color: colors.subtext }]}>
+                {loadingText}
+              </Text>
             </View>
           </>
         )}

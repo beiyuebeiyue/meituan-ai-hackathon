@@ -1,10 +1,28 @@
 import { Ionicons } from "@expo/vector-icons";
 import type { ComponentProps } from "react";
 import { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Dimensions, Easing, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Animated,
+  Dimensions,
+  Easing,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useThemeColors } from "../utils/theme";
 
-export type MerchantDrawerActionKey = "market-data" | "booking-management" | "order-management" | "support" | "settings" | "scan";
+export type MerchantDrawerActionKey =
+  | "market-data"
+  | "booking-management"
+  | "order-management"
+  | "support"
+  | "settings"
+  | "scan";
 export type ConsumerDrawerActionKey =
   | "orders"
   | "browse-history"
@@ -16,44 +34,96 @@ export type ConsumerDrawerActionKey =
   | "scan";
 
 type DrawerIconName = ComponentProps<typeof Ionicons>["name"];
-type DrawerActionItem<Key extends string> = { key: Key; icon: DrawerIconName; label: string; description?: string };
-type DrawerActionGroup<Key extends string> = { title: string; items: Array<DrawerActionItem<Key>> };
+type DrawerActionItem<Key extends string> = {
+  key: Key;
+  icon: DrawerIconName;
+  label: string;
+  description?: string;
+};
+type DrawerActionGroup<Key extends string> = {
+  title: string;
+  items: Array<DrawerActionItem<Key>>;
+};
 
-const merchantDrawerGroups: Array<DrawerActionGroup<MerchantDrawerActionKey>> = [
-  {
-    title: "商家工作台",
-    items: [
-      { key: "market-data", icon: "bar-chart-outline", label: "市场数据", description: "查看商圈趋势和曝光表现" },
-      { key: "booking-management", icon: "calendar-outline", label: "预约管理", description: "处理待确认预约" },
-      { key: "order-management", icon: "receipt-outline", label: "订单管理", description: "跟进服务订单状态" },
-    ],
-  },
-];
+const merchantDrawerGroups: Array<DrawerActionGroup<MerchantDrawerActionKey>> =
+  [
+    {
+      title: "商家工作台",
+      items: [
+        {
+          key: "market-data",
+          icon: "bar-chart-outline",
+          label: "市场数据",
+          description: "查看商圈趋势和曝光表现",
+        },
+        {
+          key: "booking-management",
+          icon: "calendar-outline",
+          label: "预约管理",
+          description: "处理待确认预约",
+        },
+        {
+          key: "order-management",
+          icon: "receipt-outline",
+          label: "订单管理",
+          description: "跟进服务订单状态",
+        },
+      ],
+    },
+  ];
 
-const consumerDrawerGroups: Array<DrawerActionGroup<ConsumerDrawerActionKey>> = [
-  {
-    title: "我的服务",
-    items: [
-      { key: "orders", icon: "receipt-outline", label: "我的订单", description: "预约意向和历史订单" },
-      { key: "browse-history", icon: "time-outline", label: "浏览记录", description: "最近看过的美甲内容" },
-      { key: "tryon-history", icon: "sparkles-outline", label: "AI 焕甲记录", description: "查看试戴生成结果" },
-      { key: "hand-photos", icon: "hand-left-outline", label: "手图管理", description: "管理试戴用手部照片" },
-      { key: "blocked-users", icon: "remove-circle-outline", label: "不再看她", description: "管理屏蔽的用户" },
-    ],
-  },
-];
+const consumerDrawerGroups: Array<DrawerActionGroup<ConsumerDrawerActionKey>> =
+  [
+    {
+      title: "我的服务",
+      items: [
+        {
+          key: "orders",
+          icon: "receipt-outline",
+          label: "我的订单",
+          description: "预约意向和历史订单",
+        },
+        {
+          key: "browse-history",
+          icon: "time-outline",
+          label: "浏览记录",
+          description: "最近看过的美甲内容",
+        },
+        {
+          key: "tryon-history",
+          icon: "sparkles-outline",
+          label: "AI 焕甲记录",
+          description: "查看试戴生成结果",
+        },
+        {
+          key: "hand-photos",
+          icon: "hand-left-outline",
+          label: "手图管理",
+          description: "管理试戴用手部照片",
+        },
+        {
+          key: "blocked-users",
+          icon: "remove-circle-outline",
+          label: "不再看她",
+          description: "管理屏蔽的用户",
+        },
+      ],
+    },
+  ];
 
-const merchantBottomActions: Array<DrawerActionItem<MerchantDrawerActionKey>> = [
-  { key: "scan", icon: "scan-outline", label: "扫一扫" },
-  { key: "support", icon: "headset-outline", label: "帮助与客服" },
-  { key: "settings", icon: "settings-outline", label: "设置" },
-];
+const merchantBottomActions: Array<DrawerActionItem<MerchantDrawerActionKey>> =
+  [
+    { key: "scan", icon: "scan-outline", label: "扫一扫" },
+    { key: "support", icon: "headset-outline", label: "帮助与客服" },
+    { key: "settings", icon: "settings-outline", label: "设置" },
+  ];
 
-const consumerBottomActions: Array<DrawerActionItem<ConsumerDrawerActionKey>> = [
-  { key: "scan", icon: "scan-outline", label: "扫一扫" },
-  { key: "support", icon: "headset-outline", label: "帮助与客服" },
-  { key: "settings", icon: "settings-outline", label: "设置" },
-];
+const consumerBottomActions: Array<DrawerActionItem<ConsumerDrawerActionKey>> =
+  [
+    { key: "scan", icon: "scan-outline", label: "扫一扫" },
+    { key: "support", icon: "headset-outline", label: "帮助与客服" },
+    { key: "settings", icon: "settings-outline", label: "设置" },
+  ];
 
 export function MerchantSideDrawer({
   visible,
@@ -169,7 +239,12 @@ function AppSideDrawer<Key extends string>({
   if (!mounted) return null;
 
   return (
-    <Modal visible={mounted} transparent animationType="none" onRequestClose={() => closeWithAction()}>
+    <Modal
+      visible={mounted}
+      transparent
+      animationType="none"
+      onRequestClose={() => closeWithAction()}
+    >
       <View style={styles.root}>
         <Animated.View
           pointerEvents="none"
@@ -183,7 +258,10 @@ function AppSideDrawer<Key extends string>({
             },
           ]}
         />
-        <Pressable style={styles.overlayPressable} onPress={() => closeWithAction()} />
+        <Pressable
+          style={styles.overlayPressable}
+          onPress={() => closeWithAction()}
+        />
         <Animated.View
           style={[
             styles.panel,
@@ -202,42 +280,89 @@ function AppSideDrawer<Key extends string>({
           ]}
         >
           <SafeAreaView style={styles.safe}>
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              contentContainerStyle={styles.content}
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.drawerHeader}>
-                <View style={[styles.brandMark, { backgroundColor: colors.accent }]}>
+                <View
+                  style={[styles.brandMark, { backgroundColor: colors.accent }]}
+                >
                   <Text style={styles.brandMarkText}>焕</Text>
                 </View>
                 <View style={styles.drawerHeaderText}>
-                  <Text style={[styles.drawerTitle, { color: colors.text }]}>快捷入口</Text>
-                  <Text style={[styles.drawerSubtitle, { color: colors.subtext }]}>管理你的焕甲服务</Text>
+                  <Text style={[styles.drawerTitle, { color: colors.text }]}>
+                    快捷入口
+                  </Text>
+                  <Text
+                    style={[styles.drawerSubtitle, { color: colors.subtext }]}
+                  >
+                    管理你的焕甲服务
+                  </Text>
                 </View>
               </View>
 
               {groups.map((group) => (
                 <View key={group.title} style={styles.group}>
-                  <Text style={[styles.groupTitle, { color: colors.subtext }]}>{group.title}</Text>
-                  <View style={[styles.groupCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.groupTitle, { color: colors.subtext }]}>
+                    {group.title}
+                  </Text>
+                  <View
+                    style={[
+                      styles.groupCard,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
                     {group.items.map((item, itemIndex) => (
                       <Pressable
                         key={item.key}
                         style={[
                           styles.item,
-                          itemIndex < group.items.length - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+                          itemIndex < group.items.length - 1 && {
+                            borderBottomColor: colors.border,
+                            borderBottomWidth: StyleSheet.hairlineWidth,
+                          },
                         ]}
                         onPress={() => handleAction(item.key)}
                       >
-                        <View style={[styles.itemIconWrap, { backgroundColor: colors.accentSoft }]}>
-                          <Ionicons name={item.icon} size={20} color={colors.accent} />
+                        <View
+                          style={[
+                            styles.itemIconWrap,
+                            { backgroundColor: colors.accentSoft },
+                          ]}
+                        >
+                          <Ionicons
+                            name={item.icon}
+                            size={20}
+                            color={colors.accent}
+                          />
                         </View>
                         <View style={styles.itemBody}>
-                          <Text style={[styles.itemText, { color: colors.text }]}>{item.label}</Text>
+                          <Text
+                            style={[styles.itemText, { color: colors.text }]}
+                          >
+                            {item.label}
+                          </Text>
                           {item.description ? (
-                            <Text style={[styles.itemDescription, { color: colors.subtext }]} numberOfLines={1}>
+                            <Text
+                              style={[
+                                styles.itemDescription,
+                                { color: colors.subtext },
+                              ]}
+                              numberOfLines={1}
+                            >
                               {item.description}
                             </Text>
                           ) : null}
                         </View>
-                        <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
+                        <Ionicons
+                          name="chevron-forward"
+                          size={18}
+                          color={colors.subtext}
+                        />
                       </Pressable>
                     ))}
                   </View>
@@ -247,9 +372,18 @@ function AppSideDrawer<Key extends string>({
 
             <View style={styles.bottomRow}>
               {bottomActions.map((item) => (
-                <Pressable key={item.key} style={[styles.bottomButton, { backgroundColor: colors.surface }]} onPress={() => handleAction(item.key)}>
+                <Pressable
+                  key={item.key}
+                  style={[
+                    styles.bottomButton,
+                    { backgroundColor: colors.surface },
+                  ]}
+                  onPress={() => handleAction(item.key)}
+                >
                   <Ionicons name={item.icon} size={24} color={colors.text} />
-                  <Text style={[styles.bottomLabel, { color: colors.text }]}>{item.label}</Text>
+                  <Text style={[styles.bottomLabel, { color: colors.text }]}>
+                    {item.label}
+                  </Text>
                 </Pressable>
               ))}
             </View>

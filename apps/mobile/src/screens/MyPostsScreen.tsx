@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
-import { Alert, FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  FlatList,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { RequireLogin } from "../components/RequireLogin";
 import { useAuthStore } from "../store/useAuthStore";
@@ -25,38 +34,76 @@ export function MyPostsScreen() {
   });
 
   if (!token) {
-    return <RequireLogin onLogin={() => navigation.navigate("Login")} message="登录后可查看和管理我的发布" />;
+    return (
+      <RequireLogin
+        onLogin={() => navigation.navigate("Login")}
+        message="登录后可查看和管理我的发布"
+      />
+    );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.surfaceAlt }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.surfaceAlt }]}
+    >
       <FlatList
         data={query.data?.items ?? []}
         keyExtractor={(item) => item.id}
-        ListEmptyComponent={<Text style={[styles.empty, { color: colors.subtext }]}>你还没有发布过美甲内容</Text>}
+        ListEmptyComponent={
+          <Text style={[styles.empty, { color: colors.subtext }]}>
+            你还没有发布过美甲内容
+          </Text>
+        }
         renderItem={({ item }) => (
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
-            <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={styles.image} />
+            <Image
+              source={{ uri: resolveAssetUrl(item.image_url) }}
+              style={styles.image}
+            />
             <View style={styles.body}>
-              <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
-              <Text style={[styles.desc, { color: colors.subtext }]}>{item.description}</Text>
+              <Text style={[styles.title, { color: colors.text }]}>
+                {item.title}
+              </Text>
+              <Text style={[styles.desc, { color: colors.subtext }]}>
+                {item.description}
+              </Text>
               <View style={styles.tags}>
                 {item.tags.map((tag) => (
-                  <View key={tag} style={[styles.tag, { backgroundColor: colors.accentSoft }]}>
-                    <Text style={[styles.tagText, { color: colors.accent }]}>{tag}</Text>
+                  <View
+                    key={tag}
+                    style={[styles.tag, { backgroundColor: colors.accentSoft }]}
+                  >
+                    <Text style={[styles.tagText, { color: colors.accent }]}>
+                      {tag}
+                    </Text>
                   </View>
                 ))}
               </View>
               <Pressable
-                style={[styles.deleteButton, { backgroundColor: colors.dangerSoft }]}
+                style={[
+                  styles.deleteButton,
+                  { backgroundColor: colors.dangerSoft },
+                ]}
                 onPress={() =>
-                  Alert.alert("删除我的发布", "删除后将不再显示在我的发布列表中。", [
-                    { text: "取消", style: "cancel" },
-                    { text: "删除", style: "destructive", onPress: () => deleteMutation.mutate(item.id) },
-                  ])
+                  Alert.alert(
+                    "删除我的发布",
+                    "删除后将不再显示在我的发布列表中。",
+                    [
+                      { text: "取消", style: "cancel" },
+                      {
+                        text: "删除",
+                        style: "destructive",
+                        onPress: () => deleteMutation.mutate(item.id),
+                      },
+                    ],
+                  )
                 }
               >
-                <Text style={[styles.deleteLabel, { color: colors.dangerText }]}>删除</Text>
+                <Text
+                  style={[styles.deleteLabel, { color: colors.dangerText }]}
+                >
+                  删除
+                </Text>
               </Pressable>
             </View>
           </View>

@@ -2,7 +2,15 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
-import { Alert, FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import {
   DrawerModuleCard,
@@ -13,7 +21,10 @@ import {
 } from "../components/DrawerModuleLayout";
 import { OverlayContent } from "../components/OverlayContent";
 import { RequireLogin } from "../components/RequireLogin";
-import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
+import {
+  SlideOverlayScreen,
+  useOverlayDirection,
+} from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeColors } from "../utils/theme";
 
@@ -67,16 +78,23 @@ export function HandPhotoManagementScreen() {
         uploadMutation.mutate(result.assets[0].uri);
       }
     } catch {
-      Alert.alert("暂时无法打开相机", "你也可以先从相册里选一张之前拍好的手图。");
+      Alert.alert(
+        "暂时无法打开相机",
+        "你也可以先从相册里选一张之前拍好的手图。",
+      );
     }
   };
 
   const openUploadOptions = () => {
-    Alert.alert("添加手图", "选择一张清晰的手部照片，只会保存到你的本地手图管理中。", [
-      { text: "取消", style: "cancel" },
-      { text: "拍照", onPress: takePhotoNow },
-      { text: "从相册选择", onPress: uploadFromLibrary },
-    ]);
+    Alert.alert(
+      "添加手图",
+      "选择一张清晰的手部照片，只会保存到你的本地手图管理中。",
+      [
+        { text: "取消", style: "cancel" },
+        { text: "拍照", onPress: takePhotoNow },
+        { text: "从相册选择", onPress: uploadFromLibrary },
+      ],
+    );
   };
 
   const formatCreatedAt = (value: string) => {
@@ -84,7 +102,15 @@ export function HandPhotoManagementScreen() {
     return normalized.length >= 16 ? normalized.slice(0, 16) : normalized;
   };
 
-  const statusLabel = (status: "pending" | "processing" | "succeeded" | "failed" | null | undefined) => {
+  const statusLabel = (
+    status:
+      | "pending"
+      | "processing"
+      | "succeeded"
+      | "failed"
+      | null
+      | undefined,
+  ) => {
     if (status === "processing") return "分析中";
     if (status === "succeeded") return "已保存";
     if (status === "failed") return "分析失败";
@@ -92,7 +118,15 @@ export function HandPhotoManagementScreen() {
     return "已保存";
   };
 
-  const statusTone = (status: "pending" | "processing" | "succeeded" | "failed" | null | undefined) => {
+  const statusTone = (
+    status:
+      | "pending"
+      | "processing"
+      | "succeeded"
+      | "failed"
+      | null
+      | undefined,
+  ) => {
     if (status === "failed") return "danger";
     if (status === "succeeded") return "success";
     if (status === "processing" || status === "pending") return "accent";
@@ -100,12 +134,21 @@ export function HandPhotoManagementScreen() {
   };
 
   return (
-    <SlideOverlayScreen direction={direction} backgroundColor={colors.background} onDismiss={() => navigation.goBack()}>
+    <SlideOverlayScreen
+      direction={direction}
+      backgroundColor={colors.background}
+      onDismiss={() => navigation.goBack()}
+    >
       {(dismiss) => (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: colors.background }]}
+        >
           <OverlayContent.Header title="手图管理" onBack={dismiss} />
           {!token ? (
-            <RequireLogin onLogin={() => navigation.navigate("Login")} message="登录后可管理本地手图" />
+            <RequireLogin
+              onLogin={() => navigation.navigate("Login")}
+              message="登录后可管理本地手图"
+            />
           ) : (
             <FlatList
               style={{ backgroundColor: colors.surfaceAlt }}
@@ -122,7 +165,13 @@ export function HandPhotoManagementScreen() {
               ListEmptyComponent={
                 <OverlayContent.Empty
                   icon="hand-left-outline"
-                  title={query.isLoading ? "正在加载手图" : query.isError ? "手图加载失败" : "还没有保存过手图"}
+                  title={
+                    query.isLoading
+                      ? "正在加载手图"
+                      : query.isError
+                        ? "手图加载失败"
+                        : "还没有保存过手图"
+                  }
                   description={
                     query.isLoading
                       ? "请稍等，正在同步你的手图记录。"
@@ -134,25 +183,54 @@ export function HandPhotoManagementScreen() {
               }
               renderItem={({ item }) => (
                 <DrawerModuleCard>
-                  <DrawerModuleThumbnail uri={resolveAssetUrl(item.image_url)} size="medium" />
+                  <DrawerModuleThumbnail
+                    uri={resolveAssetUrl(item.image_url)}
+                    size="medium"
+                  />
                   <View style={styles.cardContent}>
                     <View style={styles.cardTitleRow}>
-                      <Text style={[styles.cardTitle, { color: colors.text }]}>手部照片</Text>
-                      <DrawerModulePill label={statusLabel(item.processing_status)} tone={statusTone(item.processing_status)} />
+                      <Text style={[styles.cardTitle, { color: colors.text }]}>
+                        手部照片
+                      </Text>
+                      <DrawerModulePill
+                        label={statusLabel(item.processing_status)}
+                        tone={statusTone(item.processing_status)}
+                      />
                     </View>
-                    <Text style={[styles.meta, { color: colors.subtext }]}>添加于 {formatCreatedAt(item.created_at)}</Text>
+                    <Text style={[styles.meta, { color: colors.subtext }]}>
+                      添加于 {formatCreatedAt(item.created_at)}
+                    </Text>
                   </View>
                   <Pressable
-                    style={[styles.deleteButton, { backgroundColor: colors.dangerSoft }]}
+                    style={[
+                      styles.deleteButton,
+                      { backgroundColor: colors.dangerSoft },
+                    ]}
                     onPress={() =>
-                      Alert.alert("删除手图", "删除后这张手图将从本地记录中移除。", [
-                        { text: "取消", style: "cancel" },
-                        { text: "删除", style: "destructive", onPress: () => deleteMutation.mutate(item.id) },
-                      ])
+                      Alert.alert(
+                        "删除手图",
+                        "删除后这张手图将从本地记录中移除。",
+                        [
+                          { text: "取消", style: "cancel" },
+                          {
+                            text: "删除",
+                            style: "destructive",
+                            onPress: () => deleteMutation.mutate(item.id),
+                          },
+                        ],
+                      )
                     }
                   >
-                    <Ionicons name="trash-outline" size={13} color={colors.dangerText} />
-                    <Text style={[styles.deleteLabel, { color: colors.dangerText }]}>删除</Text>
+                    <Ionicons
+                      name="trash-outline"
+                      size={13}
+                      color={colors.dangerText}
+                    />
+                    <Text
+                      style={[styles.deleteLabel, { color: colors.dangerText }]}
+                    >
+                      删除
+                    </Text>
                   </Pressable>
                 </DrawerModuleCard>
               )}
@@ -163,14 +241,20 @@ export function HandPhotoManagementScreen() {
               style={[
                 styles.fab,
                 {
-                  backgroundColor: uploadMutation.isPending ? colors.subtext : colors.accent,
+                  backgroundColor: uploadMutation.isPending
+                    ? colors.subtext
+                    : colors.accent,
                   shadowColor: colors.accent,
                 },
               ]}
               onPress={openUploadOptions}
               disabled={uploadMutation.isPending}
             >
-              <Ionicons name={uploadMutation.isPending ? "cloud-upload-outline" : "add"} size={34} color="#fff" />
+              <Ionicons
+                name={uploadMutation.isPending ? "cloud-upload-outline" : "add"}
+                size={34}
+                color="#fff"
+              />
             </Pressable>
           ) : null}
         </SafeAreaView>

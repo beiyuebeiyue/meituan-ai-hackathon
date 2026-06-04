@@ -3,7 +3,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useState } from "react";
-import { Image, KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../api/client";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RequireLogin } from "../components/RequireLogin";
@@ -29,7 +40,9 @@ export function PublishScreen() {
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [verifiedBookingId, setVerifiedBookingId] = useState<string | null>(null);
+  const [verifiedBookingId, setVerifiedBookingId] = useState<string | null>(
+    null,
+  );
 
   const shopsQuery = useQuery({
     queryKey: ["merchant-shops"],
@@ -44,8 +57,11 @@ export function PublishScreen() {
     queryFn: api.getMyBookings,
     enabled: Boolean(token && !isMerchant),
   });
-  const completedBookings = (bookingsQuery.data?.items ?? []).filter((item) => item.status === "completed");
-  const selectedBooking = completedBookings.find((item) => item.id === verifiedBookingId) ?? null;
+  const completedBookings = (bookingsQuery.data?.items ?? []).filter(
+    (item) => item.status === "completed",
+  );
+  const selectedBooking =
+    completedBookings.find((item) => item.id === verifiedBookingId) ?? null;
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -54,7 +70,9 @@ export function PublishScreen() {
         description,
         tags,
         imageUri: imageUri!,
-        shopId: isMerchant ? defaultShop?.id : selectedBooking?.shop_id ?? null,
+        shopId: isMerchant
+          ? defaultShop?.id
+          : (selectedBooking?.shop_id ?? null),
         verifiedBookingId: isMerchant ? null : verifiedBookingId,
       }),
     onSuccess: () => {
@@ -69,11 +87,19 @@ export function PublishScreen() {
   });
 
   if (!token) {
-    return <RequireLogin onLogin={() => navigation.navigate("Login" as never)} message="登录后才能发布内容" />;
+    return (
+      <RequireLogin
+        onLogin={() => navigation.navigate("Login" as never)}
+        message="登录后才能发布内容"
+      />
+    );
   }
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.8,
+    });
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
     }
@@ -84,68 +110,172 @@ export function PublishScreen() {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, 8);
-  const canSubmit = Boolean(title && imageUri && (!requiresShop || defaultShop));
+  const canSubmit = Boolean(
+    title && imageUri && (!requiresShop || defaultShop),
+  );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.keyboard}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={[styles.hero, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.keyboard}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View
+            style={[
+              styles.hero,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <View style={styles.heroTop}>
               <View>
-                <Text style={[styles.eyebrow, { color: colors.accent }]}>{isMerchant ? "商家作品" : "个人作品"}</Text>
-                <Text style={[styles.title, { color: colors.text }]}>发布美甲灵感</Text>
+                <Text style={[styles.eyebrow, { color: colors.accent }]}>
+                  {isMerchant ? "商家作品" : "个人作品"}
+                </Text>
+                <Text style={[styles.title, { color: colors.text }]}>
+                  发布美甲灵感
+                </Text>
               </View>
-              <View style={[styles.heroBadge, { backgroundColor: colors.accentSoft }]}>
-                <Ionicons name={isMerchant ? "storefront-outline" : "sparkles-outline"} size={16} color={colors.accent} />
-                <Text style={[styles.heroBadgeText, { color: colors.accent }]}>{isMerchant ? "店铺展示" : "社区分享"}</Text>
+              <View
+                style={[
+                  styles.heroBadge,
+                  { backgroundColor: colors.accentSoft },
+                ]}
+              >
+                <Ionicons
+                  name={isMerchant ? "storefront-outline" : "sparkles-outline"}
+                  size={16}
+                  color={colors.accent}
+                />
+                <Text style={[styles.heroBadgeText, { color: colors.accent }]}>
+                  {isMerchant ? "店铺展示" : "社区分享"}
+                </Text>
               </View>
             </View>
             <Text style={[styles.heroCopy, { color: colors.subtext }]}>
-              {isMerchant ? "发布后会自动关联你的默认门店，并进入店铺作品与同城内容。" : "上传你的美甲实拍或灵感图，写下标题、文案和标签。"}
+              {isMerchant
+                ? "发布后会自动关联你的默认门店，并进入店铺作品与同城内容。"
+                : "上传你的美甲实拍或灵感图，写下标题、文案和标签。"}
             </Text>
           </View>
 
-          <View style={[styles.composeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.composeCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <View style={styles.composeHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>作品封面</Text>
-              <Text style={[styles.sectionHint, { color: colors.subtext }]}>建议选择清晰手部图</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                作品封面
+              </Text>
+              <Text style={[styles.sectionHint, { color: colors.subtext }]}>
+                建议选择清晰手部图
+              </Text>
             </View>
             <View style={styles.coverRow}>
               <Pressable
                 style={[
                   styles.uploadCard,
-                  { borderColor: imageUri ? colors.border : colors.accent, backgroundColor: imageUri ? colors.background : colors.accentSoft },
+                  {
+                    borderColor: imageUri ? colors.border : colors.accent,
+                    backgroundColor: imageUri
+                      ? colors.background
+                      : colors.accentSoft,
+                  },
                 ]}
                 onPress={pickImage}
               >
                 {imageUri ? (
                   <>
-                    <Image source={{ uri: imageUri }} style={[styles.preview, { backgroundColor: colors.accentSoft }]} />
-                    <View style={[styles.previewOverlay, { backgroundColor: colors.overlay }]}>
+                    <Image
+                      source={{ uri: imageUri }}
+                      style={[
+                        styles.preview,
+                        { backgroundColor: colors.accentSoft },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.previewOverlay,
+                        { backgroundColor: colors.overlay },
+                      ]}
+                    >
                       <Ionicons name="refresh" size={14} color="#ffffff" />
                       <Text style={styles.previewOverlayText}>更换</Text>
                     </View>
                   </>
                 ) : (
                   <View style={styles.uploadPlaceholder}>
-                    <Ionicons name="image-outline" size={30} color={colors.accent} />
-                    <Text style={[styles.uploadTitle, { color: colors.text }]}>上传图片</Text>
+                    <Ionicons
+                      name="image-outline"
+                      size={30}
+                      color={colors.accent}
+                    />
+                    <Text style={[styles.uploadTitle, { color: colors.text }]}>
+                      上传图片
+                    </Text>
                   </View>
                 )}
               </Pressable>
               <View style={styles.coverTips}>
-                <View style={[styles.tipPill, { backgroundColor: colors.background }]}>
-                  <Ionicons name="checkmark-circle" size={15} color={colors.accent} />
-                  <Text style={[styles.tipPillText, { color: colors.subtext }]}>竖图更适合首页瀑布流</Text>
+                <View
+                  style={[
+                    styles.tipPill,
+                    { backgroundColor: colors.background },
+                  ]}
+                >
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={15}
+                    color={colors.accent}
+                  />
+                  <Text style={[styles.tipPillText, { color: colors.subtext }]}>
+                    竖图更适合首页瀑布流
+                  </Text>
                 </View>
-                <View style={[styles.tipPill, { backgroundColor: colors.background }]}>
-                  <Ionicons name="text-outline" size={15} color={colors.accent} />
-                  <Text style={[styles.tipPillText, { color: colors.subtext }]}>标题尽量短且有记忆点</Text>
+                <View
+                  style={[
+                    styles.tipPill,
+                    { backgroundColor: colors.background },
+                  ]}
+                >
+                  <Ionicons
+                    name="text-outline"
+                    size={15}
+                    color={colors.accent}
+                  />
+                  <Text style={[styles.tipPillText, { color: colors.subtext }]}>
+                    标题尽量短且有记忆点
+                  </Text>
                 </View>
-                <View style={[styles.publishTarget, { backgroundColor: colors.background }]}>
-                  <Ionicons name={isMerchant ? "storefront-outline" : selectedBooking ? "shield-checkmark-outline" : "person-circle-outline"} size={17} color={colors.accent} />
-                  <Text style={[styles.publishTargetText, { color: colors.text }]} numberOfLines={2}>
+                <View
+                  style={[
+                    styles.publishTarget,
+                    { backgroundColor: colors.background },
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      isMerchant
+                        ? "storefront-outline"
+                        : selectedBooking
+                          ? "shield-checkmark-outline"
+                          : "person-circle-outline"
+                    }
+                    size={17}
+                    color={colors.accent}
+                  />
+                  <Text
+                    style={[styles.publishTargetText, { color: colors.text }]}
+                    numberOfLines={2}
+                  >
                     {isMerchant
                       ? defaultShop
                         ? `${defaultShop.name} · ${defaultShop.city}`
@@ -159,41 +289,65 @@ export function PublishScreen() {
             </View>
           </View>
 
-          <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.formCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>标题</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>
+                标题
+              </Text>
               <TextInput
                 placeholder="比如：这款裸粉猫眼真的太显白"
                 placeholderTextColor={colors.subtext}
                 value={title}
                 onChangeText={setTitle}
-                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                style={[
+                  styles.input,
+                  { backgroundColor: colors.background, color: colors.text },
+                ]}
               />
             </View>
             <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>正文</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>
+                正文
+              </Text>
               <TextInput
                 placeholder="分享上手感受、适合场景、显白程度..."
                 placeholderTextColor={colors.subtext}
                 value={description}
                 onChangeText={setDescription}
-                style={[styles.input, styles.textarea, { backgroundColor: colors.background, color: colors.text }]}
+                style={[
+                  styles.input,
+                  styles.textarea,
+                  { backgroundColor: colors.background, color: colors.text },
+                ]}
                 multiline
               />
             </View>
             <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>标签</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>
+                标签
+              </Text>
               <TextInput
                 placeholder="法式，裸粉，显白，通勤"
                 placeholderTextColor={colors.subtext}
                 value={tags}
                 onChangeText={setTags}
-                style={[styles.input, { backgroundColor: colors.background, color: colors.text }]}
+                style={[
+                  styles.input,
+                  { backgroundColor: colors.background, color: colors.text },
+                ]}
               />
               {tagPreview.length ? (
                 <View style={styles.tagPreviewRow}>
                   {tagPreview.map((item) => (
-                    <Text key={item} style={[styles.tagPreviewText, { color: colors.accent }]}>
+                    <Text
+                      key={item}
+                      style={[styles.tagPreviewText, { color: colors.accent }]}
+                    >
                       #{item}
                     </Text>
                   ))}
@@ -203,16 +357,31 @@ export function PublishScreen() {
           </View>
 
           {!isMerchant ? (
-            <View style={[styles.verifiedSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.verifiedSection,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <View style={styles.verifiedTitleRow}>
-                <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent} />
-                <Text style={[styles.verifiedTitle, { color: colors.text }]}>绑定真实消费</Text>
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={18}
+                  color={colors.accent}
+                />
+                <Text style={[styles.verifiedTitle, { color: colors.text }]}>
+                  绑定真实消费
+                </Text>
               </View>
               <Text style={[styles.verifiedHint, { color: colors.subtext }]}>
                 只有已完成订单可以绑定，绑定后详情页会展示“真实消费”和店铺信息。
               </Text>
               {completedBookings.length ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bookingChoices}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.bookingChoices}
+                >
                   {completedBookings.map((item) => {
                     const selected = item.id === verifiedBookingId;
                     return (
@@ -220,20 +389,55 @@ export function PublishScreen() {
                         key={item.id}
                         style={[
                           styles.bookingChoice,
-                          { borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? colors.accentSoft : colors.background },
+                          {
+                            borderColor: selected
+                              ? colors.accent
+                              : colors.border,
+                            backgroundColor: selected
+                              ? colors.accentSoft
+                              : colors.background,
+                          },
                         ]}
-                        onPress={() => setVerifiedBookingId((current) => (current === item.id ? null : item.id))}
+                        onPress={() =>
+                          setVerifiedBookingId((current) =>
+                            current === item.id ? null : item.id,
+                          )
+                        }
                       >
                         <View style={styles.bookingChoiceHeader}>
-                          <Text style={[styles.bookingChoiceTitle, { color: colors.text }]} numberOfLines={1}>
+                          <Text
+                            style={[
+                              styles.bookingChoiceTitle,
+                              { color: colors.text },
+                            ]}
+                            numberOfLines={1}
+                          >
                             {item.style_title}
                           </Text>
-                          {selected ? <Ionicons name="checkmark-circle" size={16} color={colors.accent} /> : null}
+                          {selected ? (
+                            <Ionicons
+                              name="checkmark-circle"
+                              size={16}
+                              color={colors.accent}
+                            />
+                          ) : null}
                         </View>
-                        <Text style={[styles.bookingChoiceMeta, { color: colors.subtext }]} numberOfLines={1}>
+                        <Text
+                          style={[
+                            styles.bookingChoiceMeta,
+                            { color: colors.subtext },
+                          ]}
+                          numberOfLines={1}
+                        >
                           {item.shop_name} · {bookingStatusLabel[item.status]}
                         </Text>
-                        <Text style={[styles.bookingChoiceMeta, { color: colors.subtext }]} numberOfLines={1}>
+                        <Text
+                          style={[
+                            styles.bookingChoiceMeta,
+                            { color: colors.subtext },
+                          ]}
+                          numberOfLines={1}
+                        >
                           {item.created_at.slice(0, 10)}
                         </Text>
                       </Pressable>
@@ -241,17 +445,33 @@ export function PublishScreen() {
                   })}
                 </ScrollView>
               ) : (
-                <Text style={[styles.verifiedEmpty, { color: colors.subtext }]}>暂无已完成订单，也可以直接发布普通个人作品。</Text>
+                <Text style={[styles.verifiedEmpty, { color: colors.subtext }]}>
+                  暂无已完成订单，也可以直接发布普通个人作品。
+                </Text>
               )}
             </View>
           ) : null}
 
-          <View style={[styles.submitCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[
+              styles.submitCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
             <View style={styles.submitCopy}>
-              <Text style={[styles.submitTitle, { color: colors.text }]}>准备发布</Text>
-              <Text style={[styles.submitHint, { color: colors.subtext }]}>至少需要一张图片和标题</Text>
+              <Text style={[styles.submitTitle, { color: colors.text }]}>
+                准备发布
+              </Text>
+              <Text style={[styles.submitHint, { color: colors.subtext }]}>
+                至少需要一张图片和标题
+              </Text>
             </View>
-            <PrimaryButton label="提交发布" onPress={() => mutation.mutate()} loading={mutation.isPending} disabled={!canSubmit} />
+            <PrimaryButton
+              label="提交发布"
+              onPress={() => mutation.mutate()}
+              loading={mutation.isPending}
+              disabled={!canSubmit}
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -321,7 +541,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 16,
   },
-  publishTargetText: { flex: 1, fontSize: 13, fontWeight: "800", lineHeight: 18 },
+  publishTargetText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "800",
+    lineHeight: 18,
+  },
   formCard: {
     borderRadius: 26,
     padding: 14,

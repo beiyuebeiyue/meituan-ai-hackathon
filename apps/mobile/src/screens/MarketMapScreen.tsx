@@ -1,5 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
-import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MarketMapView } from "../components/MarketMapView";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { formatMarketDistance, useMarketShops } from "../hooks/useMarketShops";
@@ -33,11 +34,15 @@ export function MarketMapScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       {!locationBootstrapped ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={colors.accent} size="large" />
-          <Text style={[styles.loadingText, { color: colors.subtext }]}>正在定位并加载地图...</Text>
+          <Text style={[styles.loadingText, { color: colors.subtext }]}>
+            正在定位并加载地图...
+          </Text>
         </View>
       ) : (
         <MarketMapView

@@ -15,7 +15,6 @@ import {
   Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,15 +22,29 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { BookingSheet } from "../components/BookingSheet";
-import { ConsumerDrawerActionKey, ConsumerSideDrawer, MerchantDrawerActionKey, MerchantSideDrawer } from "../components/MerchantSideDrawer";
+import {
+  ConsumerDrawerActionKey,
+  ConsumerSideDrawer,
+  MerchantDrawerActionKey,
+  MerchantSideDrawer,
+} from "../components/MerchantSideDrawer";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { ShareSheet } from "../components/ShareSheet";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
-import { AuthorPost, AuthorProfile, MyStyleCommentItem, NailStyle, NearbyShop } from "../types/api";
+import {
+  AuthorPost,
+  AuthorProfile,
+  MyStyleCommentItem,
+  NailStyle,
+  NearbyShop,
+} from "../types/api";
 import { getStoredValue, setStoredValue } from "../utils/sessionStorage";
 import { formatRelativeRegionTime } from "../utils/postTime";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
@@ -40,12 +53,30 @@ const defaultAvatar = require("../../assets/profile/default_avatar.png");
 const profileBgDefault = require("../../assets/profile/profile_bg_default.png");
 const FEED_HEART_ACTIVE_COLOR = "#ff7a8a";
 const FEED_HEART_INACTIVE_COLOR = "#d0d0d5";
-const PROFILE_HEADER_HEIGHT = Math.min(330, Math.max(300, Math.round(Dimensions.get("window").height * 0.34)));
+const PROFILE_HEADER_HEIGHT = Math.min(
+  330,
+  Math.max(300, Math.round(Dimensions.get("window").height * 0.34)),
+);
 
 const selfShortcutActions = [
-  { key: "browse-history", icon: "time-outline", title: "浏览记录", subtitle: "看过的美甲" },
-  { key: "hand-photos", icon: "hand-left-outline", title: "手图管理", subtitle: "管理本地手图" },
-  { key: "tryon-history", icon: "sparkles-outline", title: "AI焕甲", subtitle: "查看试戴记录" },
+  {
+    key: "browse-history",
+    icon: "time-outline",
+    title: "浏览记录",
+    subtitle: "看过的美甲",
+  },
+  {
+    key: "hand-photos",
+    icon: "hand-left-outline",
+    title: "手图管理",
+    subtitle: "管理本地手图",
+  },
+  {
+    key: "tryon-history",
+    icon: "sparkles-outline",
+    title: "AI焕甲",
+    subtitle: "查看试戴记录",
+  },
 ] as const;
 
 type SelfShortcutKey = (typeof selfShortcutActions)[number]["key"];
@@ -105,14 +136,13 @@ function StatBlock({
       </Pressable>
     );
   }
-  return (
-    <View style={styles.statBlock}>
-      {content}
-    </View>
-  );
+  return <View style={styles.statBlock}>{content}</View>;
 }
 
-export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorProfileScreenProps) {
+export function AuthorProfileScreen({
+  authorId,
+  asProfileTab = false,
+}: AuthorProfileScreenProps) {
   const navigation = useNavigation<any>();
   const dismissOverlay = useSlideOverlayDismiss();
   const route = useRoute<any>();
@@ -131,8 +161,10 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const [editingTitle, setEditingTitle] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
   const [editingTags, setEditingTags] = useState("");
-  const [activeContentTab, setActiveContentTab] = useState<ProfileContentTab>("posts");
-  const [postVisibilityTab, setPostVisibilityTab] = useState<PostVisibilityTab>("public");
+  const [activeContentTab, setActiveContentTab] =
+    useState<ProfileContentTab>("posts");
+  const [postVisibilityTab, setPostVisibilityTab] =
+    useState<PostVisibilityTab>("public");
   const [profileBgUri, setProfileBgUri] = useState<string | null>(null);
   const [shareVisible, setShareVisible] = useState(false);
   const [bookingVisible, setBookingVisible] = useState(false);
@@ -141,7 +173,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const selfPanelBackground = isDarkMode ? "rgba(8,8,12,0.86)" : colors.surface;
   const selfPanelBorder = isDarkMode ? "rgba(255,255,255,0.08)" : colors.border;
   const selfTabActiveColor = isDarkMode ? "#ffffff" : colors.text;
-  const selfTabInactiveColor = isDarkMode ? "rgba(255,255,255,0.48)" : colors.subtext;
+  const selfTabInactiveColor = isDarkMode
+    ? "rgba(255,255,255,0.48)"
+    : colors.subtext;
 
   const resolvedAuthorId = authorId ?? route.params?.authorId;
 
@@ -151,8 +185,12 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     enabled: hydrated && Boolean(resolvedAuthorId),
   });
 
-  const canQueryComments = Boolean(query.data && (query.data.is_mine || query.data.can_view_comments));
-  const canQueryLikedStyles = Boolean(query.data && (query.data.is_mine || query.data.can_view_likes));
+  const canQueryComments = Boolean(
+    query.data && (query.data.is_mine || query.data.can_view_comments),
+  );
+  const canQueryLikedStyles = Boolean(
+    query.data && (query.data.is_mine || query.data.can_view_likes),
+  );
   const commentsQuery = useQuery({
     queryKey: ["user-style-comments", resolvedAuthorId, authScope],
     queryFn: () => api.getUserStyleComments(resolvedAuthorId),
@@ -168,7 +206,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     queryFn: api.getMyMerchantShops,
     enabled: Boolean(token && asProfileTab && currentUser?.role === "merchant"),
   });
-  const profileBgStorageKey = query.data?.is_mine ? `profile-bg:${query.data.uid}` : null;
+  const profileBgStorageKey = query.data?.is_mine
+    ? `profile-bg:${query.data.uid}`
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -194,7 +234,11 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
 
   useEffect(() => {
     const initialTab = route.params?.initialTab;
-    if (initialTab === "posts" || initialTab === "comments" || initialTab === "liked") {
+    if (
+      initialTab === "posts" ||
+      initialTab === "comments" ||
+      initialTab === "liked"
+    ) {
       setActiveContentTab(initialTab);
       return;
     }
@@ -223,14 +267,20 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
         duration: 900,
         easing: Easing.linear,
         useNativeDriver: true,
-      })
+      }),
     );
     loop.start();
     return () => loop.stop();
   }, [isPullRefreshing, refreshSpin]);
 
   const followMutation = useMutation({
-    mutationFn: async ({ targetId, isFollowing }: { targetId: string; isFollowing: boolean }) => {
+    mutationFn: async ({
+      targetId,
+      isFollowing,
+    }: {
+      targetId: string;
+      isFollowing: boolean;
+    }) => {
       if (isFollowing) {
         await api.unfollowUser(targetId);
       } else {
@@ -238,17 +288,24 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
       }
     },
     onMutate: async ({ isFollowing }) => {
-      await queryClient.cancelQueries({ queryKey: ["author-profile", resolvedAuthorId] });
-      const previousProfiles = queryClient.getQueriesData<AuthorProfile>({ queryKey: ["author-profile", resolvedAuthorId] });
-      queryClient.setQueriesData<AuthorProfile>({ queryKey: ["author-profile", resolvedAuthorId] }, (old) => {
-        if (!old) return old;
-        const followerDelta = isFollowing ? -1 : 1;
-        return {
-          ...old,
-          is_following: !isFollowing,
-          follower_count: Math.max(0, old.follower_count + followerDelta),
-        };
+      await queryClient.cancelQueries({
+        queryKey: ["author-profile", resolvedAuthorId],
       });
+      const previousProfiles = queryClient.getQueriesData<AuthorProfile>({
+        queryKey: ["author-profile", resolvedAuthorId],
+      });
+      queryClient.setQueriesData<AuthorProfile>(
+        { queryKey: ["author-profile", resolvedAuthorId] },
+        (old) => {
+          if (!old) return old;
+          const followerDelta = isFollowing ? -1 : 1;
+          return {
+            ...old,
+            is_following: !isFollowing,
+            follower_count: Math.max(0, old.follower_count + followerDelta),
+          };
+        },
+      );
       return { previousProfiles };
     },
     onError: (_error, _variables, context) => {
@@ -257,7 +314,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
       });
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["author-profile", resolvedAuthorId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["author-profile", resolvedAuthorId],
+      });
       void queryClient.invalidateQueries({ queryKey: ["follow-list"] });
       void queryClient.invalidateQueries({ queryKey: ["browse"] });
       void queryClient.invalidateQueries({ queryKey: ["style"] });
@@ -265,11 +324,23 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ postId, payload }: { postId: string; payload: { title?: string; description?: string; tags?: string[]; is_hidden?: boolean } }) =>
-      api.updateMyPost(postId, payload),
+    mutationFn: ({
+      postId,
+      payload,
+    }: {
+      postId: string;
+      payload: {
+        title?: string;
+        description?: string;
+        tags?: string[];
+        is_hidden?: boolean;
+      };
+    }) => api.updateMyPost(postId, payload),
     onSuccess: () => {
       setEditingPost(null);
-      void queryClient.invalidateQueries({ queryKey: ["author-profile", resolvedAuthorId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["author-profile", resolvedAuthorId],
+      });
       void queryClient.invalidateQueries({ queryKey: ["my-posts"] });
       void queryClient.invalidateQueries({ queryKey: ["browse"] });
     },
@@ -278,14 +349,22 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const deleteMutation = useMutation({
     mutationFn: (postId: string) => api.deleteMyPost(postId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["author-profile", resolvedAuthorId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["author-profile", resolvedAuthorId],
+      });
       void queryClient.invalidateQueries({ queryKey: ["my-posts"] });
       void queryClient.invalidateQueries({ queryKey: ["browse"] });
     },
   });
 
   const toggleLikeMutation = useMutation({
-    mutationFn: async ({ styleId, isLiked }: { styleId: string; isLiked: boolean }) => {
+    mutationFn: async ({
+      styleId,
+      isLiked,
+    }: {
+      styleId: string;
+      isLiked: boolean;
+    }) => {
       if (isLiked) {
         await api.unlikeStyle(styleId);
       } else {
@@ -295,7 +374,9 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["likes"] });
       void queryClient.invalidateQueries({ queryKey: ["user-liked-styles"] });
-      void queryClient.invalidateQueries({ queryKey: ["author-profile", resolvedAuthorId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["author-profile", resolvedAuthorId],
+      });
       void queryClient.invalidateQueries({ queryKey: ["browse"] });
       void queryClient.invalidateQueries({ queryKey: ["style"] });
     },
@@ -311,10 +392,14 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["author-profile", resolvedAuthorId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["author-profile", resolvedAuthorId],
+      });
       void queryClient.invalidateQueries({ queryKey: ["browse"] });
       void queryClient.invalidateQueries({ queryKey: ["style"] });
-      void queryClient.invalidateQueries({ queryKey: ["conversation", resolvedAuthorId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["conversation", resolvedAuthorId],
+      });
     },
   });
 
@@ -451,19 +536,26 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
 
   if (!query.data) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
         <View style={styles.loadingWrap}>
-          <Text style={[styles.loadingText, { color: colors.subtext }]}>正在加载作者主页...</Text>
+          <Text style={[styles.loadingText, { color: colors.subtext }]}>
+            正在加载作者主页...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   const author = query.data;
-  const dmDisabled = author.has_blocked_viewer || author.viewer_has_blocked_author;
+  const dmDisabled =
+    author.has_blocked_viewer || author.viewer_has_blocked_author;
   const shouldCompactSelfProfile = Boolean(asProfileTab && author.is_mine);
   const heroTextColor = shouldCompactSelfProfile ? "#ffffff" : colors.text;
-  const heroSubtextColor = shouldCompactSelfProfile ? "rgba(255,255,255,0.78)" : colors.subtext;
+  const heroSubtextColor = shouldCompactSelfProfile
+    ? "rgba(255,255,255,0.78)"
+    : colors.subtext;
   const pullCenterAvatarOpacity = profilePullY.interpolate({
     inputRange: [0, 72, 128],
     outputRange: [0, 0.55, 1],
@@ -497,12 +589,25 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     : undefined;
   const isMerchantViewer = currentUser?.role === "merchant";
   const isMerchantAuthor = author.role === "merchant";
-  const isMerchantSelfProfile = Boolean(asProfileTab && author.is_mine && currentUser?.role === "merchant");
-  const canBookMerchant = Boolean(!author.is_mine && isMerchantAuthor && author.shop_id && currentUser?.role !== "merchant");
-  const authorShopDetail = isMerchantAuthor ? buildAuthorShopDetail(author) : null;
+  const isMerchantSelfProfile = Boolean(
+    asProfileTab && author.is_mine && currentUser?.role === "merchant",
+  );
+  const canBookMerchant = Boolean(
+    !author.is_mine &&
+    isMerchantAuthor &&
+    author.shop_id &&
+    currentUser?.role !== "merchant",
+  );
+  const authorShopDetail = isMerchantAuthor
+    ? buildAuthorShopDetail(author)
+    : null;
   const canFollowAuthor = Boolean(!author.is_mine);
-  const visibleSelfShortcutActions: Array<(typeof selfShortcutActions)[number]> = [];
-  const merchantShop = isMerchantSelfProfile ? merchantShopQuery.data?.items[0] ?? null : null;
+  const visibleSelfShortcutActions: Array<
+    (typeof selfShortcutActions)[number]
+  > = [];
+  const merchantShop = isMerchantSelfProfile
+    ? (merchantShopQuery.data?.items[0] ?? null)
+    : null;
   const bioText = author.bio?.trim() ?? "";
   const canShowComments = author.is_mine || author.can_view_comments;
   const canShowLikes = author.is_mine || author.can_view_likes;
@@ -510,21 +615,43 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   const likesLockedForOthers = false;
   const publicPosts = author.posts.filter((post) => !post.is_hidden);
   const privatePosts = author.posts.filter((post) => post.is_hidden);
-  const visiblePosts = author.is_mine ? (postVisibilityTab === "private" ? privatePosts : publicPosts) : author.posts;
+  const visiblePosts = author.is_mine
+    ? postVisibilityTab === "private"
+      ? privatePosts
+      : publicPosts
+    : author.posts;
   const profileTabs = [
-    { key: "posts" as const, label: author.is_mine ? "笔记" : "作品", count: author.is_mine ? visiblePosts.length : author.posts.length },
+    {
+      key: "posts" as const,
+      label: author.is_mine ? "笔记" : "作品",
+      count: author.is_mine ? visiblePosts.length : author.posts.length,
+    },
     ...(canShowComments
-      ? [{ key: "comments" as const, label: "评论", count: commentsQuery.data?.items.length ?? 0, locked: commentsLockedForOthers }]
+      ? [
+          {
+            key: "comments" as const,
+            label: "评论",
+            count: commentsQuery.data?.items.length ?? 0,
+            locked: commentsLockedForOthers,
+          },
+        ]
       : []),
     ...(canShowLikes
-      ? [{ key: "liked" as const, label: author.is_mine ? "喜欢" : "赞过", count: likedStylesQuery.data?.items.length ?? 0, locked: likesLockedForOthers }]
+      ? [
+          {
+            key: "liked" as const,
+            label: author.is_mine ? "喜欢" : "赞过",
+            count: likedStylesQuery.data?.items.length ?? 0,
+            locked: likesLockedForOthers,
+          },
+        ]
       : []),
   ];
   const listData: Array<AuthorPost | MyStyleCommentItem | NailStyle> =
     activeContentTab === "comments"
-      ? commentsQuery.data?.items ?? []
+      ? (commentsQuery.data?.items ?? [])
       : activeContentTab === "liked"
-        ? likedStylesQuery.data?.items ?? []
+        ? (likedStylesQuery.data?.items ?? [])
         : visiblePosts;
   const listIsTwoColumns = activeContentTab !== "comments";
   const emptyText =
@@ -541,9 +668,17 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
           : "这个作者还没有发布作品";
 
   const openFollowList = (kind: "following" | "followers") => {
-    const canView = kind === "following" ? author.can_view_following : author.can_view_followers;
+    const canView =
+      kind === "following"
+        ? author.can_view_following
+        : author.can_view_followers;
     if (!canView && !author.is_mine) {
-      Alert.alert("暂不可见", kind === "following" ? "该用户已设置关注列表不可见" : "该用户已设置粉丝列表不可见");
+      Alert.alert(
+        "暂不可见",
+        kind === "following"
+          ? "该用户已设置关注列表不可见"
+          : "该用户已设置粉丝列表不可见",
+      );
       return;
     }
     navigation.navigate("FollowList", {
@@ -553,13 +688,38 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
     });
   };
   const selfStats = [
-    { key: "following", value: author.following_count, label: "关注", onPress: () => openFollowList("following") },
-    { key: "follower", value: author.follower_count, label: "粉丝", onPress: () => openFollowList("followers") },
-    { key: "liked", value: author.total_like_count, label: "获赞", onPress: undefined },
+    {
+      key: "following",
+      value: author.following_count,
+      label: "关注",
+      onPress: () => openFollowList("following"),
+    },
+    {
+      key: "follower",
+      value: author.follower_count,
+      label: "粉丝",
+      onPress: () => openFollowList("followers"),
+    },
+    {
+      key: "liked",
+      value: author.total_like_count,
+      label: "获赞",
+      onPress: undefined,
+    },
   ];
   const selfFloatingTopBar = shouldCompactSelfProfile ? (
-    <View style={[styles.floatingTopBar, { top: Math.max(insets.top, 26) + 10 }]} pointerEvents="box-none">
-      <Pressable style={[styles.topButton, styles.compactTopButton, styles.profileGlassButton]} onPress={openDrawer}>
+    <View
+      style={[styles.floatingTopBar, { top: Math.max(insets.top, 26) + 10 }]}
+      pointerEvents="box-none"
+    >
+      <Pressable
+        style={[
+          styles.topButton,
+          styles.compactTopButton,
+          styles.profileGlassButton,
+        ]}
+        onPress={openDrawer}
+      >
         <Ionicons name="menu-outline" size={28} color={heroTextColor} />
       </Pressable>
       <Animated.View
@@ -568,24 +728,53 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
           styles.floatingCenterAvatarWrap,
           {
             opacity: pullCenterAvatarOpacity,
-            transform: [{ translateY: pullCenterAvatarTranslateY }, { scale: pullCenterAvatarScale }],
+            transform: [
+              { translateY: pullCenterAvatarTranslateY },
+              { scale: pullCenterAvatarScale },
+            ],
           },
         ]}
       >
         <Image
-          source={author.avatar_url ? { uri: resolveAssetUrl(author.avatar_url) } : defaultAvatar}
-          style={[styles.floatingCenterAvatar, { backgroundColor: colors.surfaceAlt }]}
+          source={
+            author.avatar_url
+              ? { uri: resolveAssetUrl(author.avatar_url) }
+              : defaultAvatar
+          }
+          style={[
+            styles.floatingCenterAvatar,
+            { backgroundColor: colors.surfaceAlt },
+          ]}
         />
       </Animated.View>
       <View style={styles.topRightActions}>
-        <Pressable style={styles.topEditPill} onPress={() => navigation.navigate("ProfileEdit")}>
+        <Pressable
+          style={styles.topEditPill}
+          onPress={() => navigation.navigate("ProfileEdit")}
+        >
           <Ionicons name="create-outline" size={17} color="#ffffff" />
-          <Text style={styles.topEditPillText}>{isMerchantSelfProfile ? "编辑商户信息" : "编辑主页"}</Text>
+          <Text style={styles.topEditPillText}>
+            {isMerchantSelfProfile ? "编辑商户信息" : "编辑主页"}
+          </Text>
         </Pressable>
-        <Pressable style={[styles.topButton, styles.compactTopButton, styles.profileGlassButton]} onPress={pickProfileBackground}>
+        <Pressable
+          style={[
+            styles.topButton,
+            styles.compactTopButton,
+            styles.profileGlassButton,
+          ]}
+          onPress={pickProfileBackground}
+        >
           <Ionicons name="image-outline" size={21} color={heroTextColor} />
         </Pressable>
-        <Pressable style={[styles.topButton, styles.compactTopButton, styles.profileGlassButton]} onPress={() => setShareVisible(true)}>
+        <Pressable
+          style={[
+            styles.topButton,
+            styles.compactTopButton,
+            styles.profileGlassButton,
+          ]}
+          onPress={() => setShareVisible(true)}
+        >
           <Ionicons name="arrow-redo-outline" size={22} color={heroTextColor} />
         </Pressable>
       </View>
@@ -593,333 +782,650 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
   ) : null;
 
   const profileHeader = (
-          <View
+    <View
+      style={[
+        styles.headerCard,
+        shouldCompactSelfProfile && styles.compactHeaderCard,
+        shouldCompactSelfProfile && { width: windowWidth, alignSelf: "center" },
+        { backgroundColor: colors.surface },
+      ]}
+    >
+      {shouldCompactSelfProfile ? (
+        <>
+          <Image
+            source={profileBgUri ? { uri: profileBgUri } : profileBgDefault}
+            resizeMode="cover"
+            style={[styles.profileBackgroundImage, { width: windowWidth }]}
+          />
+          <View style={styles.profileBackgroundOverlay} />
+        </>
+      ) : (
+        <View
+          style={[
+            styles.headerBackdrop,
+            { backgroundColor: colors.accentSoft },
+          ]}
+        />
+      )}
+      {!shouldCompactSelfProfile ? (
+        <View style={styles.topBar}>
+          {asProfileTab && author.is_mine ? (
+            <>
+              <Pressable
+                style={[
+                  styles.topButton,
+                  shouldCompactSelfProfile && styles.compactTopButton,
+                  shouldCompactSelfProfile && styles.profileGlassButton,
+                ]}
+                onPress={openDrawer}
+              >
+                <Ionicons name="menu-outline" size={28} color={heroTextColor} />
+              </Pressable>
+              <View style={styles.topRightActions}>
+                <Pressable
+                  style={styles.topEditPill}
+                  onPress={() => navigation.navigate("ProfileEdit")}
+                >
+                  <Ionicons name="create-outline" size={17} color="#ffffff" />
+                  <Text style={styles.topEditPillText}>
+                    {isMerchantSelfProfile ? "编辑商户信息" : "编辑主页"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.topButton,
+                    shouldCompactSelfProfile && styles.compactTopButton,
+                    styles.profileGlassButton,
+                  ]}
+                  onPress={pickProfileBackground}
+                >
+                  <Ionicons
+                    name="image-outline"
+                    size={21}
+                    color={heroTextColor}
+                  />
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.topButton,
+                    shouldCompactSelfProfile && styles.compactTopButton,
+                    styles.profileGlassButton,
+                  ]}
+                  onPress={() => setShareVisible(true)}
+                >
+                  <Ionicons
+                    name="arrow-redo-outline"
+                    size={22}
+                    color={heroTextColor}
+                  />
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <>
+              <Pressable
+                style={[
+                  styles.topButton,
+                  shouldCompactSelfProfile && styles.compactTopButton,
+                ]}
+                onPress={() => dismissOverlay?.() ?? navigation.goBack()}
+              >
+                <Ionicons name="chevron-back" size={28} color={colors.text} />
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.topButton,
+                  shouldCompactSelfProfile && styles.compactTopButton,
+                ]}
+                onPress={() => {
+                  if (author.is_mine) {
+                    Alert.alert("更多", "更多功能后续补充。");
+                    return;
+                  }
+                  if (!currentUser) {
+                    navigation.navigate("Login");
+                    return;
+                  }
+                  Alert.alert("更多操作", "可以在这里管理与作者的关系。", [
+                    { text: "取消", style: "cancel" },
+                    {
+                      text: author.viewer_has_blocked_author
+                        ? "恢复查看"
+                        : "不再看她",
+                      style: author.viewer_has_blocked_author
+                        ? "default"
+                        : "destructive",
+                      onPress: () => blockMutation.mutate(),
+                    },
+                  ]);
+                }}
+              >
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={24}
+                  color={colors.text}
+                />
+              </Pressable>
+            </>
+          )}
+        </View>
+      ) : null}
+
+      <Animated.View
+        style={[
+          styles.heroRow,
+          shouldCompactSelfProfile && styles.compactHeroRow,
+          pullProfileInfoStyle,
+        ]}
+      >
+        <Image
+          source={
+            author.avatar_url
+              ? { uri: resolveAssetUrl(author.avatar_url) }
+              : defaultAvatar
+          }
+          style={[
+            styles.avatar,
+            shouldCompactSelfProfile && styles.compactAvatar,
+            { backgroundColor: colors.surfaceAlt },
+          ]}
+        />
+        <View
+          style={[
+            styles.heroText,
+            shouldCompactSelfProfile && styles.compactHeroText,
+          ]}
+        >
+          <Text
             style={[
-              styles.headerCard,
-              shouldCompactSelfProfile && styles.compactHeaderCard,
-              shouldCompactSelfProfile && { width: windowWidth, alignSelf: "center" },
-              { backgroundColor: colors.surface },
+              styles.authorName,
+              shouldCompactSelfProfile && styles.compactAuthorName,
+              { color: heroTextColor },
             ]}
           >
-            {shouldCompactSelfProfile ? (
-              <>
-                <Image
-                  source={profileBgUri ? { uri: profileBgUri } : profileBgDefault}
-                  resizeMode="cover"
-                  style={[styles.profileBackgroundImage, { width: windowWidth }]}
-                />
-                <View style={styles.profileBackgroundOverlay} />
-              </>
-            ) : (
-              <View style={[styles.headerBackdrop, { backgroundColor: colors.accentSoft }]} />
-            )}
-            {!shouldCompactSelfProfile ? (
-            <View style={styles.topBar}>
-              {asProfileTab && author.is_mine ? (
-                <>
-                  <Pressable
-                    style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton, shouldCompactSelfProfile && styles.profileGlassButton]}
-                    onPress={openDrawer}
-                  >
-                    <Ionicons name="menu-outline" size={28} color={heroTextColor} />
-                  </Pressable>
-                  <View style={styles.topRightActions}>
-                    <Pressable style={styles.topEditPill} onPress={() => navigation.navigate("ProfileEdit")}>
-                      <Ionicons name="create-outline" size={17} color="#ffffff" />
-                      <Text style={styles.topEditPillText}>{isMerchantSelfProfile ? "编辑商户信息" : "编辑主页"}</Text>
-                    </Pressable>
-                    <Pressable
-                      style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton, styles.profileGlassButton]}
-                      onPress={pickProfileBackground}
-                    >
-                      <Ionicons name="image-outline" size={21} color={heroTextColor} />
-                    </Pressable>
-                    <Pressable
-                      style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton, styles.profileGlassButton]}
-                      onPress={() => setShareVisible(true)}
-                    >
-                      <Ionicons name="arrow-redo-outline" size={22} color={heroTextColor} />
-                    </Pressable>
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Pressable
-                    style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton]}
-                    onPress={() => dismissOverlay?.() ?? navigation.goBack()}
-                  >
-                    <Ionicons name="chevron-back" size={28} color={colors.text} />
-                  </Pressable>
-                  <Pressable
-                    style={[styles.topButton, shouldCompactSelfProfile && styles.compactTopButton]}
-                    onPress={() => {
-                      if (author.is_mine) {
-                        Alert.alert("更多", "更多功能后续补充。");
-                        return;
-                      }
-                      if (!currentUser) {
-                        navigation.navigate("Login");
-                        return;
-                      }
-                      Alert.alert("更多操作", "可以在这里管理与作者的关系。", [
-                        { text: "取消", style: "cancel" },
-                        {
-                          text: author.viewer_has_blocked_author ? "恢复查看" : "不再看她",
-                          style: author.viewer_has_blocked_author ? "default" : "destructive",
-                          onPress: () => blockMutation.mutate(),
-                        },
-                      ]);
-                    }}
-                  >
-                    <Ionicons name="ellipsis-horizontal" size={24} color={colors.text} />
-                  </Pressable>
-                </>
-              )}
-            </View>
-            ) : null}
+            {author.username}
+          </Text>
+          <Text
+            style={[
+              styles.authorMeta,
+              shouldCompactSelfProfile && styles.compactAuthorMeta,
+              { color: heroSubtextColor },
+            ]}
+          >
+            {isMerchantSelfProfile ? "商家焕甲号" : "焕甲号"}：{author.uid}
+          </Text>
+          <Text
+            style={[
+              styles.authorMeta,
+              shouldCompactSelfProfile && styles.compactAuthorMeta,
+              { color: heroSubtextColor },
+            ]}
+          >
+            IP：{author.ip_location}
+          </Text>
+        </View>
+      </Animated.View>
 
-            <Animated.View style={[styles.heroRow, shouldCompactSelfProfile && styles.compactHeroRow, pullProfileInfoStyle]}>
-              <Image
-                source={author.avatar_url ? { uri: resolveAssetUrl(author.avatar_url) } : defaultAvatar}
-                style={[styles.avatar, shouldCompactSelfProfile && styles.compactAvatar, { backgroundColor: colors.surfaceAlt }]}
-              />
-              <View style={[styles.heroText, shouldCompactSelfProfile && styles.compactHeroText]}>
-                <Text style={[styles.authorName, shouldCompactSelfProfile && styles.compactAuthorName, { color: heroTextColor }]}>{author.username}</Text>
-                <Text style={[styles.authorMeta, shouldCompactSelfProfile && styles.compactAuthorMeta, { color: heroSubtextColor }]}>
-                  {isMerchantSelfProfile ? "商家焕甲号" : "焕甲号"}：{author.uid}
-                </Text>
-                <Text style={[styles.authorMeta, shouldCompactSelfProfile && styles.compactAuthorMeta, { color: heroSubtextColor }]}>
-                  IP：{author.ip_location}
-                </Text>
-              </View>
-            </Animated.View>
-
-            {author.is_mine ? (
-              <Animated.View style={[styles.selfSummaryRow, shouldCompactSelfProfile && styles.compactSelfSummaryRow, pullProfileInfoStyle]}>
-                <View style={[styles.compactStatsRow, shouldCompactSelfProfile && styles.tightCompactStatsRow]}>
-                  {selfStats.map((item) => (
-                    <Pressable
-                      key={item.key}
-                      style={[styles.compactStatItem, shouldCompactSelfProfile && styles.tightCompactStatItem]}
-                      onPress={item.onPress}
-                      disabled={!item.onPress}
-                    >
-                      <Text
-                        style={[styles.compactStatText, shouldCompactSelfProfile && styles.tightCompactStatText, { color: heroTextColor }]}
-                        numberOfLines={1}
-                      >
-                        <Text style={[styles.compactStatValue, shouldCompactSelfProfile && styles.tightCompactStatValue]}>{item.value}</Text>
-                        <Text style={[styles.compactStatLabel, shouldCompactSelfProfile && styles.tightCompactStatLabel, { color: heroSubtextColor }]}>
-                          {" "}
-                          {item.label}
-                        </Text>
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-              </Animated.View>
-            ) : (
-              <View style={styles.statsRow}>
-                <StatBlock value={author.following_count} label="关注" color={colors.text} subtextColor={colors.subtext} onPress={() => openFollowList("following")} />
-                <StatBlock value={author.follower_count} label="粉丝" color={colors.text} subtextColor={colors.subtext} onPress={() => openFollowList("followers")} />
-                <StatBlock value={author.total_like_count} label="获赞" color={colors.text} subtextColor={colors.subtext} />
-              </View>
-            )}
-
-            {bioText ? (
-              <Animated.View style={[styles.bioWrap, shouldCompactSelfProfile && styles.compactBioWrap, pullProfileInfoStyle]}>
-                <Text style={[styles.bio, shouldCompactSelfProfile && styles.compactBio, { color: heroTextColor }]}>
-                  {bioText}
-                </Text>
-              </Animated.View>
-            ) : null}
-
-            {author.has_blocked_viewer ? (
-              <View style={[styles.noticeBanner, { backgroundColor: colors.dangerSoft }]}>
-                <Text style={[styles.noticeBannerText, { color: colors.dangerText }]}>对方已设置不再看你</Text>
-              </View>
-            ) : null}
-
-            {author.viewer_has_blocked_author ? (
-              <View style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}>
-                <Text style={[styles.noticeBannerText, { color: colors.subtext }]}>你已设置不再看她，恢复后才能继续私信</Text>
-              </View>
-            ) : null}
-
-            {authorShopDetail ? (
+      {author.is_mine ? (
+        <Animated.View
+          style={[
+            styles.selfSummaryRow,
+            shouldCompactSelfProfile && styles.compactSelfSummaryRow,
+            pullProfileInfoStyle,
+          ]}
+        >
+          <View
+            style={[
+              styles.compactStatsRow,
+              shouldCompactSelfProfile && styles.tightCompactStatsRow,
+            ]}
+          >
+            {selfStats.map((item) => (
               <Pressable
-                style={[styles.merchantShopCard, { backgroundColor: colors.background, borderColor: colors.border }]}
-                onPress={() => navigation.navigate("MarketShopDetail", { shop: authorShopDetail, entryEdge: "right" })}
-              >
-                <View style={[styles.merchantShopIcon, { backgroundColor: colors.accentSoft }]}>
-                  <Ionicons name="storefront-outline" size={20} color={colors.accent} />
-                </View>
-                <View style={styles.merchantShopInfo}>
-                  <Text style={[styles.merchantShopTitle, { color: colors.text }]} numberOfLines={1}>
-                    {authorShopDetail.name}
-                  </Text>
-                  <Text style={[styles.merchantShopMeta, { color: colors.subtext }]} numberOfLines={1}>
-                    {[authorShopDetail.city, authorShopDetail.address].filter(Boolean).join(" · ") || "平台入驻商家"}
-                  </Text>
-                </View>
-                <View style={[styles.merchantShopAction, { backgroundColor: colors.accent }]}>
-                  <Text style={styles.merchantShopActionText}>进入店铺</Text>
-                </View>
-              </Pressable>
-            ) : null}
-
-            {!author.is_mine ? (
-              <View style={styles.profileActions}>
-                <>
-                  {canFollowAuthor ? (
-                    <PrimaryButton
-                      label={author.is_following ? "已关注" : "关注"}
-                      onPress={() => {
-                        if (!currentUser) {
-                          navigation.navigate("Login");
-                          return;
-                        }
-                        if (author.has_blocked_viewer || author.viewer_has_blocked_author) return;
-                        followMutation.mutate({ targetId: author.id, isFollowing: author.is_following });
-                      }}
-                      loading={followMutation.isPending}
-                      disabled={author.has_blocked_viewer || author.viewer_has_blocked_author}
-                      variant={author.is_following ? "ghost" : "filled"}
-                      style={{ flex: 1 }}
-                    />
-                  ) : null}
-                  <PrimaryButton
-                    label={author.has_blocked_viewer ? "无法私信" : author.viewer_has_blocked_author ? "不再看她" : "发私信"}
-                    onPress={() => {
-                      if (!currentUser) {
-                        navigation.navigate("Login");
-                        return;
-                      }
-                      if (dmDisabled) return;
-                      navigation.navigate("DirectMessage", { userId: author.id });
-                    }}
-                    variant="ghost"
-                    disabled={dmDisabled}
-                    style={{ flex: 1 }}
-                  />
-                  {canBookMerchant ? (
-                    <PrimaryButton
-                      label="预约门店"
-                      onPress={() => {
-                        if (!currentUser) {
-                          navigation.navigate("Login");
-                          return;
-                        }
-                        setBookingVisible(true);
-                      }}
-                      style={{ flex: 1 }}
-                    />
-                  ) : null}
-                </>
-              </View>
-            ) : null}
-
-            {author.is_mine && visibleSelfShortcutActions.length ? (
-              <View style={[styles.shortcutsWrap, shouldCompactSelfProfile && styles.compactShortcutsWrap]}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.shortcutsRow}>
-                  {visibleSelfShortcutActions.map((item) => (
-                    <Pressable
-                      key={item.key}
-                      style={[styles.shortcutCard, shouldCompactSelfProfile && styles.compactShortcutCard, { backgroundColor: colors.surfaceAlt }]}
-                      onPress={() => handleSelfShortcutPress(item.key)}
-                    >
-                      <View style={styles.shortcutHeader}>
-                        <Ionicons name={item.icon} size={shouldCompactSelfProfile ? 16 : 20} color={colors.text} />
-                        <Text style={[styles.shortcutTitle, shouldCompactSelfProfile && styles.compactShortcutTitle, { color: colors.text }]} numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                      </View>
-                      <Text
-                        style={[styles.shortcutSubtitle, shouldCompactSelfProfile && styles.compactShortcutSubtitle, { color: colors.subtext }]}
-                        numberOfLines={1}
-                      >
-                        {item.subtitle}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
-
-            {profileTabs.length > 1 ? (
-              <View
+                key={item.key}
                 style={[
-                  styles.profileTabBar,
-                  shouldCompactSelfProfile && styles.selfProfileTabBar,
-                  {
-                    backgroundColor: shouldCompactSelfProfile ? selfPanelBackground : undefined,
-                    borderColor: shouldCompactSelfProfile ? selfPanelBorder : colors.border,
-                  },
+                  styles.compactStatItem,
+                  shouldCompactSelfProfile && styles.tightCompactStatItem,
                 ]}
+                onPress={item.onPress}
+                disabled={!item.onPress}
               >
-                {profileTabs.map((item) => {
-                  const active = activeContentTab === item.key;
-                  const tabActiveColor = shouldCompactSelfProfile ? selfTabActiveColor : colors.text;
-                  const tabInactiveColor = shouldCompactSelfProfile ? selfTabInactiveColor : colors.subtext;
-                  return (
-                    <Pressable
-                      key={item.key}
-                      style={[styles.profileTabButton, shouldCompactSelfProfile && styles.selfProfileTabButton]}
-                      onPress={() => setActiveContentTab(item.key)}
-                    >
-                      <View style={styles.profileTabLabelRow}>
-                        {item.locked ? <Ionicons name="lock-closed-outline" size={13} color={active ? tabActiveColor : tabInactiveColor} /> : null}
-                        <Text style={[styles.profileTabText, { color: active ? tabActiveColor : tabInactiveColor }]}>
-                          {item.label}
-                          {!author.is_mine ? (
-                            <Text style={[styles.profileTabCount, { color: active ? tabActiveColor : tabInactiveColor }]}> {item.count}</Text>
-                          ) : null}
-                        </Text>
-                      </View>
-                      {active ? <View style={[styles.profileTabUnderline, { backgroundColor: colors.accent }]} /> : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : (
-              <View style={[styles.sectionHeader, shouldCompactSelfProfile && styles.compactSectionHeader]}>
-                <Text style={[styles.sectionTitle, shouldCompactSelfProfile && styles.compactSectionTitle, { color: colors.text }]}>作品</Text>
-              </View>
-            )}
-            {author.is_mine && activeContentTab === "posts" ? (
-              <View style={[styles.postVisibilityBar, { backgroundColor: selfPanelBackground, borderColor: selfPanelBorder }]}>
-                {[
-                  { key: "public" as const, label: "公开", count: publicPosts.length },
-                  { key: "private" as const, label: "私密", count: privatePosts.length },
-                ].map((item) => {
-                  const active = postVisibilityTab === item.key;
-                  return (
-                    <Pressable key={item.key} style={styles.postVisibilityButton} onPress={() => setPostVisibilityTab(item.key)}>
-                      <View style={styles.postVisibilityLabelRow}>
-                        {item.key === "private" ? (
-                          <Ionicons name="lock-closed-outline" size={13} color={active ? selfTabActiveColor : selfTabInactiveColor} />
-                        ) : null}
-                        <Text style={[styles.postVisibilityText, { color: active ? selfTabActiveColor : selfTabInactiveColor }]}>
-                          {item.label} {item.count}
-                        </Text>
-                      </View>
-                      {active ? <View style={[styles.postVisibilityUnderline, { backgroundColor: colors.accent }]} /> : null}
-                    </Pressable>
-                  );
-              })}
-              </View>
-            ) : null}
+                <Text
+                  style={[
+                    styles.compactStatText,
+                    shouldCompactSelfProfile && styles.tightCompactStatText,
+                    { color: heroTextColor },
+                  ]}
+                  numberOfLines={1}
+                >
+                  <Text
+                    style={[
+                      styles.compactStatValue,
+                      shouldCompactSelfProfile && styles.tightCompactStatValue,
+                    ]}
+                  >
+                    {item.value}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.compactStatLabel,
+                      shouldCompactSelfProfile && styles.tightCompactStatLabel,
+                      { color: heroSubtextColor },
+                    ]}
+                  >
+                    {" "}
+                    {item.label}
+                  </Text>
+                </Text>
+              </Pressable>
+            ))}
           </View>
+        </Animated.View>
+      ) : (
+        <View style={styles.statsRow}>
+          <StatBlock
+            value={author.following_count}
+            label="关注"
+            color={colors.text}
+            subtextColor={colors.subtext}
+            onPress={() => openFollowList("following")}
+          />
+          <StatBlock
+            value={author.follower_count}
+            label="粉丝"
+            color={colors.text}
+            subtextColor={colors.subtext}
+            onPress={() => openFollowList("followers")}
+          />
+          <StatBlock
+            value={author.total_like_count}
+            label="获赞"
+            color={colors.text}
+            subtextColor={colors.subtext}
+          />
+        </View>
+      )}
+
+      {bioText ? (
+        <Animated.View
+          style={[
+            styles.bioWrap,
+            shouldCompactSelfProfile && styles.compactBioWrap,
+            pullProfileInfoStyle,
+          ]}
+        >
+          <Text
+            style={[
+              styles.bio,
+              shouldCompactSelfProfile && styles.compactBio,
+              { color: heroTextColor },
+            ]}
+          >
+            {bioText}
+          </Text>
+        </Animated.View>
+      ) : null}
+
+      {author.has_blocked_viewer ? (
+        <View
+          style={[styles.noticeBanner, { backgroundColor: colors.dangerSoft }]}
+        >
+          <Text style={[styles.noticeBannerText, { color: colors.dangerText }]}>
+            对方已设置不再看你
+          </Text>
+        </View>
+      ) : null}
+
+      {author.viewer_has_blocked_author ? (
+        <View
+          style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}
+        >
+          <Text style={[styles.noticeBannerText, { color: colors.subtext }]}>
+            你已设置不再看她，恢复后才能继续私信
+          </Text>
+        </View>
+      ) : null}
+
+      {authorShopDetail ? (
+        <Pressable
+          style={[
+            styles.merchantShopCard,
+            { backgroundColor: colors.background, borderColor: colors.border },
+          ]}
+          onPress={() =>
+            navigation.navigate("MarketShopDetail", {
+              shop: authorShopDetail,
+              entryEdge: "right",
+            })
+          }
+        >
+          <View
+            style={[
+              styles.merchantShopIcon,
+              { backgroundColor: colors.accentSoft },
+            ]}
+          >
+            <Ionicons
+              name="storefront-outline"
+              size={20}
+              color={colors.accent}
+            />
+          </View>
+          <View style={styles.merchantShopInfo}>
+            <Text
+              style={[styles.merchantShopTitle, { color: colors.text }]}
+              numberOfLines={1}
+            >
+              {authorShopDetail.name}
+            </Text>
+            <Text
+              style={[styles.merchantShopMeta, { color: colors.subtext }]}
+              numberOfLines={1}
+            >
+              {[authorShopDetail.city, authorShopDetail.address]
+                .filter(Boolean)
+                .join(" · ") || "平台入驻商家"}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.merchantShopAction,
+              { backgroundColor: colors.accent },
+            ]}
+          >
+            <Text style={styles.merchantShopActionText}>进入店铺</Text>
+          </View>
+        </Pressable>
+      ) : null}
+
+      {!author.is_mine ? (
+        <View style={styles.profileActions}>
+          <>
+            {canFollowAuthor ? (
+              <PrimaryButton
+                label={author.is_following ? "已关注" : "关注"}
+                onPress={() => {
+                  if (!currentUser) {
+                    navigation.navigate("Login");
+                    return;
+                  }
+                  if (
+                    author.has_blocked_viewer ||
+                    author.viewer_has_blocked_author
+                  )
+                    return;
+                  followMutation.mutate({
+                    targetId: author.id,
+                    isFollowing: author.is_following,
+                  });
+                }}
+                loading={followMutation.isPending}
+                disabled={
+                  author.has_blocked_viewer || author.viewer_has_blocked_author
+                }
+                variant={author.is_following ? "ghost" : "filled"}
+                style={{ flex: 1 }}
+              />
+            ) : null}
+            <PrimaryButton
+              label={
+                author.has_blocked_viewer
+                  ? "无法私信"
+                  : author.viewer_has_blocked_author
+                    ? "不再看她"
+                    : "发私信"
+              }
+              onPress={() => {
+                if (!currentUser) {
+                  navigation.navigate("Login");
+                  return;
+                }
+                if (dmDisabled) return;
+                navigation.navigate("DirectMessage", { userId: author.id });
+              }}
+              variant="ghost"
+              disabled={dmDisabled}
+              style={{ flex: 1 }}
+            />
+            {canBookMerchant ? (
+              <PrimaryButton
+                label="预约门店"
+                onPress={() => {
+                  if (!currentUser) {
+                    navigation.navigate("Login");
+                    return;
+                  }
+                  setBookingVisible(true);
+                }}
+                style={{ flex: 1 }}
+              />
+            ) : null}
+          </>
+        </View>
+      ) : null}
+
+      {author.is_mine && visibleSelfShortcutActions.length ? (
+        <View
+          style={[
+            styles.shortcutsWrap,
+            shouldCompactSelfProfile && styles.compactShortcutsWrap,
+          ]}
+        >
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.shortcutsRow}
+          >
+            {visibleSelfShortcutActions.map((item) => (
+              <Pressable
+                key={item.key}
+                style={[
+                  styles.shortcutCard,
+                  shouldCompactSelfProfile && styles.compactShortcutCard,
+                  { backgroundColor: colors.surfaceAlt },
+                ]}
+                onPress={() => handleSelfShortcutPress(item.key)}
+              >
+                <View style={styles.shortcutHeader}>
+                  <Ionicons
+                    name={item.icon}
+                    size={shouldCompactSelfProfile ? 16 : 20}
+                    color={colors.text}
+                  />
+                  <Text
+                    style={[
+                      styles.shortcutTitle,
+                      shouldCompactSelfProfile && styles.compactShortcutTitle,
+                      { color: colors.text },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.title}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.shortcutSubtitle,
+                    shouldCompactSelfProfile && styles.compactShortcutSubtitle,
+                    { color: colors.subtext },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {item.subtitle}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      {profileTabs.length > 1 ? (
+        <View
+          style={[
+            styles.profileTabBar,
+            shouldCompactSelfProfile && styles.selfProfileTabBar,
+            {
+              backgroundColor: shouldCompactSelfProfile
+                ? selfPanelBackground
+                : undefined,
+              borderColor: shouldCompactSelfProfile
+                ? selfPanelBorder
+                : colors.border,
+            },
+          ]}
+        >
+          {profileTabs.map((item) => {
+            const active = activeContentTab === item.key;
+            const tabActiveColor = shouldCompactSelfProfile
+              ? selfTabActiveColor
+              : colors.text;
+            const tabInactiveColor = shouldCompactSelfProfile
+              ? selfTabInactiveColor
+              : colors.subtext;
+            return (
+              <Pressable
+                key={item.key}
+                style={[
+                  styles.profileTabButton,
+                  shouldCompactSelfProfile && styles.selfProfileTabButton,
+                ]}
+                onPress={() => setActiveContentTab(item.key)}
+              >
+                <View style={styles.profileTabLabelRow}>
+                  {item.locked ? (
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={13}
+                      color={active ? tabActiveColor : tabInactiveColor}
+                    />
+                  ) : null}
+                  <Text
+                    style={[
+                      styles.profileTabText,
+                      { color: active ? tabActiveColor : tabInactiveColor },
+                    ]}
+                  >
+                    {item.label}
+                    {!author.is_mine ? (
+                      <Text
+                        style={[
+                          styles.profileTabCount,
+                          { color: active ? tabActiveColor : tabInactiveColor },
+                        ]}
+                      >
+                        {" "}
+                        {item.count}
+                      </Text>
+                    ) : null}
+                  </Text>
+                </View>
+                {active ? (
+                  <View
+                    style={[
+                      styles.profileTabUnderline,
+                      { backgroundColor: colors.accent },
+                    ]}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : (
+        <View
+          style={[
+            styles.sectionHeader,
+            shouldCompactSelfProfile && styles.compactSectionHeader,
+          ]}
+        >
+          <Text
+            style={[
+              styles.sectionTitle,
+              shouldCompactSelfProfile && styles.compactSectionTitle,
+              { color: colors.text },
+            ]}
+          >
+            作品
+          </Text>
+        </View>
+      )}
+      {author.is_mine && activeContentTab === "posts" ? (
+        <View
+          style={[
+            styles.postVisibilityBar,
+            {
+              backgroundColor: selfPanelBackground,
+              borderColor: selfPanelBorder,
+            },
+          ]}
+        >
+          {[
+            {
+              key: "public" as const,
+              label: "公开",
+              count: publicPosts.length,
+            },
+            {
+              key: "private" as const,
+              label: "私密",
+              count: privatePosts.length,
+            },
+          ].map((item) => {
+            const active = postVisibilityTab === item.key;
+            return (
+              <Pressable
+                key={item.key}
+                style={styles.postVisibilityButton}
+                onPress={() => setPostVisibilityTab(item.key)}
+              >
+                <View style={styles.postVisibilityLabelRow}>
+                  {item.key === "private" ? (
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={13}
+                      color={active ? selfTabActiveColor : selfTabInactiveColor}
+                    />
+                  ) : null}
+                  <Text
+                    style={[
+                      styles.postVisibilityText,
+                      {
+                        color: active
+                          ? selfTabActiveColor
+                          : selfTabInactiveColor,
+                      },
+                    ]}
+                  >
+                    {item.label} {item.count}
+                  </Text>
+                </View>
+                {active ? (
+                  <View
+                    style={[
+                      styles.postVisibilityUnderline,
+                      { backgroundColor: colors.accent },
+                    ]}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <FlatList
         key={`author-content-${activeContentTab}-${listIsTwoColumns ? "grid" : "list"}`}
         style={styles.contentList}
         data={listData}
-        keyExtractor={(item) => ("comment_id" in item ? item.comment_id : item.id)}
+        keyExtractor={(item) =>
+          "comment_id" in item ? item.comment_id : item.id
+        }
         numColumns={listIsTwoColumns ? 2 : 1}
         columnWrapperStyle={listIsTwoColumns ? styles.columnWrap : undefined}
         refreshControl={
@@ -933,41 +1439,89 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
             />
           ) : undefined
         }
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: profilePullY } } }], { useNativeDriver: false })}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: profilePullY } } }],
+          { useNativeDriver: false },
+        )}
         scrollEventThrottle={16}
         bounces
         alwaysBounceVertical={Boolean(asProfileTab && author.is_mine)}
-        contentContainerStyle={[styles.list, shouldCompactSelfProfile && styles.compactList]}
+        contentContainerStyle={[
+          styles.list,
+          shouldCompactSelfProfile && styles.compactList,
+        ]}
         ListHeaderComponent={profileHeader}
         ListEmptyComponent={
-          <View style={[shouldCompactSelfProfile && styles.selfEmptyWrap, { backgroundColor: shouldCompactSelfProfile ? (isDarkMode ? colors.background : colors.surface) : "transparent" }]}>
-            <Text style={[styles.empty, { color: colors.subtext }]}>{emptyText}</Text>
+          <View
+            style={[
+              shouldCompactSelfProfile && styles.selfEmptyWrap,
+              {
+                backgroundColor: shouldCompactSelfProfile
+                  ? isDarkMode
+                    ? colors.background
+                    : colors.surface
+                  : "transparent",
+              },
+            ]}
+          >
+            <Text style={[styles.empty, { color: colors.subtext }]}>
+              {emptyText}
+            </Text>
           </View>
         }
         renderItem={({ item }) => {
           if ("comment_id" in item) {
             return (
               <Pressable
-                style={[styles.commentRow, { backgroundColor: colors.background }]}
-                onPress={() => navigation.navigate("StylePreview", { styleId: item.style_id })}
+                style={[
+                  styles.commentRow,
+                  { backgroundColor: colors.background },
+                ]}
+                onPress={() =>
+                  navigation.navigate("StylePreview", {
+                    styleId: item.style_id,
+                  })
+                }
               >
                 <Image
-                  source={author.avatar_url ? { uri: resolveAssetUrl(author.avatar_url) } : defaultAvatar}
-                  style={[styles.commentAvatar, { backgroundColor: colors.surfaceAlt }]}
+                  source={
+                    author.avatar_url
+                      ? { uri: resolveAssetUrl(author.avatar_url) }
+                      : defaultAvatar
+                  }
+                  style={[
+                    styles.commentAvatar,
+                    { backgroundColor: colors.surfaceAlt },
+                  ]}
                 />
                 <View style={styles.commentBody}>
-                  <Text style={[styles.commentAuthor, { color: colors.subtext }]}>{author.username}</Text>
-                  <Text style={[styles.commentContent, { color: colors.text }]} numberOfLines={3}>
+                  <Text
+                    style={[styles.commentAuthor, { color: colors.subtext }]}
+                  >
+                    {author.username}
+                  </Text>
+                  <Text
+                    style={[styles.commentContent, { color: colors.text }]}
+                    numberOfLines={3}
+                  >
                     {item.comment_content}
                   </Text>
-                  <Text style={[styles.commentSource, { color: colors.subtext }]} numberOfLines={1}>
+                  <Text
+                    style={[styles.commentSource, { color: colors.subtext }]}
+                    numberOfLines={1}
+                  >
                     来自作品 · {item.style_title}
                   </Text>
                   <Text style={[styles.commentTime, { color: colors.subtext }]}>
-                    {formatRelativeRegionTime(item.comment_created_at, "广东")} · 公开
+                    {formatRelativeRegionTime(item.comment_created_at, "广东")}{" "}
+                    · 公开
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.subtext}
+                />
               </Pressable>
             );
           }
@@ -976,19 +1530,37 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
             return (
               <Pressable
                 style={[styles.postCard, { backgroundColor: colors.surface }]}
-                onPress={() => navigation.navigate("StylePreview", { styleId: item.id })}
+                onPress={() =>
+                  navigation.navigate("StylePreview", { styleId: item.id })
+                }
               >
-                <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={[styles.postImage, { backgroundColor: colors.surfaceAlt }]} />
+                <Image
+                  source={{ uri: resolveAssetUrl(item.image_url) }}
+                  style={[
+                    styles.postImage,
+                    { backgroundColor: colors.surfaceAlt },
+                  ]}
+                />
                 <View style={styles.postBody}>
-                  <Text style={[styles.postTitle, { color: colors.text }]} numberOfLines={2}>
+                  <Text
+                    style={[styles.postTitle, { color: colors.text }]}
+                    numberOfLines={2}
+                  >
                     {item.title}
                   </Text>
                   <View style={styles.likedMetaRow}>
                     <Image
-                      source={item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar}
+                      source={
+                        item.author_avatar_url
+                          ? { uri: resolveAssetUrl(item.author_avatar_url) }
+                          : defaultAvatar
+                      }
                       style={styles.likedAuthorAvatar}
                     />
-                    <Text style={[styles.likedAuthor, { color: colors.subtext }]} numberOfLines={1}>
+                    <Text
+                      style={[styles.likedAuthor, { color: colors.subtext }]}
+                      numberOfLines={1}
+                    >
                       {item.author_name}
                     </Text>
                     {!isMerchantViewer ? (
@@ -1001,15 +1573,26 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                             navigation.navigate("Login");
                             return;
                           }
-                          toggleLikeMutation.mutate({ styleId: item.id, isLiked: item.is_liked });
+                          toggleLikeMutation.mutate({
+                            styleId: item.id,
+                            isLiked: item.is_liked,
+                          });
                         }}
                       >
                         <Ionicons
                           name={item.is_liked ? "heart" : "heart-outline"}
                           size={18}
-                          color={item.is_liked ? FEED_HEART_ACTIVE_COLOR : FEED_HEART_INACTIVE_COLOR}
+                          color={
+                            item.is_liked
+                              ? FEED_HEART_ACTIVE_COLOR
+                              : FEED_HEART_INACTIVE_COLOR
+                          }
                         />
-                        <Text style={[styles.likedCount, { color: colors.subtext }]}>{item.like_count}</Text>
+                        <Text
+                          style={[styles.likedCount, { color: colors.subtext }]}
+                        >
+                          {item.like_count}
+                        </Text>
                       </Pressable>
                     ) : null}
                   </View>
@@ -1022,32 +1605,62 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
           return (
             <Pressable
               style={[styles.postCard, { backgroundColor: colors.surface }]}
-              onPress={() => navigation.navigate("StylePreview", { styleId: item.id })}
+              onPress={() =>
+                navigation.navigate("StylePreview", { styleId: item.id })
+              }
             >
               <View>
-                <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={[styles.postImage, { backgroundColor: colors.surfaceAlt }]} />
+                <Image
+                  source={{ uri: resolveAssetUrl(item.image_url) }}
+                  style={[
+                    styles.postImage,
+                    { backgroundColor: colors.surfaceAlt },
+                  ]}
+                />
                 {author.is_mine ? (
-                  <View style={[styles.postViewBadge, { backgroundColor: colors.overlay }]}>
+                  <View
+                    style={[
+                      styles.postViewBadge,
+                      { backgroundColor: colors.overlay },
+                    ]}
+                  >
                     <Ionicons name="eye-outline" size={15} color="#ffffff" />
-                    <Text style={styles.postViewBadgeText}>{item.unique_viewer_count}</Text>
+                    <Text style={styles.postViewBadgeText}>
+                      {item.unique_viewer_count}
+                    </Text>
                   </View>
                 ) : null}
                 {item.is_hidden ? (
-                  <View style={[styles.hiddenBadge, { backgroundColor: colors.overlay }]}>
+                  <View
+                    style={[
+                      styles.hiddenBadge,
+                      { backgroundColor: colors.overlay },
+                    ]}
+                  >
                     <Text style={styles.hiddenBadgeText}>已隐藏</Text>
                   </View>
                 ) : null}
               </View>
               <View style={styles.postBody}>
-                <Text style={[styles.postTitle, { color: colors.text }]} numberOfLines={2}>
+                <Text
+                  style={[styles.postTitle, { color: colors.text }]}
+                  numberOfLines={2}
+                >
                   {item.title}
                 </Text>
                 <View style={styles.likedMetaRow}>
                   <Image
-                    source={author.avatar_url ? { uri: resolveAssetUrl(author.avatar_url) } : defaultAvatar}
+                    source={
+                      author.avatar_url
+                        ? { uri: resolveAssetUrl(author.avatar_url) }
+                        : defaultAvatar
+                    }
                     style={styles.likedAuthorAvatar}
                   />
-                  <Text style={[styles.likedAuthor, { color: colors.subtext }]} numberOfLines={1}>
+                  <Text
+                    style={[styles.likedAuthor, { color: colors.subtext }]}
+                    numberOfLines={1}
+                  >
                     {author.username}
                   </Text>
                   {!isMerchantViewer ? (
@@ -1060,31 +1673,52 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                           navigation.navigate("Login");
                           return;
                         }
-                        toggleLikeMutation.mutate({ styleId: item.id, isLiked: item.is_liked });
+                        toggleLikeMutation.mutate({
+                          styleId: item.id,
+                          isLiked: item.is_liked,
+                        });
                       }}
                     >
                       <Ionicons
                         name={item.is_liked ? "heart" : "heart-outline"}
                         size={18}
-                        color={item.is_liked ? FEED_HEART_ACTIVE_COLOR : FEED_HEART_INACTIVE_COLOR}
+                        color={
+                          item.is_liked
+                            ? FEED_HEART_ACTIVE_COLOR
+                            : FEED_HEART_INACTIVE_COLOR
+                        }
                       />
-                      <Text style={[styles.likedCount, { color: colors.subtext }]}>{item.like_count}</Text>
+                      <Text
+                        style={[styles.likedCount, { color: colors.subtext }]}
+                      >
+                        {item.like_count}
+                      </Text>
                     </Pressable>
                   ) : null}
                 </View>
                 {author.is_mine && managePostId ? (
                   <View style={styles.postActions}>
                     <Pressable
-                      style={[styles.postActionButton, { backgroundColor: colors.surfaceAlt }]}
+                      style={[
+                        styles.postActionButton,
+                        { backgroundColor: colors.surfaceAlt },
+                      ]}
                       onPress={(event) => {
                         event.stopPropagation();
                         openEdit(item);
                       }}
                     >
-                      <Text style={[styles.postActionText, { color: colors.text }]}>编辑</Text>
+                      <Text
+                        style={[styles.postActionText, { color: colors.text }]}
+                      >
+                        编辑
+                      </Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.postActionButton, { backgroundColor: colors.surfaceAlt }]}
+                      style={[
+                        styles.postActionButton,
+                        { backgroundColor: colors.surfaceAlt },
+                      ]}
                       onPress={(event) => {
                         event.stopPropagation();
                         updateMutation.mutate({
@@ -1093,19 +1727,42 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                         });
                       }}
                     >
-                      <Text style={[styles.postActionText, { color: colors.text }]}>{item.is_hidden ? "显示" : "隐藏"}</Text>
+                      <Text
+                        style={[styles.postActionText, { color: colors.text }]}
+                      >
+                        {item.is_hidden ? "显示" : "隐藏"}
+                      </Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.postActionButton, { backgroundColor: colors.dangerSoft }]}
+                      style={[
+                        styles.postActionButton,
+                        { backgroundColor: colors.dangerSoft },
+                      ]}
                       onPress={(event) => {
                         event.stopPropagation();
-                        Alert.alert("删除作品", "删除后将永久无法找回，确认删除吗？", [
-                          { text: "取消", style: "cancel" },
-                          { text: "删除", style: "destructive", onPress: () => deleteMutation.mutate(managePostId) },
-                        ]);
+                        Alert.alert(
+                          "删除作品",
+                          "删除后将永久无法找回，确认删除吗？",
+                          [
+                            { text: "取消", style: "cancel" },
+                            {
+                              text: "删除",
+                              style: "destructive",
+                              onPress: () =>
+                                deleteMutation.mutate(managePostId),
+                            },
+                          ],
+                        );
                       }}
                     >
-                      <Text style={[styles.postActionText, { color: colors.dangerText }]}>删除</Text>
+                      <Text
+                        style={[
+                          styles.postActionText,
+                          { color: colors.dangerText },
+                        ]}
+                      >
+                        删除
+                      </Text>
                     </Pressable>
                   </View>
                 ) : null}
@@ -1118,7 +1775,12 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
 
       {asProfileTab && author.is_mine && isPullRefreshing ? (
         <View style={styles.profileRefreshIndicatorWrap} pointerEvents="none">
-          <View style={[styles.profileRefreshIndicator, { backgroundColor: colors.navBackground }]}>
+          <View
+            style={[
+              styles.profileRefreshIndicator,
+              { backgroundColor: colors.navBackground },
+            ]}
+          >
             <Animated.View
               style={{
                 transform: [
@@ -1131,25 +1793,46 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
                 ],
               }}
             >
-              <Ionicons name="refresh-outline" size={34} color={colors.accent} />
+              <Ionicons
+                name="refresh-outline"
+                size={34}
+                color={colors.accent}
+              />
             </Animated.View>
           </View>
         </View>
       ) : null}
 
-      <Modal visible={!!editingPost} transparent animationType="fade" onRequestClose={() => setEditingPost(null)}>
+      <Modal
+        visible={!!editingPost}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditingPost(null)}
+      >
         <KeyboardAvoidingView
-          style={[styles.modalOverlay, { backgroundColor: "rgba(9, 11, 16, 0.45)" }]}
+          style={[
+            styles.modalOverlay,
+            { backgroundColor: "rgba(9, 11, 16, 0.45)" },
+          ]}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
           <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>编辑作品</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              编辑作品
+            </Text>
             <TextInput
               value={editingTitle}
               onChangeText={setEditingTitle}
               placeholder="标题"
               placeholderTextColor={colors.subtext}
-              style={[styles.input, { backgroundColor: colors.surfaceAlt, color: colors.text, borderColor: colors.border }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surfaceAlt,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
             />
             <TextInput
               value={editingDescription}
@@ -1160,7 +1843,11 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
               style={[
                 styles.input,
                 styles.textarea,
-                { backgroundColor: colors.surfaceAlt, color: colors.text, borderColor: colors.border },
+                {
+                  backgroundColor: colors.surfaceAlt,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
               ]}
             />
             <TextInput
@@ -1168,21 +1855,46 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
               onChangeText={setEditingTags}
               placeholder="标签，逗号分隔"
               placeholderTextColor={colors.subtext}
-              style={[styles.input, { backgroundColor: colors.surfaceAlt, color: colors.text, borderColor: colors.border }]}
+              style={[
+                styles.input,
+                {
+                  backgroundColor: colors.surfaceAlt,
+                  color: colors.text,
+                  borderColor: colors.border,
+                },
+              ]}
             />
             <View style={styles.modalActions}>
-              <PrimaryButton label="取消" onPress={() => setEditingPost(null)} variant="ghost" style={{ flex: 1 }} />
-              <PrimaryButton label="保存" onPress={saveEdit} loading={updateMutation.isPending} style={{ flex: 1 }} />
+              <PrimaryButton
+                label="取消"
+                onPress={() => setEditingPost(null)}
+                variant="ghost"
+                style={{ flex: 1 }}
+              />
+              <PrimaryButton
+                label="保存"
+                onPress={saveEdit}
+                loading={updateMutation.isPending}
+                style={{ flex: 1 }}
+              />
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
       {asProfileTab && author.is_mine && currentUser?.role === "merchant" ? (
-        <MerchantSideDrawer visible={drawerMounted} onClose={closeDrawer} onAction={handleMerchantDrawerAction} />
+        <MerchantSideDrawer
+          visible={drawerMounted}
+          onClose={closeDrawer}
+          onAction={handleMerchantDrawerAction}
+        />
       ) : null}
       {asProfileTab && author.is_mine && currentUser?.role !== "merchant" ? (
-        <ConsumerSideDrawer visible={drawerMounted} onClose={closeDrawer} onAction={handleConsumerDrawerAction} />
+        <ConsumerSideDrawer
+          visible={drawerMounted}
+          onClose={closeDrawer}
+          onAction={handleConsumerDrawerAction}
+        />
       ) : null}
       <BookingSheet
         visible={bookingVisible}
@@ -1190,9 +1902,14 @@ export function AuthorProfileScreen({ authorId, asProfileTab = false }: AuthorPr
         shopId={author.shop_id}
         shopName={author.shop_name ?? author.username}
         shopCity={author.shop_city ?? "深圳"}
-        onSuccess={() => Alert.alert("预约已提交", "商家会在预约列表里处理你的门店预约。")}
+        onSuccess={() =>
+          Alert.alert("预约已提交", "商家会在预约列表里处理你的门店预约。")
+        }
       />
-      <ShareSheet visible={shareVisible} onClose={() => setShareVisible(false)} />
+      <ShareSheet
+        visible={shareVisible}
+        onClose={() => setShareVisible(false)}
+      />
     </SafeAreaView>
   );
 }

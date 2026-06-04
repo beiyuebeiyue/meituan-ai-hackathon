@@ -5,14 +5,18 @@ import {
   FlatList,
   Image,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { resolveAssetUrl } from "../api/client";
-import { formatMarketDistance, formatMarketLocationLine, useMarketShops } from "../hooks/useMarketShops";
+import {
+  formatMarketDistance,
+  formatMarketLocationLine,
+  useMarketShops,
+} from "../hooks/useMarketShops";
 import { useMarketStore } from "../store/useMarketStore";
 import { NearbyShop } from "../types/api";
 import { useThemeColors } from "../utils/theme";
@@ -25,11 +29,30 @@ function joinMeta(parts: Array<string | null | undefined>) {
   return parts.filter(Boolean).join(" · ");
 }
 
-function ShopPhotoPlaceholder({ colors, compact = false }: { colors: ReturnType<typeof useThemeColors>; compact?: boolean }) {
+function ShopPhotoPlaceholder({
+  colors,
+  compact = false,
+}: {
+  colors: ReturnType<typeof useThemeColors>;
+  compact?: boolean;
+}) {
   return (
-    <View style={[compact ? styles.compactPhotoPlaceholder : styles.photoPlaceholder, { backgroundColor: colors.surfaceAlt }]}>
-      <Ionicons name="storefront-outline" size={compact ? 18 : 24} color={colors.subtext} />
-      {!compact ? <Text style={[styles.photoPlaceholderText, { color: colors.subtext }]}>暂无门店照片</Text> : null}
+    <View
+      style={[
+        compact ? styles.compactPhotoPlaceholder : styles.photoPlaceholder,
+        { backgroundColor: colors.surfaceAlt },
+      ]}
+    >
+      <Ionicons
+        name="storefront-outline"
+        size={compact ? 18 : 24}
+        color={colors.subtext}
+      />
+      {!compact ? (
+        <Text style={[styles.photoPlaceholderText, { color: colors.subtext }]}>
+          暂无门店照片
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -37,7 +60,9 @@ function ShopPhotoPlaceholder({ colors, compact = false }: { colors: ReturnType<
 export function MarketScreen() {
   const colors = useThemeColors();
   const navigation = useNavigation<any>();
-  const pendingBookingStyleId = useMarketStore((state) => state.pendingBookingStyleId);
+  const pendingBookingStyleId = useMarketStore(
+    (state) => state.pendingBookingStyleId,
+  );
   const {
     selectedCity,
     sort,
@@ -59,26 +84,45 @@ export function MarketScreen() {
 
   const renderShopCard = ({ item }: { item: NearbyShop }) => {
     const rating = formatRating(item.rating);
-    const priceAndTime = joinMeta([item.average_price_text, item.business_time_text]);
-    const coverUri = item.cover_image_url ? resolveAssetUrl(item.cover_image_url) : null;
+    const priceAndTime = joinMeta([
+      item.average_price_text,
+      item.business_time_text,
+    ]);
+    const coverUri = item.cover_image_url
+      ? resolveAssetUrl(item.cover_image_url)
+      : null;
     return (
       <Pressable style={styles.resultCard} onPress={() => openShopDetail(item)}>
         {coverUri ? (
-          <Image source={{ uri: coverUri }} style={[styles.resultImage, { backgroundColor: colors.surfaceAlt }]} />
+          <Image
+            source={{ uri: coverUri }}
+            style={[styles.resultImage, { backgroundColor: colors.surfaceAlt }]}
+          />
         ) : (
           <ShopPhotoPlaceholder colors={colors} />
         )}
         <View style={styles.resultBody}>
           <View style={styles.resultTitleRow}>
-            <Text style={[styles.resultTitle, { color: colors.text }]} numberOfLines={2}>
+            <Text
+              style={[styles.resultTitle, { color: colors.text }]}
+              numberOfLines={2}
+            >
               {item.name}
             </Text>
-            <Text style={[styles.resultDistance, { color: colors.subtext }]}>{formatMarketDistance(item.distance_meters)}</Text>
+            <Text style={[styles.resultDistance, { color: colors.subtext }]}>
+              {formatMarketDistance(item.distance_meters)}
+            </Text>
           </View>
           {item.can_do_style ? (
             <View style={[styles.claimBadge, { borderColor: colors.accent }]}>
-              <Ionicons name="checkmark-circle" size={13} color={colors.accent} />
-              <Text style={[styles.claimBadgeText, { color: colors.accent }]}>可做这款</Text>
+              <Ionicons
+                name="checkmark-circle"
+                size={13}
+                color={colors.accent}
+              />
+              <Text style={[styles.claimBadgeText, { color: colors.accent }]}>
+                可做这款
+              </Text>
             </View>
           ) : null}
           <View style={styles.ratingRow}>
@@ -89,16 +133,25 @@ export function MarketScreen() {
               </>
             ) : null}
             {priceAndTime ? (
-              <Text style={[styles.resultMeta, { color: colors.subtext }]} numberOfLines={1}>
+              <Text
+                style={[styles.resultMeta, { color: colors.subtext }]}
+                numberOfLines={1}
+              >
                 {priceAndTime}
               </Text>
             ) : null}
           </View>
-          <Text style={[styles.resultMeta, { color: colors.subtext }]} numberOfLines={1}>
+          <Text
+            style={[styles.resultMeta, { color: colors.subtext }]}
+            numberOfLines={1}
+          >
             {formatMarketLocationLine(item.region, item.address)}
           </Text>
           {item.heat_text ? (
-            <Text style={[styles.addressText, { color: colors.subtext }]} numberOfLines={1}>
+            <Text
+              style={[styles.addressText, { color: colors.subtext }]}
+              numberOfLines={1}
+            >
               商圈：{item.heat_text}
             </Text>
           ) : null}
@@ -108,11 +161,21 @@ export function MarketScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.topBar}>
-        <Pressable style={styles.cityButton} onPress={() => navigation.navigate("MarketCityPicker", { entryEdge: "left" })}>
+        <Pressable
+          style={styles.cityButton}
+          onPress={() =>
+            navigation.navigate("MarketCityPicker", { entryEdge: "left" })
+          }
+        >
           <Ionicons name="location-outline" size={17} color={colors.text} />
-          <Text style={[styles.cityText, { color: colors.text }]} numberOfLines={1}>
+          <Text
+            style={[styles.cityText, { color: colors.text }]}
+            numberOfLines={1}
+          >
             {selectedCity}
           </Text>
           <Ionicons name="chevron-down" size={14} color={colors.subtext} />
@@ -134,30 +197,53 @@ export function MarketScreen() {
             </Pressable>
           ) : null}
         </View>
-        <Pressable style={styles.mapEntry} onPress={() => navigation.navigate("MarketMap", { entryEdge: "right" })}>
+        <Pressable
+          style={styles.mapEntry}
+          onPress={() =>
+            navigation.navigate("MarketMap", { entryEdge: "right" })
+          }
+        >
           <Ionicons name="map-outline" size={24} color={colors.text} />
-          <Text style={[styles.mapEntryText, { color: colors.text }]}>地图</Text>
+          <Text style={[styles.mapEntryText, { color: colors.text }]}>
+            地图
+          </Text>
         </Pressable>
       </View>
 
       {locationDenied ? (
-        <View style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}>
+        <View
+          style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}
+        >
           <Ionicons name="location-outline" size={16} color={colors.subtext} />
-          <Text style={[styles.noticeText, { color: colors.subtext }]}>定位未开启，已为你展示深圳附近的美甲店。</Text>
+          <Text style={[styles.noticeText, { color: colors.subtext }]}>
+            定位未开启，已为你展示深圳附近的美甲店。
+          </Text>
         </View>
       ) : null}
 
       {unavailableMessage ? (
-        <View style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}>
-          <Ionicons name="alert-circle-outline" size={16} color={colors.subtext} />
-          <Text style={[styles.noticeText, { color: colors.subtext }]}>{unavailableMessage}</Text>
+        <View
+          style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}
+        >
+          <Ionicons
+            name="alert-circle-outline"
+            size={16}
+            color={colors.subtext}
+          />
+          <Text style={[styles.noticeText, { color: colors.subtext }]}>
+            {unavailableMessage}
+          </Text>
         </View>
       ) : null}
 
       {pendingBookingStyleId ? (
-        <View style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}>
+        <View
+          style={[styles.noticeBanner, { backgroundColor: colors.surfaceAlt }]}
+        >
           <Ionicons name="calendar-outline" size={16} color={colors.subtext} />
-          <Text style={[styles.noticeText, { color: colors.subtext }]}>正在为刚才试戴的手工甲选择可预约商家。</Text>
+          <Text style={[styles.noticeText, { color: colors.subtext }]}>
+            正在为刚才试戴的手工甲选择可预约商家。
+          </Text>
         </View>
       ) : null}
 
@@ -170,19 +256,39 @@ export function MarketScreen() {
           return (
             <Pressable
               key={key}
-              style={[styles.sortChip, { backgroundColor: active ? colors.accentSoft : colors.surface }]}
+              style={[
+                styles.sortChip,
+                {
+                  backgroundColor: active ? colors.accentSoft : colors.surface,
+                },
+              ]}
               onPress={() => setSort(key as "default" | "distance")}
             >
-              <Text style={[styles.sortChipText, { color: active ? colors.accent : colors.text }]}>{label}</Text>
-              <Ionicons name="chevron-down" size={13} color={active ? colors.accent : colors.subtext} />
+              <Text
+                style={[
+                  styles.sortChipText,
+                  { color: active ? colors.accent : colors.text },
+                ]}
+              >
+                {label}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={13}
+                color={active ? colors.accent : colors.subtext}
+              />
             </Pressable>
           );
         })}
         <View style={[styles.sortChip, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sortChipText, { color: colors.text }]}>5km内</Text>
+          <Text style={[styles.sortChipText, { color: colors.text }]}>
+            5km内
+          </Text>
         </View>
         <View style={[styles.sortChip, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sortChipText, { color: colors.text }]}>美甲</Text>
+          <Text style={[styles.sortChipText, { color: colors.text }]}>
+            美甲
+          </Text>
         </View>
       </View>
 
@@ -193,7 +299,9 @@ export function MarketScreen() {
       {!locationBootstrapped || query.isLoading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={colors.accent} size="large" />
-          <Text style={[styles.loadingText, { color: colors.subtext }]}>正在为您搜索附近的美甲店</Text>
+          <Text style={[styles.loadingText, { color: colors.subtext }]}>
+            正在为您搜索附近的美甲店
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -202,7 +310,9 @@ export function MarketScreen() {
           contentContainerStyle={styles.listContent}
           renderItem={renderShopCard}
           ListEmptyComponent={
-            <Text style={[styles.emptyText, { color: colors.subtext }]}>{unavailableMessage || "当前没有可展示的门店。"}</Text>
+            <Text style={[styles.emptyText, { color: colors.subtext }]}>
+              {unavailableMessage || "当前没有可展示的门店。"}
+            </Text>
           }
         />
       )}

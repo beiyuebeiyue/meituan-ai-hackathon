@@ -1,10 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useMemo, useState } from "react";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SlideOverlayScreen,
+  useOverlayDirection,
+} from "../components/SlideOverlayScreen";
 import { useMarketStore } from "../store/useMarketStore";
-import { MARKET_CITIES, MARKET_CITY_INITIALS, RECOMMENDED_MARKET_CITIES } from "../utils/marketCities";
+import {
+  MARKET_CITIES,
+  MARKET_CITY_INITIALS,
+  RECOMMENDED_MARKET_CITIES,
+} from "../utils/marketCities";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 export function MarketCityPickerScreen() {
@@ -18,7 +33,11 @@ export function MarketCityPickerScreen() {
   const filteredCities = useMemo(() => {
     const keyword = query.trim();
     if (!keyword) return MARKET_CITIES;
-    return MARKET_CITIES.filter((city) => city.name.includes(keyword) || city.initial.toLowerCase() === keyword.toLowerCase());
+    return MARKET_CITIES.filter(
+      (city) =>
+        city.name.includes(keyword) ||
+        city.initial.toLowerCase() === keyword.toLowerCase(),
+    );
   }, [query]);
 
   const selectCity = (city: string, dismiss: () => void) => {
@@ -33,13 +52,24 @@ export function MarketCityPickerScreen() {
       onDismiss={() => navigation.goBack()}
     >
       {(dismiss) => (
-        <SafeAreaView style={[styles.container, { backgroundColor: isDark ? "#17171b" : colors.background }]}>
+        <SafeAreaView
+          style={[
+            styles.container,
+            { backgroundColor: isDark ? "#17171b" : colors.background },
+          ]}
+        >
           <View style={styles.header}>
             <Pressable style={styles.backButton} onPress={dismiss}>
               <Ionicons name="chevron-back" size={30} color={colors.text} />
             </Pressable>
-            <View style={[styles.searchShell, { backgroundColor: colors.input }]}>
-              <Ionicons name="search-outline" size={20} color={colors.subtext} />
+            <View
+              style={[styles.searchShell, { backgroundColor: colors.input }]}
+            >
+              <Ionicons
+                name="search-outline"
+                size={20}
+                color={colors.subtext}
+              />
               <TextInput
                 style={[styles.searchInput, { color: colors.text }]}
                 value={query}
@@ -48,24 +78,48 @@ export function MarketCityPickerScreen() {
                 placeholderTextColor={colors.subtext}
               />
             </View>
-            <Pressable style={[styles.mapPickButton, { backgroundColor: colors.surface }]}>
+            <Pressable
+              style={[
+                styles.mapPickButton,
+                { backgroundColor: colors.surface },
+              ]}
+            >
               <Ionicons name="location" size={22} color="#1687ff" />
-              <Text style={[styles.mapPickText, { color: colors.text }]}>地图选点</Text>
+              <Text style={[styles.mapPickText, { color: colors.text }]}>
+                地图选点
+              </Text>
             </Pressable>
           </View>
 
           <View style={styles.topTabs}>
-            <Text style={[styles.topTab, { color: colors.text }]}>我的地址</Text>
+            <Text style={[styles.topTab, { color: colors.text }]}>
+              我的地址
+            </Text>
             <View>
-              <Text style={[styles.topTab, styles.topTabActive, { color: colors.text }]}>国内城市</Text>
+              <Text
+                style={[
+                  styles.topTab,
+                  styles.topTabActive,
+                  { color: colors.text },
+                ]}
+              >
+                国内城市
+              </Text>
               <View style={styles.yellowUnderline} />
             </View>
-            <Text style={[styles.topTab, { color: colors.text }]}>海外地区</Text>
+            <Text style={[styles.topTab, { color: colors.text }]}>
+              海外地区
+            </Text>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+          >
             <View style={[styles.panel, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.sectionLabel, { color: colors.subtext }]}>推荐城市</Text>
+              <Text style={[styles.sectionLabel, { color: colors.subtext }]}>
+                推荐城市
+              </Text>
               <View style={styles.recommendGrid}>
                 {RECOMMENDED_MARKET_CITIES.map((city) => (
                   <Pressable
@@ -73,37 +127,76 @@ export function MarketCityPickerScreen() {
                     style={[styles.cityPill, { backgroundColor: colors.input }]}
                     onPress={() => selectCity(city, dismiss)}
                   >
-                    {city === "深圳" ? <Ionicons name="location-outline" size={17} color={colors.text} /> : null}
-                    <Text style={[styles.cityPillText, { color: colors.text }]}>{city}</Text>
+                    {city === "深圳" ? (
+                      <Ionicons
+                        name="location-outline"
+                        size={17}
+                        color={colors.text}
+                      />
+                    ) : null}
+                    <Text style={[styles.cityPillText, { color: colors.text }]}>
+                      {city}
+                    </Text>
                   </Pressable>
                 ))}
               </View>
 
-              <Text style={[styles.sectionLabel, styles.initialTitle, { color: colors.subtext }]}>城市开头字母</Text>
+              <Text
+                style={[
+                  styles.sectionLabel,
+                  styles.initialTitle,
+                  { color: colors.subtext },
+                ]}
+              >
+                城市开头字母
+              </Text>
               <View style={styles.initialGrid}>
                 {MARKET_CITY_INITIALS.map((initial) => (
-                  <View key={initial} style={[styles.initialPill, { backgroundColor: colors.input }]}>
-                    <Text style={[styles.initialText, { color: colors.text }]}>{initial}</Text>
+                  <View
+                    key={initial}
+                    style={[
+                      styles.initialPill,
+                      { backgroundColor: colors.input },
+                    ]}
+                  >
+                    <Text style={[styles.initialText, { color: colors.text }]}>
+                      {initial}
+                    </Text>
                   </View>
                 ))}
               </View>
             </View>
 
-            <View style={[styles.cityList, { backgroundColor: colors.surface }]}>
+            <View
+              style={[styles.cityList, { backgroundColor: colors.surface }]}
+            >
               {Array.from(new Set(filteredCities.map((city) => city.initial)))
                 .sort()
                 .map((initial) => {
-                  const cities = filteredCities.filter((city) => city.initial === initial);
+                  const cities = filteredCities.filter(
+                    (city) => city.initial === initial,
+                  );
                   return (
                     <View key={initial}>
-                      <Text style={[styles.letterHeader, { color: colors.subtext }]}>{initial}</Text>
+                      <Text
+                        style={[styles.letterHeader, { color: colors.subtext }]}
+                      >
+                        {initial}
+                      </Text>
                       {cities.map((city) => (
                         <Pressable
                           key={city.name}
-                          style={[styles.cityRow, { borderBottomColor: colors.border }]}
+                          style={[
+                            styles.cityRow,
+                            { borderBottomColor: colors.border },
+                          ]}
                           onPress={() => selectCity(city.name, dismiss)}
                         >
-                          <Text style={[styles.cityRowText, { color: colors.text }]}>{city.name}</Text>
+                          <Text
+                            style={[styles.cityRowText, { color: colors.text }]}
+                          >
+                            {city.name}
+                          </Text>
                         </Pressable>
                       ))}
                     </View>

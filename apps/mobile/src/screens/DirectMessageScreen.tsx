@@ -11,13 +11,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { BookingSheet } from "../components/BookingSheet";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
@@ -33,22 +33,74 @@ const emojiGroups = [
   {
     key: "smile",
     label: "精选",
-    items: ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃"],
+    items: [
+      "😀",
+      "😃",
+      "😄",
+      "😁",
+      "😆",
+      "😅",
+      "😂",
+      "🤣",
+      "😊",
+      "😇",
+      "🙂",
+      "🙃",
+    ],
   },
   {
     key: "love",
     label: "黄脸",
-    items: ["😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜"],
+    items: [
+      "😉",
+      "😌",
+      "😍",
+      "🥰",
+      "😘",
+      "😗",
+      "😙",
+      "😚",
+      "😋",
+      "😛",
+      "😝",
+      "😜",
+    ],
   },
   {
     key: "mood",
     label: "情绪",
-    items: ["🤪", "🤨", "🧐", "🤓", "😎", "🥳", "😏", "😒", "😞", "😔", "😟", "😕"],
+    items: [
+      "🤪",
+      "🤨",
+      "🧐",
+      "🤓",
+      "😎",
+      "🥳",
+      "😏",
+      "😒",
+      "😞",
+      "😔",
+      "😟",
+      "😕",
+    ],
   },
   {
     key: "sad",
     label: "哭笑",
-    items: ["🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡"],
+    items: [
+      "🙁",
+      "☹️",
+      "😣",
+      "😖",
+      "😫",
+      "😩",
+      "🥺",
+      "😢",
+      "😭",
+      "😤",
+      "😠",
+      "😡",
+    ],
   },
 ] as const;
 
@@ -68,8 +120,11 @@ export function DirectMessageScreen() {
   const [emojiPanelOpen, setEmojiPanelOpen] = useState(false);
   const [morePanelOpen, setMorePanelOpen] = useState(false);
   const [likedStylesOpen, setLikedStylesOpen] = useState(false);
-  const [bookingInviteShop, setBookingInviteShop] = useState<DirectMessage["booking_invite"] | null>(null);
-  const [activeEmojiGroup, setActiveEmojiGroup] = useState<(typeof emojiGroups)[number]["key"]>("smile");
+  const [bookingInviteShop, setBookingInviteShop] = useState<
+    DirectMessage["booking_invite"] | null
+  >(null);
+  const [activeEmojiGroup, setActiveEmojiGroup] =
+    useState<(typeof emojiGroups)[number]["key"]>("smile");
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const listRef = useRef<FlatList<DirectMessage>>(null);
   const sentInitialPayloadRef = useRef(false);
@@ -110,7 +165,9 @@ export function DirectMessageScreen() {
       setMorePanelOpen(false);
       setLikedStylesOpen(false);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["conversation", route.params.userId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["conversation", route.params.userId],
+        }),
         queryClient.invalidateQueries({ queryKey: ["message-inbox"] }),
         queryClient.invalidateQueries({ queryKey: ["stranger-messages"] }),
       ]);
@@ -128,15 +185,22 @@ export function DirectMessageScreen() {
   });
 
   const imageMutation = useMutation({
-    mutationFn: ({ imageUri, content }: { imageUri: string; content: string }) =>
-      api.sendImageMessage(route.params.userId, imageUri, content),
+    mutationFn: ({
+      imageUri,
+      content,
+    }: {
+      imageUri: string;
+      content: string;
+    }) => api.sendImageMessage(route.params.userId, imageUri, content),
     onSuccess: async () => {
       setMessage("");
       setEmojiPanelOpen(false);
       setMorePanelOpen(false);
       setLikedStylesOpen(false);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["conversation", route.params.userId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["conversation", route.params.userId],
+        }),
         queryClient.invalidateQueries({ queryKey: ["message-inbox"] }),
         queryClient.invalidateQueries({ queryKey: ["stranger-messages"] }),
       ]);
@@ -162,7 +226,9 @@ export function DirectMessageScreen() {
       setMorePanelOpen(false);
       setLikedStylesOpen(false);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["conversation", route.params.userId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["conversation", route.params.userId],
+        }),
         queryClient.invalidateQueries({ queryKey: ["message-inbox"] }),
         queryClient.invalidateQueries({ queryKey: ["stranger-messages"] }),
       ]);
@@ -180,15 +246,27 @@ export function DirectMessageScreen() {
   });
 
   const tryOnResultMessageMutation = useMutation({
-    mutationFn: ({ tryOnJobId, content }: { tryOnJobId: string; content?: string }) =>
-      api.sendTryOnResultMessage(route.params.userId, tryOnJobId, content ?? ""),
+    mutationFn: ({
+      tryOnJobId,
+      content,
+    }: {
+      tryOnJobId: string;
+      content?: string;
+    }) =>
+      api.sendTryOnResultMessage(
+        route.params.userId,
+        tryOnJobId,
+        content ?? "",
+      ),
     onSuccess: async () => {
       setMessage("");
       setEmojiPanelOpen(false);
       setMorePanelOpen(false);
       setLikedStylesOpen(false);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["conversation", route.params.userId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["conversation", route.params.userId],
+        }),
         queryClient.invalidateQueries({ queryKey: ["message-inbox"] }),
         queryClient.invalidateQueries({ queryKey: ["stranger-messages"] }),
       ]);
@@ -212,7 +290,9 @@ export function DirectMessageScreen() {
       setMorePanelOpen(false);
       setLikedStylesOpen(false);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["conversation", route.params.userId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["conversation", route.params.userId],
+        }),
         queryClient.invalidateQueries({ queryKey: ["message-inbox"] }),
         queryClient.invalidateQueries({ queryKey: ["stranger-messages"] }),
       ]);
@@ -239,7 +319,11 @@ export function DirectMessageScreen() {
   const canSend = Boolean(thread?.can_send && !isSending && hasDraft);
   const canUseMoreActions = Boolean(thread?.can_send && !isSending);
   const canSendImage = canUseMoreActions;
-  const canSendBookingInvite = Boolean(canUseMoreActions && currentUser?.role === "merchant" && thread?.target.role === "consumer");
+  const canSendBookingInvite = Boolean(
+    canUseMoreActions &&
+    currentUser?.role === "merchant" &&
+    thread?.target.role === "consumer",
+  );
 
   const bubbleBorderColor = useMemo(() => colors.border, [colors.border]);
 
@@ -260,7 +344,14 @@ export function DirectMessageScreen() {
         content: route.params.initialMessage,
       });
     }
-  }, [route.params.initialMessage, route.params.initialStyleId, route.params.initialTryOnJobId, styleMessageMutation, thread?.can_send, tryOnResultMessageMutation]);
+  }, [
+    route.params.initialMessage,
+    route.params.initialStyleId,
+    route.params.initialTryOnJobId,
+    styleMessageMutation,
+    thread?.can_send,
+    tryOnResultMessageMutation,
+  ]);
 
   const insertEmoji = (emoji: string) => {
     const start = selection.start ?? message.length;
@@ -298,17 +389,31 @@ export function DirectMessageScreen() {
 
   const pickMessageImage = async () => {
     if (!canSendImage) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.85 });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+    });
     if (!result.canceled) {
-      imageMutation.mutate({ imageUri: result.assets[0].uri, content: message.trim() });
+      imageMutation.mutate({
+        imageUri: result.assets[0].uri,
+        content: message.trim(),
+      });
     }
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <Pressable style={styles.headerAction} onPress={() => dismissOverlay?.() ?? navigation.goBack()}>
+          <Pressable
+            style={styles.headerAction}
+            onPress={() => dismissOverlay?.() ?? navigation.goBack()}
+          >
             <Ionicons name="chevron-back" size={28} color={colors.text} />
           </Pressable>
           <Pressable
@@ -316,25 +421,46 @@ export function DirectMessageScreen() {
             disabled={!thread || thread.target.role !== "merchant"}
             onPress={() => {
               if (thread?.target.role === "merchant") {
-                navigation.navigate("AuthorProfile", { authorId: thread.target.id });
+                navigation.navigate("AuthorProfile", {
+                  authorId: thread.target.id,
+                });
               }
             }}
           >
             <Image
-              source={thread?.target.avatar_url ? { uri: resolveAssetUrl(thread.target.avatar_url) } : defaultAvatar}
-              style={[styles.headerAvatar, { backgroundColor: colors.surfaceAlt }]}
+              source={
+                thread?.target.avatar_url
+                  ? { uri: resolveAssetUrl(thread.target.avatar_url) }
+                  : defaultAvatar
+              }
+              style={[
+                styles.headerAvatar,
+                { backgroundColor: colors.surfaceAlt },
+              ]}
             />
-            <Text style={[styles.headerName, { color: colors.text }]}>{thread?.target.username ?? "私信"}</Text>
+            <Text style={[styles.headerName, { color: colors.text }]}>
+              {thread?.target.username ?? "私信"}
+            </Text>
           </Pressable>
           <Pressable
             style={styles.headerAction}
-            onPress={() => Alert.alert("更多", "不再看她的操作请在作者主页右上角中完成。")}
+            onPress={() =>
+              Alert.alert("更多", "不再看她的操作请在作者主页右上角中完成。")
+            }
           >
-            <Ionicons name="ellipsis-horizontal" size={22} color={colors.text} />
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={22}
+              color={colors.text}
+            />
           </Pressable>
         </View>
 
-        {thread?.notice ? <Text style={[styles.notice, { color: colors.subtext }]}>{thread.notice}</Text> : null}
+        {thread?.notice ? (
+          <Text style={[styles.notice, { color: colors.subtext }]}>
+            {thread.notice}
+          </Text>
+        ) : null}
 
         <FlatList
           ref={listRef}
@@ -348,15 +474,29 @@ export function DirectMessageScreen() {
           }}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <Text style={[styles.emptyText, { color: colors.subtext }]}>发一条消息，开始这段对话。</Text>
+              <Text style={[styles.emptyText, { color: colors.subtext }]}>
+                发一条消息，开始这段对话。
+              </Text>
             </View>
           }
           renderItem={({ item }) => (
-            <View style={[styles.messageRow, item.is_mine ? styles.mineRow : styles.otherRow]}>
+            <View
+              style={[
+                styles.messageRow,
+                item.is_mine ? styles.mineRow : styles.otherRow,
+              ]}
+            >
               {!item.is_mine ? (
                 <Image
-                  source={thread?.target.avatar_url ? { uri: resolveAssetUrl(thread.target.avatar_url) } : defaultAvatar}
-                  style={[styles.messageAvatar, { backgroundColor: colors.surfaceAlt }]}
+                  source={
+                    thread?.target.avatar_url
+                      ? { uri: resolveAssetUrl(thread.target.avatar_url) }
+                      : defaultAvatar
+                  }
+                  style={[
+                    styles.messageAvatar,
+                    { backgroundColor: colors.surfaceAlt },
+                  ]}
                 />
               ) : null}
               <View style={styles.messageContent}>
@@ -364,40 +504,78 @@ export function DirectMessageScreen() {
                   style={[
                     styles.messageBubble,
                     {
-                      backgroundColor: item.is_mine ? "#2d82ff" : colors.surface,
+                      backgroundColor: item.is_mine
+                        ? "#2d82ff"
+                        : colors.surface,
                       borderColor: item.is_mine ? "#2d82ff" : bubbleBorderColor,
                     },
                   ]}
                 >
                   {item.image_url && item.shared_style ? (
-                    <Text style={[styles.tryOnImageLabel, { color: item.is_mine ? "rgba(255,255,255,0.82)" : colors.subtext }]}>
+                    <Text
+                      style={[
+                        styles.tryOnImageLabel,
+                        {
+                          color: item.is_mine
+                            ? "rgba(255,255,255,0.82)"
+                            : colors.subtext,
+                        },
+                      ]}
+                    >
                       焕甲结果图
                     </Text>
                   ) : null}
                   {item.image_url ? (
-                    <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={styles.messageImage} />
+                    <Image
+                      source={{ uri: resolveAssetUrl(item.image_url) }}
+                      style={styles.messageImage}
+                    />
                   ) : null}
                   {item.shared_style ? (
                     <Pressable
                       style={[
                         styles.sharedStyleCard,
-                        { backgroundColor: item.is_mine ? "rgba(255,255,255,0.14)" : colors.surfaceAlt },
+                        {
+                          backgroundColor: item.is_mine
+                            ? "rgba(255,255,255,0.14)"
+                            : colors.surfaceAlt,
+                        },
                       ]}
-                      onPress={() => navigation.navigate("StylePreview", { styleId: item.shared_style?.id })}
+                      onPress={() =>
+                        navigation.navigate("StylePreview", {
+                          styleId: item.shared_style?.id,
+                        })
+                      }
                     >
-                      <Image source={{ uri: resolveAssetUrl(item.shared_style.image_url) }} style={styles.sharedStyleImage} />
+                      <Image
+                        source={{
+                          uri: resolveAssetUrl(item.shared_style.image_url),
+                        }}
+                        style={styles.sharedStyleImage}
+                      />
                       <View style={styles.sharedStyleTextBlock}>
                         <Text
-                          style={[styles.sharedStyleTitle, { color: item.is_mine ? "#ffffff" : colors.text }]}
+                          style={[
+                            styles.sharedStyleTitle,
+                            { color: item.is_mine ? "#ffffff" : colors.text },
+                          ]}
                           numberOfLines={2}
                         >
                           {item.shared_style.title}
                         </Text>
                         <Text
-                          style={[styles.sharedStyleMeta, { color: item.is_mine ? "rgba(255,255,255,0.78)" : colors.subtext }]}
+                          style={[
+                            styles.sharedStyleMeta,
+                            {
+                              color: item.is_mine
+                                ? "rgba(255,255,255,0.78)"
+                                : colors.subtext,
+                            },
+                          ]}
                           numberOfLines={1}
                         >
-                          {item.shared_style.author_name} · {item.shared_style.like_count}赞
+                          {item.shared_style.author_name} ·{" "}
+                          {item.shared_style.like_count}赞
                         </Text>
                       </View>
                     </Pressable>
@@ -406,49 +584,114 @@ export function DirectMessageScreen() {
                     <Pressable
                       style={[
                         styles.bookingInviteCard,
-                        { backgroundColor: item.is_mine ? "rgba(255,255,255,0.14)" : colors.surfaceAlt },
+                        {
+                          backgroundColor: item.is_mine
+                            ? "rgba(255,255,255,0.14)"
+                            : colors.surfaceAlt,
+                        },
                       ]}
-                      disabled={item.is_mine || currentUser?.role !== "consumer"}
-                      onPress={() => setBookingInviteShop(item.booking_invite ?? null)}
+                      disabled={
+                        item.is_mine || currentUser?.role !== "consumer"
+                      }
+                      onPress={() =>
+                        setBookingInviteShop(item.booking_invite ?? null)
+                      }
                     >
                       <View style={styles.bookingInviteHeader}>
                         <View
                           style={[
                             styles.bookingInviteIcon,
-                            { backgroundColor: item.is_mine ? "rgba(255,255,255,0.2)" : colors.accentSoft },
+                            {
+                              backgroundColor: item.is_mine
+                                ? "rgba(255,255,255,0.2)"
+                                : colors.accentSoft,
+                            },
                           ]}
                         >
-                          <Ionicons name="calendar-outline" size={18} color={item.is_mine ? "#ffffff" : colors.accent} />
+                          <Ionicons
+                            name="calendar-outline"
+                            size={18}
+                            color={item.is_mine ? "#ffffff" : colors.accent}
+                          />
                         </View>
-                        <Text style={[styles.bookingInviteTitle, { color: item.is_mine ? "#ffffff" : colors.text }]}>
+                        <Text
+                          style={[
+                            styles.bookingInviteTitle,
+                            { color: item.is_mine ? "#ffffff" : colors.text },
+                          ]}
+                        >
                           邀请预约
                         </Text>
                       </View>
                       <Text
-                        style={[styles.bookingInviteMeta, { color: item.is_mine ? "rgba(255,255,255,0.78)" : colors.subtext }]}
+                        style={[
+                          styles.bookingInviteMeta,
+                          {
+                            color: item.is_mine
+                              ? "rgba(255,255,255,0.78)"
+                              : colors.subtext,
+                          },
+                        ]}
                         numberOfLines={2}
                       >
-                        {item.booking_invite.shop_name} · {item.booking_invite.shop_city}
-                        {item.booking_invite.shop_address ? `\n${item.booking_invite.shop_address}` : ""}
+                        {item.booking_invite.shop_name} ·{" "}
+                        {item.booking_invite.shop_city}
+                        {item.booking_invite.shop_address
+                          ? `\n${item.booking_invite.shop_address}`
+                          : ""}
                       </Text>
-                      <Text style={[styles.bookingInviteCta, { color: item.is_mine ? "#ffffff" : colors.accent }]}>
-                        {item.is_mine ? "等待对方选择时间" : currentUser?.role === "consumer" ? "选择时间预约" : "预约邀请"}
+                      <Text
+                        style={[
+                          styles.bookingInviteCta,
+                          { color: item.is_mine ? "#ffffff" : colors.accent },
+                        ]}
+                      >
+                        {item.is_mine
+                          ? "等待对方选择时间"
+                          : currentUser?.role === "consumer"
+                            ? "选择时间预约"
+                            : "预约邀请"}
                       </Text>
                     </Pressable>
                   ) : null}
                   {item.content ? (
-                    <Text style={[styles.messageText, { color: item.is_mine ? "#ffffff" : colors.text }]}>{item.content}</Text>
+                    <Text
+                      style={[
+                        styles.messageText,
+                        { color: item.is_mine ? "#ffffff" : colors.text },
+                      ]}
+                    >
+                      {item.content}
+                    </Text>
                   ) : null}
                 </View>
-                <Text style={[styles.messageTime, { color: colors.subtext }]}>{formatMessageTime(item.created_at)}</Text>
+                <Text style={[styles.messageTime, { color: colors.subtext }]}>
+                  {formatMessageTime(item.created_at)}
+                </Text>
               </View>
             </View>
           )}
         />
 
-        <View style={[styles.composerWrap, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
-          <View style={[styles.inputShell, { backgroundColor: colors.input, borderColor: colors.border }]}>
-            <Pressable style={styles.iconButton} onPress={() => Alert.alert("语音", "语音私信后续补充。")}>
+        <View
+          style={[
+            styles.composerWrap,
+            {
+              borderTopColor: colors.border,
+              backgroundColor: colors.background,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.inputShell,
+              { backgroundColor: colors.input, borderColor: colors.border },
+            ]}
+          >
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => Alert.alert("语音", "语音私信后续补充。")}
+            >
               <Ionicons name="mic-outline" size={22} color={colors.subtext} />
             </Pressable>
             <TextInput
@@ -462,22 +705,39 @@ export function DirectMessageScreen() {
                 setEmojiPanelOpen(false);
                 setMorePanelOpen(false);
               }}
-              onSelectionChange={(event) => setSelection(event.nativeEvent.selection)}
+              onSelectionChange={(event) =>
+                setSelection(event.nativeEvent.selection)
+              }
             />
             <Pressable style={styles.iconButton} onPress={toggleEmojiPanel}>
-              <Ionicons name={emojiPanelOpen ? "happy" : "happy-outline"} size={22} color={emojiPanelOpen ? colors.accent : colors.subtext} />
+              <Ionicons
+                name={emojiPanelOpen ? "happy" : "happy-outline"}
+                size={22}
+                color={emojiPanelOpen ? colors.accent : colors.subtext}
+              />
             </Pressable>
             {hasDraft ? (
               <Pressable
-                style={[styles.inlineSendButton, { backgroundColor: canSend ? colors.accent : colors.border }]}
+                style={[
+                  styles.inlineSendButton,
+                  { backgroundColor: canSend ? colors.accent : colors.border },
+                ]}
                 disabled={!canSend}
                 onPress={() => sendMutation.mutate()}
               >
                 <Ionicons name="paper-plane" size={18} color="#ffffff" />
               </Pressable>
             ) : (
-              <Pressable style={styles.iconButton} disabled={!canSendImage} onPress={toggleMorePanel}>
-                <Ionicons name={morePanelOpen ? "add-circle" : "add-circle-outline"} size={25} color={morePanelOpen ? colors.accent : colors.subtext} />
+              <Pressable
+                style={styles.iconButton}
+                disabled={!canSendImage}
+                onPress={toggleMorePanel}
+              >
+                <Ionicons
+                  name={morePanelOpen ? "add-circle" : "add-circle-outline"}
+                  size={25}
+                  color={morePanelOpen ? colors.accent : colors.subtext}
+                />
               </Pressable>
             )}
           </View>
@@ -485,77 +745,182 @@ export function DirectMessageScreen() {
             <View style={[styles.morePanel, { backgroundColor: colors.input }]}>
               <View style={styles.moreActionRow}>
                 <Pressable
-                  style={[styles.moreAction, { backgroundColor: colors.background, opacity: canSendImage ? 1 : 0.5 }]}
+                  style={[
+                    styles.moreAction,
+                    {
+                      backgroundColor: colors.background,
+                      opacity: canSendImage ? 1 : 0.5,
+                    },
+                  ]}
                   disabled={!canSendImage}
                   onPress={() => void pickMessageImage()}
                 >
-                  <View style={[styles.moreActionIcon, { backgroundColor: colors.accentSoft }]}>
-                    <Ionicons name="image-outline" size={22} color={colors.accent} />
+                  <View
+                    style={[
+                      styles.moreActionIcon,
+                      { backgroundColor: colors.accentSoft },
+                    ]}
+                  >
+                    <Ionicons
+                      name="image-outline"
+                      size={22}
+                      color={colors.accent}
+                    />
                   </View>
-                  <Text style={[styles.moreActionText, { color: colors.text }]}>图片</Text>
+                  <Text style={[styles.moreActionText, { color: colors.text }]}>
+                    图片
+                  </Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.moreAction, { backgroundColor: colors.background, opacity: canSendImage ? 1 : 0.5 }]}
+                  style={[
+                    styles.moreAction,
+                    {
+                      backgroundColor: colors.background,
+                      opacity: canSendImage ? 1 : 0.5,
+                    },
+                  ]}
                   disabled={!canSendImage}
                   onPress={() => setLikedStylesOpen((current) => !current)}
                 >
-                  <View style={[styles.moreActionIcon, { backgroundColor: colors.accentSoft }]}>
-                    <Ionicons name="heart-outline" size={22} color={colors.accent} />
+                  <View
+                    style={[
+                      styles.moreActionIcon,
+                      { backgroundColor: colors.accentSoft },
+                    ]}
+                  >
+                    <Ionicons
+                      name="heart-outline"
+                      size={22}
+                      color={colors.accent}
+                    />
                   </View>
-                  <Text style={[styles.moreActionText, { color: colors.text }]}>喜爱美甲</Text>
+                  <Text style={[styles.moreActionText, { color: colors.text }]}>
+                    喜爱美甲
+                  </Text>
                 </Pressable>
                 {currentUser?.role === "merchant" ? (
                   <Pressable
-                    style={[styles.moreAction, { backgroundColor: colors.background, opacity: canSendBookingInvite ? 1 : 0.5 }]}
+                    style={[
+                      styles.moreAction,
+                      {
+                        backgroundColor: colors.background,
+                        opacity: canSendBookingInvite ? 1 : 0.5,
+                      },
+                    ]}
                     disabled={!canSendBookingInvite}
                     onPress={() => bookingInviteMutation.mutate()}
                   >
-                    <View style={[styles.moreActionIcon, { backgroundColor: colors.accentSoft }]}>
-                      <Ionicons name="calendar-outline" size={22} color={colors.accent} />
+                    <View
+                      style={[
+                        styles.moreActionIcon,
+                        { backgroundColor: colors.accentSoft },
+                      ]}
+                    >
+                      <Ionicons
+                        name="calendar-outline"
+                        size={22}
+                        color={colors.accent}
+                      />
                     </View>
-                    <Text style={[styles.moreActionText, { color: colors.text }]}>邀请预约</Text>
+                    <Text
+                      style={[styles.moreActionText, { color: colors.text }]}
+                    >
+                      邀请预约
+                    </Text>
                   </Pressable>
                 ) : null}
               </View>
               {likedStylesOpen ? (
                 <View style={styles.likedPicker}>
                   {likedStylesQuery.isLoading ? (
-                    <Text style={[styles.likedPickerHint, { color: colors.subtext }]}>正在加载喜爱美甲...</Text>
+                    <Text
+                      style={[
+                        styles.likedPickerHint,
+                        { color: colors.subtext },
+                      ]}
+                    >
+                      正在加载喜爱美甲...
+                    </Text>
                   ) : (likedStylesQuery.data?.items ?? []).length ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.likedPickerScroll}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.likedPickerScroll}
+                    >
                       {(likedStylesQuery.data?.items ?? []).map((style) => (
                         <Pressable
                           key={style.id}
-                          style={[styles.likedStyleCard, { backgroundColor: colors.background }]}
+                          style={[
+                            styles.likedStyleCard,
+                            { backgroundColor: colors.background },
+                          ]}
                           disabled={styleMessageMutation.isPending}
-                          onPress={() => styleMessageMutation.mutate({ styleId: style.id })}
+                          onPress={() =>
+                            styleMessageMutation.mutate({ styleId: style.id })
+                          }
                         >
-                          <Image source={{ uri: resolveAssetUrl(style.image_url) }} style={styles.likedStyleImage} />
-                          <Text style={[styles.likedStyleTitle, { color: colors.text }]} numberOfLines={2}>
+                          <Image
+                            source={{ uri: resolveAssetUrl(style.image_url) }}
+                            style={styles.likedStyleImage}
+                          />
+                          <Text
+                            style={[
+                              styles.likedStyleTitle,
+                              { color: colors.text },
+                            ]}
+                            numberOfLines={2}
+                          >
                             {style.title}
                           </Text>
                         </Pressable>
                       ))}
                     </ScrollView>
                   ) : (
-                    <Text style={[styles.likedPickerHint, { color: colors.subtext }]}>还没有点赞过的美甲。</Text>
+                    <Text
+                      style={[
+                        styles.likedPickerHint,
+                        { color: colors.subtext },
+                      ]}
+                    >
+                      还没有点赞过的美甲。
+                    </Text>
                   )}
                 </View>
               ) : null}
             </View>
           ) : null}
           {emojiPanelOpen ? (
-            <View style={[styles.emojiPanel, { backgroundColor: colors.input }]}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiCategoryRow}>
+            <View
+              style={[styles.emojiPanel, { backgroundColor: colors.input }]}
+            >
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.emojiCategoryRow}
+              >
                 {emojiGroups.map((group) => {
                   const active = activeEmojiGroup === group.key;
                   return (
                     <Pressable
                       key={group.key}
-                      style={[styles.emojiCategoryChip, { backgroundColor: active ? colors.accent : colors.background }]}
+                      style={[
+                        styles.emojiCategoryChip,
+                        {
+                          backgroundColor: active
+                            ? colors.accent
+                            : colors.background,
+                        },
+                      ]}
                       onPress={() => setActiveEmojiGroup(group.key)}
                     >
-                      <Text style={[styles.emojiCategoryText, { color: active ? "#ffffff" : colors.subtext }]}>{group.label}</Text>
+                      <Text
+                        style={[
+                          styles.emojiCategoryText,
+                          { color: active ? "#ffffff" : colors.subtext },
+                        ]}
+                      >
+                        {group.label}
+                      </Text>
                     </Pressable>
                   );
                 })}
@@ -564,7 +929,11 @@ export function DirectMessageScreen() {
                 {emojiGroups
                   .find((group) => group.key === activeEmojiGroup)
                   ?.items.map((emoji) => (
-                    <Pressable key={emoji} style={styles.emojiCell} onPress={() => insertEmoji(emoji)}>
+                    <Pressable
+                      key={emoji}
+                      style={styles.emojiCell}
+                      onPress={() => insertEmoji(emoji)}
+                    >
                       <Text style={styles.emojiText}>{emoji}</Text>
                     </Pressable>
                   ))}

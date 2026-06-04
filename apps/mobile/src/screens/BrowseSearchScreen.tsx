@@ -8,16 +8,19 @@ import {
   Image,
   KeyboardAvoidingView,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
   useWindowDimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { BrowseFeedCard } from "../components/BrowseFeedCard";
-import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
+import {
+  SlideOverlayScreen,
+  useOverlayDirection,
+} from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import { useSearchHistoryStore } from "../store/useSearchHistoryStore";
@@ -39,7 +42,11 @@ function estimateChipWidth(label: string, availableWidth: number) {
   return Math.min(Math.max(textWidth + 38, 76), availableWidth);
 }
 
-function clampHistoryToRows(items: string[], availableWidth: number, maxRows: number) {
+function clampHistoryToRows(
+  items: string[],
+  availableWidth: number,
+  maxRows: number,
+) {
   if (!items.length || availableWidth <= 0) return items;
 
   let rows = 1;
@@ -48,7 +55,10 @@ function clampHistoryToRows(items: string[], availableWidth: number, maxRows: nu
 
   for (const item of items) {
     const chipWidth = estimateChipWidth(item, availableWidth);
-    const nextWidth = currentRowWidth === 0 ? chipWidth : currentRowWidth + HISTORY_CHIP_GAP + chipWidth;
+    const nextWidth =
+      currentRowWidth === 0
+        ? chipWidth
+        : currentRowWidth + HISTORY_CHIP_GAP + chipWidth;
 
     if (nextWidth > availableWidth) {
       rows += 1;
@@ -70,8 +80,12 @@ export function BrowseSearchScreen() {
   const queryClient = useQueryClient();
   const token = useAuthStore((state) => state.token);
   const hydrated = useAuthStore((state) => state.hydrated);
-  const includeXhsPosts = useContentPreferenceStore((state) => state.includeXhsPosts);
-  const contentPreferenceHydrated = useContentPreferenceStore((state) => state.hydrated);
+  const includeXhsPosts = useContentPreferenceStore(
+    (state) => state.includeXhsPosts,
+  );
+  const contentPreferenceHydrated = useContentPreferenceStore(
+    (state) => state.hydrated,
+  );
   const hasToken = Boolean(token);
   const authScope = !hydrated ? "booting" : hasToken ? "authed" : "anon";
   const colors = useThemeColors();
@@ -101,7 +115,10 @@ export function BrowseSearchScreen() {
   }, []);
 
   useEffect(() => {
-    const initialQuery = typeof route.params?.initialQuery === "string" ? route.params.initialQuery.trim() : "";
+    const initialQuery =
+      typeof route.params?.initialQuery === "string"
+        ? route.params.initialQuery.trim()
+        : "";
     if (appliedInitialQueryRef.current || !initialQuery) return;
     appliedInitialQueryRef.current = true;
     setDraftQuery(initialQuery);
@@ -112,7 +129,11 @@ export function BrowseSearchScreen() {
   const stylesQuery = useQuery({
     queryKey: ["browse-search", submittedQuery, authScope, includeXhsPosts],
     queryFn: () => api.searchStyles(submittedQuery),
-    enabled: hydrated && contentPreferenceHydrated && submittedQuery.length > 0 && resultMode === "posts",
+    enabled:
+      hydrated &&
+      contentPreferenceHydrated &&
+      submittedQuery.length > 0 &&
+      resultMode === "posts",
   });
 
   const usersQuery = useQuery({
@@ -156,35 +177,59 @@ export function BrowseSearchScreen() {
   const onClearHistory = () => {
     Alert.alert("清空搜索历史", "确认删除全部搜索历史吗？", [
       { text: "取消", style: "cancel" },
-      { text: "清空", style: "destructive", onPress: () => void clearHistory() },
+      {
+        text: "清空",
+        style: "destructive",
+        onPress: () => void clearHistory(),
+      },
     ]);
   };
 
   const postResults = stylesQuery.data?.items ?? [];
   const userResults = usersQuery.data?.items ?? [];
   const visibleHistoryItems = useMemo(() => {
-    const availableWidth = Math.max(windowWidth - HISTORY_CONTAINER_HORIZONTAL_PADDING, 0);
+    const availableWidth = Math.max(
+      windowWidth - HISTORY_CONTAINER_HORIZONTAL_PADDING,
+      0,
+    );
     return clampHistoryToRows(historyItems, availableWidth, HISTORY_MAX_ROWS);
   }, [historyItems, windowWidth]);
 
   const renderUserItem = (item: UserSummary) => {
-    const avatarSource = item.avatar_url ? { uri: resolveAssetUrl(item.avatar_url) } : defaultAvatar;
+    const avatarSource = item.avatar_url
+      ? { uri: resolveAssetUrl(item.avatar_url) }
+      : defaultAvatar;
 
     return (
       <Pressable
         style={[styles.userRow, { borderBottomColor: colors.border }]}
-        onPress={() => navigation.navigate("AuthorProfile", { authorId: item.id })}
+        onPress={() =>
+          navigation.navigate("AuthorProfile", { authorId: item.id })
+        }
       >
-        <Image source={avatarSource} style={[styles.userAvatar, { backgroundColor: colors.input }]} />
+        <Image
+          source={avatarSource}
+          style={[styles.userAvatar, { backgroundColor: colors.input }]}
+        />
         <View style={styles.userContent}>
-          <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
+          <Text
+            style={[styles.userName, { color: colors.text }]}
+            numberOfLines={1}
+          >
             {item.username}
           </Text>
-          <Text style={[styles.userMeta, { color: colors.subtext }]} numberOfLines={1}>
-            {item.is_shop ? "商家" : "用户"} · IP {item.ip_location || "未知"} · 焕甲号 {item.uid}
+          <Text
+            style={[styles.userMeta, { color: colors.subtext }]}
+            numberOfLines={1}
+          >
+            {item.is_shop ? "商家" : "用户"} · IP {item.ip_location || "未知"} ·
+            焕甲号 {item.uid}
           </Text>
           {item.bio ? (
-            <Text style={[styles.userBio, { color: colors.subtext }]} numberOfLines={1}>
+            <Text
+              style={[styles.userBio, { color: colors.subtext }]}
+              numberOfLines={1}
+            >
               {item.bio}
             </Text>
           ) : null}
@@ -201,13 +246,23 @@ export function BrowseSearchScreen() {
       onDismiss={() => navigation.goBack()}
     >
       {(dismiss) => (
-        <SafeAreaView style={[styles.container, { backgroundColor: isDark ? "#17171b" : colors.background }]}>
+        <SafeAreaView
+          style={[
+            styles.container,
+            { backgroundColor: isDark ? "#17171b" : colors.background },
+          ]}
+        >
           <KeyboardAvoidingView behavior="padding" style={styles.container}>
             <View style={styles.header}>
               <Pressable style={styles.backButton} onPress={dismiss}>
                 <Ionicons name="chevron-back" size={28} color={colors.text} />
               </Pressable>
-              <View style={[styles.searchShell, { backgroundColor: colors.input, borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.searchShell,
+                  { backgroundColor: colors.input, borderColor: colors.border },
+                ]}
+              >
                 <TextInput
                   ref={inputRef}
                   style={[styles.searchInput, { color: colors.text }]}
@@ -220,17 +275,38 @@ export function BrowseSearchScreen() {
                   returnKeyType="search"
                   onSubmitEditing={() => void submitSearch()}
                 />
-                <View style={[styles.searchDivider, { backgroundColor: colors.border }]} />
-                <Pressable style={styles.searchAction} onPress={() => void submitSearch()}>
-                  <Ionicons name="search-outline" size={18} color={colors.subtext} />
-                  <Text style={[styles.searchActionText, { color: colors.text }]}>搜索</Text>
+                <View
+                  style={[
+                    styles.searchDivider,
+                    { backgroundColor: colors.border },
+                  ]}
+                />
+                <Pressable
+                  style={styles.searchAction}
+                  onPress={() => void submitSearch()}
+                >
+                  <Ionicons
+                    name="search-outline"
+                    size={18}
+                    color={colors.subtext}
+                  />
+                  <Text
+                    style={[styles.searchActionText, { color: colors.text }]}
+                  >
+                    搜索
+                  </Text>
                 </Pressable>
               </View>
             </View>
 
             {submittedQuery.length > 0 ? (
               <View style={styles.resultsWrap}>
-                <View style={[styles.modeTabs, { borderBottomColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.modeTabs,
+                    { borderBottomColor: colors.border },
+                  ]}
+                >
                   {[
                     { key: "posts", label: "作品" },
                     { key: "users", label: "用户" },
@@ -240,10 +316,28 @@ export function BrowseSearchScreen() {
                       <Pressable
                         key={tab.key}
                         style={styles.modeTab}
-                        onPress={() => setResultMode(tab.key as "posts" | "users")}
+                        onPress={() =>
+                          setResultMode(tab.key as "posts" | "users")
+                        }
                       >
-                        <Text style={[styles.modeTabText, { color: active ? colors.text : colors.subtext }]}>{tab.label}</Text>
-                        <View style={[styles.modeTabUnderline, { backgroundColor: active ? colors.accent : "transparent" }]} />
+                        <Text
+                          style={[
+                            styles.modeTabText,
+                            { color: active ? colors.text : colors.subtext },
+                          ]}
+                        >
+                          {tab.label}
+                        </Text>
+                        <View
+                          style={[
+                            styles.modeTabUnderline,
+                            {
+                              backgroundColor: active
+                                ? colors.accent
+                                : "transparent",
+                            },
+                          ]}
+                        />
                       </Pressable>
                     );
                   })}
@@ -262,14 +356,26 @@ export function BrowseSearchScreen() {
                         <BrowseFeedCard
                           item={item}
                           onToggleLike={onToggleLike}
-                          onPress={(selected) => navigation.navigate("StylePreview", { styleId: selected.id })}
+                          onPress={(selected) =>
+                            navigation.navigate("StylePreview", {
+                              styleId: selected.id,
+                            })
+                          }
                         />
                       </View>
                     )}
                     ListEmptyComponent={
                       <View style={styles.emptyState}>
-                        <Text style={[styles.emptyTitle, { color: colors.text }]}>没有找到相关作品</Text>
-                        <Text style={[styles.emptyText, { color: colors.subtext }]}>试试换个关键词，或者用 #猫眼、#法式 这样的标签搜索。</Text>
+                        <Text
+                          style={[styles.emptyTitle, { color: colors.text }]}
+                        >
+                          没有找到相关作品
+                        </Text>
+                        <Text
+                          style={[styles.emptyText, { color: colors.subtext }]}
+                        >
+                          试试换个关键词，或者用 #猫眼、#法式 这样的标签搜索。
+                        </Text>
                       </View>
                     }
                   />
@@ -282,8 +388,16 @@ export function BrowseSearchScreen() {
                     renderItem={({ item }) => renderUserItem(item)}
                     ListEmptyComponent={
                       <View style={styles.emptyState}>
-                        <Text style={[styles.emptyTitle, { color: colors.text }]}>没有找到相关用户</Text>
-                        <Text style={[styles.emptyText, { color: colors.subtext }]}>可以搜索昵称、简介、城市，或输入焕甲号。</Text>
+                        <Text
+                          style={[styles.emptyTitle, { color: colors.text }]}
+                        >
+                          没有找到相关用户
+                        </Text>
+                        <Text
+                          style={[styles.emptyText, { color: colors.subtext }]}
+                        >
+                          可以搜索昵称、简介、城市，或输入焕甲号。
+                        </Text>
                       </View>
                     }
                   />
@@ -292,9 +406,19 @@ export function BrowseSearchScreen() {
             ) : (
               <View style={styles.historySection}>
                 <View style={styles.historyHeader}>
-                  <Text style={[styles.sectionTitle, { color: colors.text }]}>历史记录</Text>
-                  <Pressable onPress={onClearHistory} disabled={!historyItems.length} style={{ opacity: historyItems.length ? 1 : 0.35 }}>
-                    <Ionicons name="trash-outline" size={20} color={colors.subtext} />
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                    历史记录
+                  </Text>
+                  <Pressable
+                    onPress={onClearHistory}
+                    disabled={!historyItems.length}
+                    style={{ opacity: historyItems.length ? 1 : 0.35 }}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={20}
+                      color={colors.subtext}
+                    />
                   </Pressable>
                 </View>
                 {visibleHistoryItems.length ? (
@@ -302,17 +426,33 @@ export function BrowseSearchScreen() {
                     {visibleHistoryItems.map((item) => (
                       <Pressable
                         key={item}
-                        style={[styles.historyChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                        style={[
+                          styles.historyChip,
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                          },
+                        ]}
                         onPress={() => void submitSearch(item)}
                       >
-                        <Text style={[styles.historyChipText, { color: colors.text }]} numberOfLines={1}>
+                        <Text
+                          style={[
+                            styles.historyChipText,
+                            { color: colors.text },
+                          ]}
+                          numberOfLines={1}
+                        >
                           {item}
                         </Text>
                       </Pressable>
                     ))}
                   </View>
                 ) : (
-                  <Text style={[styles.emptyHistoryText, { color: colors.subtext }]}>还没有搜索记录</Text>
+                  <Text
+                    style={[styles.emptyHistoryText, { color: colors.subtext }]}
+                  >
+                    还没有搜索记录
+                  </Text>
                 )}
               </View>
             )}

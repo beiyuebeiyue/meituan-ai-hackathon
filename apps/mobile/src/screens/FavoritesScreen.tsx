@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
-import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../api/client";
 import { NailCard } from "../components/NailCard";
 import { RequireLogin } from "../components/RequireLogin";
@@ -28,11 +29,18 @@ export function FavoritesScreen() {
   });
 
   if (!token) {
-    return <RequireLogin onLogin={() => navigation.navigate("Login" as never)} message="登录后可查看你点赞过的美甲" />;
+    return (
+      <RequireLogin
+        onLogin={() => navigation.navigate("Login" as never)}
+        message="登录后可查看你点赞过的美甲"
+      />
+    );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <FlatList
         data={query.data?.items ?? []}
         keyExtractor={(item) => item.id}
@@ -43,7 +51,9 @@ export function FavoritesScreen() {
             <NailCard
               item={item}
               onToggleLike={() => mutation.mutate(item.id)}
-              onPress={(selected) => navigation.navigate("StylePreview", { styleId: selected.id })}
+              onPress={(selected) =>
+                navigation.navigate("StylePreview", { styleId: selected.id })
+              }
             />
           </View>
         )}

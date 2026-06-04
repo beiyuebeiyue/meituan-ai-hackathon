@@ -14,16 +14,19 @@ import {
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { ShareSheet } from "../components/ShareSheet";
-import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
+import {
+  SlideOverlayScreen,
+  useOverlayDirection,
+} from "../components/SlideOverlayScreen";
 import { TryOnHandChooser } from "../components/TryOnHandChooser";
 import { useHandPhotoPicker } from "../hooks/useHandPhotoPicker";
 import { useTryOnLauncher } from "../hooks/useTryOnLauncher";
@@ -39,22 +42,74 @@ const emojiGroups = [
   {
     key: "smile",
     label: "精选",
-    items: ["😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "😊", "😇", "🙂", "🙃"],
+    items: [
+      "😀",
+      "😃",
+      "😄",
+      "😁",
+      "😆",
+      "😅",
+      "😂",
+      "🤣",
+      "😊",
+      "😇",
+      "🙂",
+      "🙃",
+    ],
   },
   {
     key: "cute",
     label: "可爱",
-    items: ["😉", "😌", "😍", "🥰", "😘", "😗", "😙", "😚", "😋", "😛", "😝", "😜"],
+    items: [
+      "😉",
+      "😌",
+      "😍",
+      "🥰",
+      "😘",
+      "😗",
+      "😙",
+      "😚",
+      "😋",
+      "😛",
+      "😝",
+      "😜",
+    ],
   },
   {
     key: "mood",
     label: "情绪",
-    items: ["🤪", "🤨", "🧐", "🤓", "😎", "🥳", "😏", "😒", "😞", "😔", "😟", "😕"],
+    items: [
+      "🤪",
+      "🤨",
+      "🧐",
+      "🤓",
+      "😎",
+      "🥳",
+      "😏",
+      "😒",
+      "😞",
+      "😔",
+      "😟",
+      "😕",
+    ],
   },
   {
     key: "tear",
     label: "哭笑",
-    items: ["🙁", "☹️", "😣", "😖", "😫", "😩", "🥺", "😢", "😭", "😤", "😠", "😡"],
+    items: [
+      "🙁",
+      "☹️",
+      "😣",
+      "😖",
+      "😫",
+      "😩",
+      "🥺",
+      "😢",
+      "😭",
+      "😤",
+      "😠",
+      "😡",
+    ],
   },
 ] as const;
 
@@ -75,20 +130,34 @@ function pad2(value: number) {
 function resolvePublishDate(createdAt: string, authorName: string) {
   if (authorName === "admin") {
     const createdAtDate = new Date(createdAt);
-    const year = Number.isNaN(createdAtDate.getTime()) ? new Date().getFullYear() : createdAtDate.getFullYear();
+    const year = Number.isNaN(createdAtDate.getTime())
+      ? new Date().getFullYear()
+      : createdAtDate.getFullYear();
     return new Date(year, 3, 22, 12, 21, 0);
   }
   return new Date(createdAt);
 }
 
-function formatPublishMeta(createdAt: string, authorName: string, authorIsShop: boolean) {
+function formatPublishMeta(
+  createdAt: string,
+  authorName: string,
+  authorIsShop: boolean,
+) {
   const publishDate = resolvePublishDate(createdAt, authorName);
   const roleText = authorIsShop ? "商家" : "客户";
   if (Number.isNaN(publishDate.getTime())) return `广东 · ${roleText}`;
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  const publishStart = new Date(publishDate.getFullYear(), publishDate.getMonth(), publishDate.getDate()).getTime();
+  const todayStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
+  const publishStart = new Date(
+    publishDate.getFullYear(),
+    publishDate.getMonth(),
+    publishDate.getDate(),
+  ).getTime();
   const diffDays = Math.floor((todayStart - publishStart) / 86400000);
   const timePart = `${pad2(publishDate.getHours())}:${pad2(publishDate.getMinutes())}`;
   const monthDayPart = `${pad2(publishDate.getMonth() + 1)}-${pad2(publishDate.getDate())}`;
@@ -100,8 +169,16 @@ function formatPublishMeta(createdAt: string, authorName: string, authorIsShop: 
 }
 
 function buildStyleTryOnPrompt(style: StyleDetail) {
-  const tagText = style.tags.slice(0, 4).map((tag) => `#${tag}`).join(" ");
-  return [style.title, style.description, tagText, "请直接把这款美甲焕到我的手上"]
+  const tagText = style.tags
+    .slice(0, 4)
+    .map((tag) => `#${tag}`)
+    .join(" ");
+  return [
+    style.title,
+    style.description,
+    tagText,
+    "请直接把这款美甲焕到我的手上",
+  ]
     .filter(Boolean)
     .join("，");
 }
@@ -130,9 +207,12 @@ export function StylePreviewScreen() {
   const lightCardBackground = isDark ? colors.surface : colors.surfaceAlt;
   const [commentText, setCommentText] = useState("");
   const [composerExpanded, setComposerExpanded] = useState(false);
-  const [pendingCommentImageUri, setPendingCommentImageUri] = useState<string | null>(null);
+  const [pendingCommentImageUri, setPendingCommentImageUri] = useState<
+    string | null
+  >(null);
   const [emojiPanelOpen, setEmojiPanelOpen] = useState(false);
-  const [activeEmojiGroup, setActiveEmojiGroup] = useState<(typeof emojiGroups)[number]["key"]>("smile");
+  const [activeEmojiGroup, setActiveEmojiGroup] =
+    useState<(typeof emojiGroups)[number]["key"]>("smile");
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const [tryOnChooserVisible, setTryOnChooserVisible] = useState(false);
   const [resumeTryOnAfterLogin, setResumeTryOnAfterLogin] = useState(false);
@@ -148,7 +228,9 @@ export function StylePreviewScreen() {
     queryFn: () => api.getStyleComments(route.params.styleId),
     enabled: hydrated,
   });
-  const tryOnPrompt = query.data ? buildStyleTryOnPrompt(query.data) : "请直接把这款美甲焕到我的手上";
+  const tryOnPrompt = query.data
+    ? buildStyleTryOnPrompt(query.data)
+    : "请直接把这款美甲焕到我的手上";
 
   const tryOnLauncher = useTryOnLauncher({
     onSuccess: (job) => {
@@ -204,7 +286,9 @@ export function StylePreviewScreen() {
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["style", route.params.styleId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["style", route.params.styleId],
+      });
       void queryClient.invalidateQueries({ queryKey: ["browse"] });
     },
   });
@@ -219,33 +303,47 @@ export function StylePreviewScreen() {
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["style", route.params.styleId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["style", route.params.styleId],
+      });
       void queryClient.invalidateQueries({ queryKey: ["browse"] });
       void queryClient.invalidateQueries({ queryKey: ["likes"] });
     },
   });
 
   const createCommentMutation = useMutation({
-    mutationFn: () => api.createStyleComment(route.params.styleId, commentText.trim()),
+    mutationFn: () =>
+      api.createStyleComment(route.params.styleId, commentText.trim()),
     onSuccess: () => {
       setCommentText("");
       setPendingCommentImageUri(null);
       closeComposer();
-      void queryClient.invalidateQueries({ queryKey: ["style", route.params.styleId] });
-      void queryClient.invalidateQueries({ queryKey: ["style-comments", route.params.styleId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["style", route.params.styleId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["style-comments", route.params.styleId],
+      });
     },
   });
 
   const deleteCommentMutation = useMutation({
-    mutationFn: (commentId: string) => api.deleteStyleComment(route.params.styleId, commentId),
+    mutationFn: (commentId: string) =>
+      api.deleteStyleComment(route.params.styleId, commentId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["style", route.params.styleId] });
-      void queryClient.invalidateQueries({ queryKey: ["style-comments", route.params.styleId] });
+      void queryClient.invalidateQueries({
+        queryKey: ["style", route.params.styleId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["style-comments", route.params.styleId],
+      });
     },
   });
 
   const invalidateManagedPostSurfaces = () => {
-    void queryClient.invalidateQueries({ queryKey: ["style", route.params.styleId] });
+    void queryClient.invalidateQueries({
+      queryKey: ["style", route.params.styleId],
+    });
     void queryClient.invalidateQueries({ queryKey: ["browse"] });
     void queryClient.invalidateQueries({ queryKey: ["author-profile"] });
     void queryClient.invalidateQueries({ queryKey: ["my-posts"] });
@@ -294,7 +392,10 @@ export function StylePreviewScreen() {
       Alert.alert("暂不能联系商家", "这款美甲还没有绑定商家账号。");
       return;
     }
-    navigation.navigate("DirectMessage", { userId: query.data.author_id, entryEdge: "right" });
+    navigation.navigate("DirectMessage", {
+      userId: query.data.author_id,
+      entryEdge: "right",
+    });
   };
 
   const openComposer = () => {
@@ -334,7 +435,10 @@ export function StylePreviewScreen() {
   const pickCommentImage = async () => {
     if (!ensureAuthed()) return;
     setComposerExpanded(true);
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.85 });
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.85,
+    });
     if (!result.canceled) {
       setPendingCommentImageUri(result.assets[0].uri);
       setTimeout(() => inputRef.current?.focus(), 80);
@@ -377,7 +481,8 @@ export function StylePreviewScreen() {
     Alert.alert("管理作品", "可以隐藏或删除这条作品。", [
       {
         text: query.data?.is_hidden ? "取消隐藏" : "隐藏作品",
-        onPress: () => updateManagedPostMutation.mutate({ postId, isHidden: nextHidden }),
+        onPress: () =>
+          updateManagedPostMutation.mutate({ postId, isHidden: nextHidden }),
       },
       {
         text: "删除作品",
@@ -388,7 +493,10 @@ export function StylePreviewScreen() {
             {
               text: "删除",
               style: "destructive",
-              onPress: () => deleteManagedPostMutation.mutate(postId, { onSuccess: dismiss }),
+              onPress: () =>
+                deleteManagedPostMutation.mutate(postId, {
+                  onSuccess: dismiss,
+                }),
             },
           ]),
       },
@@ -399,434 +507,797 @@ export function StylePreviewScreen() {
   const renderContent = (dismiss: () => void) => {
     if (!query.data) {
       return (
-        <SafeAreaView style={[styles.container, { backgroundColor: pageBackground }]}>
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: pageBackground }]}
+        >
           <View style={styles.loadingWrap}>
-            <Text style={[styles.loadingText, { color: colors.subtext }]}>正在加载款式详情...</Text>
+            <Text style={[styles.loadingText, { color: colors.subtext }]}>
+              正在加载款式详情...
+            </Text>
           </View>
         </SafeAreaView>
       );
     }
 
-    const publishMeta = formatPublishMeta(query.data.created_at, query.data.author_name, query.data.author_is_shop);
-    const canManagePost = Boolean(isMerchantViewer && query.data.is_authored_by_me && query.data.manage_post_id);
+    const publishMeta = formatPublishMeta(
+      query.data.created_at,
+      query.data.author_name,
+      query.data.author_is_shop,
+    );
+    const canManagePost = Boolean(
+      isMerchantViewer &&
+      query.data.is_authored_by_me &&
+      query.data.manage_post_id,
+    );
     const descriptionText = query.data.description.trim();
 
     return (
-    <SafeAreaView style={[styles.container, { backgroundColor: pageBackground }]}>
-      <KeyboardAvoidingView
-        style={[styles.flex, { backgroundColor: pageBackground }]}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: pageBackground }]}
       >
-        <View style={[styles.header, { backgroundColor: pageBackground }]}>
-          <Pressable
-            style={[styles.headerButton, { backgroundColor: isDark ? "transparent" : lightCardBackground }]}
-            onPress={dismiss}
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.text} />
-          </Pressable>
-          <Pressable
-            style={styles.authorWrap}
-            disabled={!query.data.author_id}
-            onPress={() => {
-              if (!query.data.author_id) return;
-              navigation.navigate("AuthorProfile", { authorId: query.data.author_id });
-            }}
-          >
-            <Image
-              source={query.data.author_avatar_url ? { uri: resolveAssetUrl(query.data.author_avatar_url) } : defaultAvatar}
-              style={[styles.authorAvatar, { backgroundColor: colors.input }]}
-            />
-            <View style={styles.authorText}>
-              <Text style={[styles.authorName, { color: colors.text }]}>{query.data.author_name}</Text>
-            </View>
-          </Pressable>
-          <View style={styles.headerActions}>
-            {query.data.author_id && !query.data.is_authored_by_me && !isMerchantViewer ? (
+        <KeyboardAvoidingView
+          style={[styles.flex, { backgroundColor: pageBackground }]}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View style={[styles.header, { backgroundColor: pageBackground }]}>
+            <Pressable
+              style={[
+                styles.headerButton,
+                {
+                  backgroundColor: isDark ? "transparent" : lightCardBackground,
+                },
+              ]}
+              onPress={dismiss}
+            >
+              <Ionicons name="chevron-back" size={24} color={colors.text} />
+            </Pressable>
+            <Pressable
+              style={styles.authorWrap}
+              disabled={!query.data.author_id}
+              onPress={() => {
+                if (!query.data.author_id) return;
+                navigation.navigate("AuthorProfile", {
+                  authorId: query.data.author_id,
+                });
+              }}
+            >
+              <Image
+                source={
+                  query.data.author_avatar_url
+                    ? { uri: resolveAssetUrl(query.data.author_avatar_url) }
+                    : defaultAvatar
+                }
+                style={[styles.authorAvatar, { backgroundColor: colors.input }]}
+              />
+              <View style={styles.authorText}>
+                <Text style={[styles.authorName, { color: colors.text }]}>
+                  {query.data.author_name}
+                </Text>
+              </View>
+            </Pressable>
+            <View style={styles.headerActions}>
+              {query.data.author_id &&
+              !query.data.is_authored_by_me &&
+              !isMerchantViewer ? (
+                <Pressable
+                  style={[
+                    styles.followButton,
+                    { borderColor: colors.accent },
+                    query.data.is_following_author && [
+                      styles.followButtonActive,
+                      { backgroundColor: colors.accent },
+                    ],
+                  ]}
+                  onPress={() => {
+                    if (!ensureAuthed()) return;
+                    followMutation.mutate();
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.followButtonText,
+                      { color: colors.accent },
+                      query.data.is_following_author &&
+                        styles.followButtonTextActive,
+                    ]}
+                  >
+                    {query.data.is_following_author ? "已关注" : "关注"}
+                  </Text>
+                </Pressable>
+              ) : null}
               <Pressable
                 style={[
-                  styles.followButton,
-                  { borderColor: colors.accent },
-                  query.data.is_following_author && [styles.followButtonActive, { backgroundColor: colors.accent }],
+                  styles.headerButton,
+                  {
+                    backgroundColor: isDark
+                      ? "transparent"
+                      : lightCardBackground,
+                  },
                 ]}
-                onPress={() => {
-                  if (!ensureAuthed()) return;
-                  followMutation.mutate();
-                }}
+                onPress={() => setShareVisible(true)}
               >
-                <Text
-                  style={[
-                    styles.followButtonText,
-                    { color: colors.accent },
-                    query.data.is_following_author && styles.followButtonTextActive,
-                  ]}
-                >
-                  {query.data.is_following_author ? "已关注" : "关注"}
-                </Text>
+                <Ionicons
+                  name="arrow-redo-outline"
+                  size={22}
+                  color={colors.text}
+                />
               </Pressable>
-            ) : null}
-            <Pressable
-              style={[styles.headerButton, { backgroundColor: isDark ? "transparent" : lightCardBackground }]}
-              onPress={() => setShareVisible(true)}
-            >
-              <Ionicons name="arrow-redo-outline" size={22} color={colors.text} />
-            </Pressable>
-          </View>
-        </View>
-
-        <ScrollView
-          style={{ backgroundColor: pageBackground }}
-          scrollEnabled={!composerExpanded}
-          bounces={false}
-          alwaysBounceVertical={false}
-          overScrollMode="never"
-          contentInsetAdjustmentBehavior="never"
-          automaticallyAdjustContentInsets={false}
-          contentContainerStyle={[
-            styles.content,
-            { backgroundColor: pageBackground, paddingBottom: composerExpanded ? (emojiPanelOpen ? 400 : 220) : 108 },
-          ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Image source={{ uri: resolveAssetUrl(query.data.image_url) }} style={[styles.image, { backgroundColor: colors.input }]} />
-
-          <View style={styles.infoBlock}>
-            <Text style={[styles.title, { color: colors.text }]}>{query.data.title}</Text>
-            {descriptionText || query.data.tags.length ? (
-              <Text style={[styles.desc, { color: colors.text }]}>
-                {descriptionText}
-                {query.data.tags.length ? (
-                  <>
-                    {descriptionText ? "\n" : ""}
-                    {query.data.tags.map((tag, index) => (
-                      <Text
-                        key={tag}
-                        style={[styles.inlineTag, { color: colors.accent }]}
-                        onPress={() => navigation.navigate("Hashtag", { tag, entryEdge: "right" })}
-                      >
-                        {index > 0 ? "  " : ""}#{tag}
-                      </Text>
-                    ))}
-                  </>
-                ) : null}
-              </Text>
-            ) : null}
-            <View style={styles.publishMetaRow}>
-              <View style={[styles.nailTypePill, { backgroundColor: lightCardBackground }]}>
-                <Text style={[styles.nailTypeText, { color: colors.subtext }]}>{getNailTypeLabel(query.data.nail_type)}</Text>
-              </View>
-              {query.data.verified_consumption ? (
-                <View style={[styles.verifiedBadge, { backgroundColor: isDark ? "rgba(56, 189, 122, 0.16)" : "#e9f8ef" }]}>
-                  <Ionicons name="shield-checkmark" size={13} color="#28a45f" />
-                  <Text style={styles.verifiedBadgeText}>真实消费</Text>
-                </View>
-              ) : null}
-              <Text style={[styles.publishMeta, { color: colors.subtext }]}>{publishMeta}</Text>
             </View>
-            {query.data.verified_consumption && query.data.verified_shop_name ? (
-              <View style={[styles.verifiedShopCard, { backgroundColor: lightCardBackground, borderColor: colors.border }]}>
-                <View style={[styles.verifiedShopIcon, { backgroundColor: colors.accentSoft }]}>
-                  <Ionicons name="storefront-outline" size={18} color={colors.accent} />
-                </View>
-                <View style={styles.verifiedShopText}>
-                  <Text style={[styles.verifiedShopName, { color: colors.text }]} numberOfLines={1}>
-                    {query.data.verified_shop_name}
-                  </Text>
-                  <Text style={[styles.verifiedShopMeta, { color: colors.subtext }]} numberOfLines={2}>
-                    {[query.data.verified_shop_city, query.data.verified_shop_address].filter(Boolean).join(" · ")}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
           </View>
 
-          <View style={styles.commentHeader}>
-            <Text style={[styles.commentHeaderTitle, { color: colors.text }]}>共 {query.data.comment_count} 条评论</Text>
-          </View>
-
-          <View style={styles.commentList}>
-            {commentsQuery.data?.items.length ? (
-              commentsQuery.data.items.map((item) => (
-                <View key={item.id} style={styles.commentItem}>
-                  <Image
-                    source={item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar}
-                    style={[styles.commentAvatar, { backgroundColor: colors.input }]}
-                  />
-                  <View style={[styles.commentBody, { borderBottomColor: colors.border }]}>
-                    <View style={styles.commentTop}>
-                      <View style={styles.commentNameRow}>
-                        <Text style={[styles.commentAuthor, { color: isDark ? "#cfcfd4" : colors.subtext }]}>{item.author_name}</Text>
-                        {item.author_is_shop ? (
-                          <Text
-                            style={[
-                              styles.merchantCommentBadge,
-                              { backgroundColor: isDark ? "rgba(240, 139, 109, 0.14)" : "#ffe5da", color: colors.accent },
-                            ]}
-                          >
-                            商家
-                          </Text>
-                        ) : null}
-                        {item.is_mine ? (
-                          <Text
-                            style={[
-                              styles.mineBadge,
-                              { backgroundColor: isDark ? "rgba(240, 139, 109, 0.12)" : colors.accentSoft, color: colors.accent },
-                            ]}
-                          >
-                            我
-                          </Text>
-                        ) : null}
-                        {item.is_style_author ? (
-                          <Text
-                            style={[
-                              styles.authorBadge,
-                              { backgroundColor: isDark ? "rgba(255, 87, 87, 0.12)" : "#ffe8e3", color: "#ff7e7e" },
-                            ]}
-                          >
-                            作者
-                          </Text>
-                        ) : null}
-                      </View>
-                      {item.is_mine ? (
-                        <Pressable
-                          onPress={() =>
-                            Alert.alert("删除评论", "确定删除这条评论吗？", [
-                              { text: "取消", style: "cancel" },
-                              {
-                                text: "删除",
-                                style: "destructive",
-                                onPress: () => deleteCommentMutation.mutate(item.id),
-                              },
-                            ])
-                          }
-                        >
-                          <Ionicons name="trash-outline" size={18} color={colors.subtext} />
-                        </Pressable>
-                      ) : null}
-                    </View>
-                    <Text style={[styles.commentContent, { color: colors.text }]}>{item.content}</Text>
-                    <Text style={[styles.commentDate, { color: colors.subtext }]}>{formatCommentDate(item.created_at)}</Text>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View style={[styles.emptyComments, { backgroundColor: lightCardBackground }]}>
-                <Ionicons name="chatbubbles-outline" size={30} color={colors.subtext} />
-                <Text style={[styles.emptyCommentsText, { color: colors.subtext }]}>还没有评论，来抢个沙发</Text>
-              </View>
-            )}
-            <Text style={[styles.commentEndText, { color: colors.subtext }]}>- 到底了 -</Text>
-          </View>
-        </ScrollView>
-
-        {composerExpanded ? <Pressable style={styles.commentDismissLayer} onPress={closeComposer} /> : null}
-
-        {composerExpanded ? (
-          <Animated.View
-            style={[
-              styles.expandedComposer,
+          <ScrollView
+            style={{ backgroundColor: pageBackground }}
+            scrollEnabled={!composerExpanded}
+            bounces={false}
+            alwaysBounceVertical={false}
+            overScrollMode="never"
+            contentInsetAdjustmentBehavior="never"
+            automaticallyAdjustContentInsets={false}
+            contentContainerStyle={[
+              styles.content,
               {
-                borderTopColor: colors.border,
                 backgroundColor: pageBackground,
-                opacity: composerOpacity,
-                transform: [{ translateY: composerTranslateY }],
+                paddingBottom: composerExpanded
+                  ? emojiPanelOpen
+                    ? 400
+                    : 220
+                  : 108,
               },
             ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <View style={[styles.expandedInputShell, { backgroundColor: colors.input }]}>
-              <TextInput
-                ref={inputRef}
-                style={[styles.expandedInput, { color: colors.text }]}
-                value={commentText}
-                onChangeText={setCommentText}
-                onFocus={() => setEmojiPanelOpen(false)}
-                onSelectionChange={(event) => setSelection(event.nativeEvent.selection)}
-                placeholder="有话要说，快来评论"
-                placeholderTextColor={colors.subtext}
-                multiline
-                textAlignVertical="top"
-              />
-              {pendingCommentImageUri ? (
-                <View style={[styles.pendingImageCard, { backgroundColor: pageBackground }]}>
-                  <Image source={{ uri: pendingCommentImageUri }} style={styles.pendingImagePreview} />
-                  <View style={styles.pendingImageText}>
-                    <Text style={[styles.pendingImageTitle, { color: colors.text }]}>已选择评论图片</Text>
-                    <Text style={[styles.pendingImageHint, { color: colors.subtext }]}>图片评论正在接入，当前先发送文字内容</Text>
+            <Image
+              source={{ uri: resolveAssetUrl(query.data.image_url) }}
+              style={[styles.image, { backgroundColor: colors.input }]}
+            />
+
+            <View style={styles.infoBlock}>
+              <Text style={[styles.title, { color: colors.text }]}>
+                {query.data.title}
+              </Text>
+              {descriptionText || query.data.tags.length ? (
+                <Text style={[styles.desc, { color: colors.text }]}>
+                  {descriptionText}
+                  {query.data.tags.length ? (
+                    <>
+                      {descriptionText ? "\n" : ""}
+                      {query.data.tags.map((tag, index) => (
+                        <Text
+                          key={tag}
+                          style={[styles.inlineTag, { color: colors.accent }]}
+                          onPress={() =>
+                            navigation.navigate("Hashtag", {
+                              tag,
+                              entryEdge: "right",
+                            })
+                          }
+                        >
+                          {index > 0 ? "  " : ""}#{tag}
+                        </Text>
+                      ))}
+                    </>
+                  ) : null}
+                </Text>
+              ) : null}
+              <View style={styles.publishMetaRow}>
+                <View
+                  style={[
+                    styles.nailTypePill,
+                    { backgroundColor: lightCardBackground },
+                  ]}
+                >
+                  <Text
+                    style={[styles.nailTypeText, { color: colors.subtext }]}
+                  >
+                    {getNailTypeLabel(query.data.nail_type)}
+                  </Text>
+                </View>
+                {query.data.verified_consumption ? (
+                  <View
+                    style={[
+                      styles.verifiedBadge,
+                      {
+                        backgroundColor: isDark
+                          ? "rgba(56, 189, 122, 0.16)"
+                          : "#e9f8ef",
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name="shield-checkmark"
+                      size={13}
+                      color="#28a45f"
+                    />
+                    <Text style={styles.verifiedBadgeText}>真实消费</Text>
                   </View>
-                  <Pressable onPress={() => setPendingCommentImageUri(null)}>
-                    <Ionicons name="close-circle" size={22} color={colors.subtext} />
-                  </Pressable>
+                ) : null}
+                <Text style={[styles.publishMeta, { color: colors.subtext }]}>
+                  {publishMeta}
+                </Text>
+              </View>
+              {query.data.verified_consumption &&
+              query.data.verified_shop_name ? (
+                <View
+                  style={[
+                    styles.verifiedShopCard,
+                    {
+                      backgroundColor: lightCardBackground,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.verifiedShopIcon,
+                      { backgroundColor: colors.accentSoft },
+                    ]}
+                  >
+                    <Ionicons
+                      name="storefront-outline"
+                      size={18}
+                      color={colors.accent}
+                    />
+                  </View>
+                  <View style={styles.verifiedShopText}>
+                    <Text
+                      style={[styles.verifiedShopName, { color: colors.text }]}
+                      numberOfLines={1}
+                    >
+                      {query.data.verified_shop_name}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.verifiedShopMeta,
+                        { color: colors.subtext },
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {[
+                        query.data.verified_shop_city,
+                        query.data.verified_shop_address,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  </View>
                 </View>
               ) : null}
             </View>
 
-            <View style={styles.toolRow}>
-              <View style={styles.toolActions}>
-                <Pressable
-                  style={styles.toolButton}
-                  onPress={() => Alert.alert("语音输入", "语音评论功能演示中，后续接入真实语音转文字。")}
-                >
-                  <Ionicons name="mic-outline" size={26} color={colors.subtext} />
-                </Pressable>
-                <Pressable style={styles.toolButton} onPress={() => void pickCommentImage()}>
-                  <Ionicons name="image-outline" size={26} color={colors.subtext} />
-                </Pressable>
-                <Pressable
-                  style={styles.toolButton}
-                  onPress={toggleEmojiPanel}
-                >
-                  <Ionicons name={emojiPanelOpen ? "happy" : "happy-outline"} size={26} color={emojiPanelOpen ? colors.accent : colors.subtext} />
-                </Pressable>
-              </View>
-
-              <Pressable
-                style={[
-                  styles.sendPill,
-                  { backgroundColor: colors.accent },
-                  (!commentText.trim() || createCommentMutation.isPending) && styles.sendPillDisabled,
-                ]}
-                onPress={sendComment}
-                disabled={!commentText.trim() || createCommentMutation.isPending}
-              >
-                <Text style={styles.sendPillText}>发送</Text>
-              </Pressable>
+            <View style={styles.commentHeader}>
+              <Text style={[styles.commentHeaderTitle, { color: colors.text }]}>
+                共 {query.data.comment_count} 条评论
+              </Text>
             </View>
 
-            {emojiPanelOpen ? (
-              <View style={[styles.emojiPanel, { backgroundColor: colors.input }]}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.emojiCategoryRow}>
-                  {emojiGroups.map((group) => {
-                    const active = activeEmojiGroup === group.key;
-                    return (
-                      <Pressable
-                        key={group.key}
-                        style={[
-                          styles.emojiCategoryChip,
-                          { backgroundColor: active ? colors.accent : pageBackground },
-                        ]}
-                        onPress={() => setActiveEmojiGroup(group.key)}
+            <View style={styles.commentList}>
+              {commentsQuery.data?.items.length ? (
+                commentsQuery.data.items.map((item) => (
+                  <View key={item.id} style={styles.commentItem}>
+                    <Image
+                      source={
+                        item.author_avatar_url
+                          ? { uri: resolveAssetUrl(item.author_avatar_url) }
+                          : defaultAvatar
+                      }
+                      style={[
+                        styles.commentAvatar,
+                        { backgroundColor: colors.input },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.commentBody,
+                        { borderBottomColor: colors.border },
+                      ]}
+                    >
+                      <View style={styles.commentTop}>
+                        <View style={styles.commentNameRow}>
+                          <Text
+                            style={[
+                              styles.commentAuthor,
+                              { color: isDark ? "#cfcfd4" : colors.subtext },
+                            ]}
+                          >
+                            {item.author_name}
+                          </Text>
+                          {item.author_is_shop ? (
+                            <Text
+                              style={[
+                                styles.merchantCommentBadge,
+                                {
+                                  backgroundColor: isDark
+                                    ? "rgba(240, 139, 109, 0.14)"
+                                    : "#ffe5da",
+                                  color: colors.accent,
+                                },
+                              ]}
+                            >
+                              商家
+                            </Text>
+                          ) : null}
+                          {item.is_mine ? (
+                            <Text
+                              style={[
+                                styles.mineBadge,
+                                {
+                                  backgroundColor: isDark
+                                    ? "rgba(240, 139, 109, 0.12)"
+                                    : colors.accentSoft,
+                                  color: colors.accent,
+                                },
+                              ]}
+                            >
+                              我
+                            </Text>
+                          ) : null}
+                          {item.is_style_author ? (
+                            <Text
+                              style={[
+                                styles.authorBadge,
+                                {
+                                  backgroundColor: isDark
+                                    ? "rgba(255, 87, 87, 0.12)"
+                                    : "#ffe8e3",
+                                  color: "#ff7e7e",
+                                },
+                              ]}
+                            >
+                              作者
+                            </Text>
+                          ) : null}
+                        </View>
+                        {item.is_mine ? (
+                          <Pressable
+                            onPress={() =>
+                              Alert.alert("删除评论", "确定删除这条评论吗？", [
+                                { text: "取消", style: "cancel" },
+                                {
+                                  text: "删除",
+                                  style: "destructive",
+                                  onPress: () =>
+                                    deleteCommentMutation.mutate(item.id),
+                                },
+                              ])
+                            }
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={18}
+                              color={colors.subtext}
+                            />
+                          </Pressable>
+                        ) : null}
+                      </View>
+                      <Text
+                        style={[styles.commentContent, { color: colors.text }]}
                       >
-                        <Text style={[styles.emojiCategoryText, { color: active ? "#ffffff" : colors.subtext }]}>{group.label}</Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-
-                <View style={styles.emojiGrid}>
-                  {emojiGroups
-                    .find((group) => group.key === activeEmojiGroup)
-                    ?.items.map((emoji) => (
-                      <Pressable key={emoji} style={styles.emojiCell} onPress={() => insertEmoji(emoji)}>
-                        <Text style={styles.emojiText}>{emoji}</Text>
-                      </Pressable>
-                    ))}
+                        {item.content}
+                      </Text>
+                      <Text
+                        style={[styles.commentDate, { color: colors.subtext }]}
+                      >
+                        {formatCommentDate(item.created_at)}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View
+                  style={[
+                    styles.emptyComments,
+                    { backgroundColor: lightCardBackground },
+                  ]}
+                >
+                  <Ionicons
+                    name="chatbubbles-outline"
+                    size={30}
+                    color={colors.subtext}
+                  />
+                  <Text
+                    style={[
+                      styles.emptyCommentsText,
+                      { color: colors.subtext },
+                    ]}
+                  >
+                    还没有评论，来抢个沙发
+                  </Text>
                 </View>
-              </View>
-            ) : null}
-          </Animated.View>
-        ) : (
-          <View style={[styles.collapsedComposer, { borderTopColor: colors.border, backgroundColor: pageBackground }]}>
-            <Pressable style={[styles.collapsedInput, { backgroundColor: colors.input }]} onPress={openComposer}>
-              <Ionicons name="create-outline" size={18} color={colors.subtext} />
-              <Text style={[styles.collapsedPlaceholder, { color: colors.subtext }]} numberOfLines={1}>说点什么...</Text>
-            </Pressable>
+              )}
+              <Text style={[styles.commentEndText, { color: colors.subtext }]}>
+                - 到底了 -
+              </Text>
+            </View>
+          </ScrollView>
 
-            {!isMerchantViewer ? (
-              <Pressable
-                style={styles.socialAction}
-                onPress={() => {
-                  if (!ensureAuthed()) return;
-                  likeMutation.mutate();
-                }}
-              >
-                <Ionicons name={query.data.is_liked ? "heart" : "heart-outline"} size={23} color={query.data.is_liked ? colors.accent : colors.text} />
-                <Text style={[styles.socialCount, { color: colors.text }]}>{formatSocialCount(query.data.like_count)}</Text>
-              </Pressable>
-            ) : null}
+          {composerExpanded ? (
+            <Pressable
+              style={styles.commentDismissLayer}
+              onPress={closeComposer}
+            />
+          ) : null}
 
-            {canManagePost ? (
-              <Pressable
+          {composerExpanded ? (
+            <Animated.View
+              style={[
+                styles.expandedComposer,
+                {
+                  borderTopColor: colors.border,
+                  backgroundColor: pageBackground,
+                  opacity: composerOpacity,
+                  transform: [{ translateY: composerTranslateY }],
+                },
+              ]}
+            >
+              <View
                 style={[
-                  styles.managePostAction,
-                  { backgroundColor: isDark ? "#2a2a30" : colors.accentSoft },
-                  (updateManagedPostMutation.isPending || deleteManagedPostMutation.isPending) && styles.tryOnButtonDisabled,
+                  styles.expandedInputShell,
+                  { backgroundColor: colors.input },
                 ]}
-                onPress={() => openPostManageMenu(dismiss)}
-                disabled={updateManagedPostMutation.isPending || deleteManagedPostMutation.isPending}
               >
-                <Ionicons name="create-outline" size={18} color={colors.accent} />
-                <Text style={[styles.managePostActionText, { color: colors.accent }]}>编辑</Text>
-              </Pressable>
-            ) : null}
+                <TextInput
+                  ref={inputRef}
+                  style={[styles.expandedInput, { color: colors.text }]}
+                  value={commentText}
+                  onChangeText={setCommentText}
+                  onFocus={() => setEmojiPanelOpen(false)}
+                  onSelectionChange={(event) =>
+                    setSelection(event.nativeEvent.selection)
+                  }
+                  placeholder="有话要说，快来评论"
+                  placeholderTextColor={colors.subtext}
+                  multiline
+                  textAlignVertical="top"
+                />
+                {pendingCommentImageUri ? (
+                  <View
+                    style={[
+                      styles.pendingImageCard,
+                      { backgroundColor: pageBackground },
+                    ]}
+                  >
+                    <Image
+                      source={{ uri: pendingCommentImageUri }}
+                      style={styles.pendingImagePreview}
+                    />
+                    <View style={styles.pendingImageText}>
+                      <Text
+                        style={[
+                          styles.pendingImageTitle,
+                          { color: colors.text },
+                        ]}
+                      >
+                        已选择评论图片
+                      </Text>
+                      <Text
+                        style={[
+                          styles.pendingImageHint,
+                          { color: colors.subtext },
+                        ]}
+                      >
+                        图片评论正在接入，当前先发送文字内容
+                      </Text>
+                    </View>
+                    <Pressable onPress={() => setPendingCommentImageUri(null)}>
+                      <Ionicons
+                        name="close-circle"
+                        size={22}
+                        color={colors.subtext}
+                      />
+                    </Pressable>
+                  </View>
+                ) : null}
+              </View>
 
-            <Pressable style={styles.socialAction} onPress={openComposer}>
-              <Ionicons name="chatbubble-ellipses-outline" size={23} color={colors.text} />
-              <Text style={[styles.socialCount, { color: colors.text }]}>{formatSocialCount(query.data.comment_count)}</Text>
-            </Pressable>
+              <View style={styles.toolRow}>
+                <View style={styles.toolActions}>
+                  <Pressable
+                    style={styles.toolButton}
+                    onPress={() =>
+                      Alert.alert(
+                        "语音输入",
+                        "语音评论功能演示中，后续接入真实语音转文字。",
+                      )
+                    }
+                  >
+                    <Ionicons
+                      name="mic-outline"
+                      size={26}
+                      color={colors.subtext}
+                    />
+                  </Pressable>
+                  <Pressable
+                    style={styles.toolButton}
+                    onPress={() => void pickCommentImage()}
+                  >
+                    <Ionicons
+                      name="image-outline"
+                      size={26}
+                      color={colors.subtext}
+                    />
+                  </Pressable>
+                  <Pressable
+                    style={styles.toolButton}
+                    onPress={toggleEmojiPanel}
+                  >
+                    <Ionicons
+                      name={emojiPanelOpen ? "happy" : "happy-outline"}
+                      size={26}
+                      color={emojiPanelOpen ? colors.accent : colors.subtext}
+                    />
+                  </Pressable>
+                </View>
 
-            {!isMerchantViewer ? (
-              <>
                 <Pressable
                   style={[
-                    styles.tryOnButton,
+                    styles.sendPill,
                     { backgroundColor: colors.accent },
-                    tryOnLauncher.mutation.isPending && styles.tryOnButtonDisabled,
+                    (!commentText.trim() || createCommentMutation.isPending) &&
+                      styles.sendPillDisabled,
                   ]}
-                  onPress={openTryOnFlow}
-                  disabled={tryOnLauncher.mutation.isPending}
+                  onPress={sendComment}
+                  disabled={
+                    !commentText.trim() || createCommentMutation.isPending
+                  }
                 >
-                  {tryOnLauncher.mutation.isPending ? (
-                    <ActivityIndicator size="small" color="#ffffff" />
-                  ) : (
-                    <>
-                      <Ionicons name="sparkles" size={16} color="#ffffff" />
-                      <Text style={styles.tryOnButtonText}>焕甲</Text>
-                    </>
-                  )}
+                  <Text style={styles.sendPillText}>发送</Text>
                 </Pressable>
+              </View>
+
+              {emojiPanelOpen ? (
+                <View
+                  style={[styles.emojiPanel, { backgroundColor: colors.input }]}
+                >
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.emojiCategoryRow}
+                  >
+                    {emojiGroups.map((group) => {
+                      const active = activeEmojiGroup === group.key;
+                      return (
+                        <Pressable
+                          key={group.key}
+                          style={[
+                            styles.emojiCategoryChip,
+                            {
+                              backgroundColor: active
+                                ? colors.accent
+                                : pageBackground,
+                            },
+                          ]}
+                          onPress={() => setActiveEmojiGroup(group.key)}
+                        >
+                          <Text
+                            style={[
+                              styles.emojiCategoryText,
+                              { color: active ? "#ffffff" : colors.subtext },
+                            ]}
+                          >
+                            {group.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+
+                  <View style={styles.emojiGrid}>
+                    {emojiGroups
+                      .find((group) => group.key === activeEmojiGroup)
+                      ?.items.map((emoji) => (
+                        <Pressable
+                          key={emoji}
+                          style={styles.emojiCell}
+                          onPress={() => insertEmoji(emoji)}
+                        >
+                          <Text style={styles.emojiText}>{emoji}</Text>
+                        </Pressable>
+                      ))}
+                  </View>
+                </View>
+              ) : null}
+            </Animated.View>
+          ) : (
+            <View
+              style={[
+                styles.collapsedComposer,
+                {
+                  borderTopColor: colors.border,
+                  backgroundColor: pageBackground,
+                },
+              ]}
+            >
+              <Pressable
+                style={[
+                  styles.collapsedInput,
+                  { backgroundColor: colors.input },
+                ]}
+                onPress={openComposer}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={18}
+                  color={colors.subtext}
+                />
+                <Text
+                  style={[
+                    styles.collapsedPlaceholder,
+                    { color: colors.subtext },
+                  ]}
+                  numberOfLines={1}
+                >
+                  说点什么...
+                </Text>
+              </Pressable>
+
+              {!isMerchantViewer ? (
                 <Pressable
-                  style={[styles.bookingButton, { backgroundColor: isDark ? "#2a2a30" : colors.accentSoft }]}
-                  onPress={openMerchantChat}
+                  style={styles.socialAction}
+                  onPress={() => {
+                    if (!ensureAuthed()) return;
+                    likeMutation.mutate();
+                  }}
                 >
-                  <Ionicons name="chatbubble-ellipses-outline" size={15} color={colors.accent} />
-                  <Text style={[styles.bookingButtonText, { color: colors.accent }]}>私信</Text>
+                  <Ionicons
+                    name={query.data.is_liked ? "heart" : "heart-outline"}
+                    size={23}
+                    color={query.data.is_liked ? colors.accent : colors.text}
+                  />
+                  <Text style={[styles.socialCount, { color: colors.text }]}>
+                    {formatSocialCount(query.data.like_count)}
+                  </Text>
                 </Pressable>
-              </>
-            ) : null}
-          </View>
-        )}
+              ) : null}
 
-        <Modal visible={tryOnChooserVisible && !isMerchantViewer} transparent animationType="fade" onRequestClose={closeTryOnChooser}>
-          <View style={[styles.tryOnModalBackdrop, { backgroundColor: colors.overlay }]}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={closeTryOnChooser} disabled={tryOnLauncher.mutation.isPending} />
-            <View style={styles.tryOnModalSheet}>
-              <View style={[styles.tryOnSheetHandle, { backgroundColor: colors.border }]} />
-              <TryOnHandChooser
-                title="选一张手图，马上开始焕甲"
-                description={
-                  handPicker.recentHandPhotos.length
-                    ? "我先把你最近的 5 张手图摆出来，你可以直接挑一张把这款美甲试到手上。"
-                    : "你还没有可用的手图，先拍一张，或者从相册里选一张以前拍过的。"
-                }
-                recentHandPhotos={handPicker.recentHandPhotos}
-                loading={handPicker.savedHandsQuery.isPending}
-                busy={tryOnLauncher.mutation.isPending}
-                onSelectSavedHand={handPicker.handleSavedHandSelect}
-                onTakePhoto={() => void handPicker.takePhotoNow()}
-                onPickFromLibrary={() => void handPicker.pickFromLibrary()}
-              />
+              {canManagePost ? (
+                <Pressable
+                  style={[
+                    styles.managePostAction,
+                    { backgroundColor: isDark ? "#2a2a30" : colors.accentSoft },
+                    (updateManagedPostMutation.isPending ||
+                      deleteManagedPostMutation.isPending) &&
+                      styles.tryOnButtonDisabled,
+                  ]}
+                  onPress={() => openPostManageMenu(dismiss)}
+                  disabled={
+                    updateManagedPostMutation.isPending ||
+                    deleteManagedPostMutation.isPending
+                  }
+                >
+                  <Ionicons
+                    name="create-outline"
+                    size={18}
+                    color={colors.accent}
+                  />
+                  <Text
+                    style={[
+                      styles.managePostActionText,
+                      { color: colors.accent },
+                    ]}
+                  >
+                    编辑
+                  </Text>
+                </Pressable>
+              ) : null}
+
+              <Pressable style={styles.socialAction} onPress={openComposer}>
+                <Ionicons
+                  name="chatbubble-ellipses-outline"
+                  size={23}
+                  color={colors.text}
+                />
+                <Text style={[styles.socialCount, { color: colors.text }]}>
+                  {formatSocialCount(query.data.comment_count)}
+                </Text>
+              </Pressable>
+
+              {!isMerchantViewer ? (
+                <>
+                  <Pressable
+                    style={[
+                      styles.tryOnButton,
+                      { backgroundColor: colors.accent },
+                      tryOnLauncher.mutation.isPending &&
+                        styles.tryOnButtonDisabled,
+                    ]}
+                    onPress={openTryOnFlow}
+                    disabled={tryOnLauncher.mutation.isPending}
+                  >
+                    {tryOnLauncher.mutation.isPending ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <>
+                        <Ionicons name="sparkles" size={16} color="#ffffff" />
+                        <Text style={styles.tryOnButtonText}>焕甲</Text>
+                      </>
+                    )}
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.bookingButton,
+                      {
+                        backgroundColor: isDark ? "#2a2a30" : colors.accentSoft,
+                      },
+                    ]}
+                    onPress={openMerchantChat}
+                  >
+                    <Ionicons
+                      name="chatbubble-ellipses-outline"
+                      size={15}
+                      color={colors.accent}
+                    />
+                    <Text
+                      style={[
+                        styles.bookingButtonText,
+                        { color: colors.accent },
+                      ]}
+                    >
+                      私信
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
             </View>
-          </View>
-        </Modal>
+          )}
 
-        <ShareSheet visible={shareVisible} onClose={() => setShareVisible(false)} />
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          <Modal
+            visible={tryOnChooserVisible && !isMerchantViewer}
+            transparent
+            animationType="fade"
+            onRequestClose={closeTryOnChooser}
+          >
+            <View
+              style={[
+                styles.tryOnModalBackdrop,
+                { backgroundColor: colors.overlay },
+              ]}
+            >
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={closeTryOnChooser}
+                disabled={tryOnLauncher.mutation.isPending}
+              />
+              <View style={styles.tryOnModalSheet}>
+                <View
+                  style={[
+                    styles.tryOnSheetHandle,
+                    { backgroundColor: colors.border },
+                  ]}
+                />
+                <TryOnHandChooser
+                  title="选一张手图，马上开始焕甲"
+                  description={
+                    handPicker.recentHandPhotos.length
+                      ? "我先把你最近的 5 张手图摆出来，你可以直接挑一张把这款美甲试到手上。"
+                      : "你还没有可用的手图，先拍一张，或者从相册里选一张以前拍过的。"
+                  }
+                  recentHandPhotos={handPicker.recentHandPhotos}
+                  loading={handPicker.savedHandsQuery.isPending}
+                  busy={tryOnLauncher.mutation.isPending}
+                  onSelectSavedHand={handPicker.handleSavedHandSelect}
+                  onTakePhoto={() => void handPicker.takePhotoNow()}
+                  onPickFromLibrary={() => void handPicker.pickFromLibrary()}
+                />
+              </View>
+            </View>
+          </Modal>
+
+          <ShareSheet
+            visible={shareVisible}
+            onClose={() => setShareVisible(false)}
+          />
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     );
   };
 
   return (
-    <SlideOverlayScreen direction={direction} backgroundColor={pageBackground} onDismiss={() => navigation.goBack()}>
+    <SlideOverlayScreen
+      direction={direction}
+      backgroundColor={pageBackground}
+      onDismiss={() => navigation.goBack()}
+    >
       {(dismiss) => renderContent(dismiss)}
     </SlideOverlayScreen>
   );

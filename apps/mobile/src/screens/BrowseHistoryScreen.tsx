@@ -2,8 +2,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import {
   DrawerModuleCard,
@@ -13,7 +23,10 @@ import {
 } from "../components/DrawerModuleLayout";
 import { OverlayContent } from "../components/OverlayContent";
 import { RequireLogin } from "../components/RequireLogin";
-import { SlideOverlayScreen, useOverlayDirection } from "../components/SlideOverlayScreen";
+import {
+  SlideOverlayScreen,
+  useOverlayDirection,
+} from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeColors } from "../utils/theme";
 
@@ -37,7 +50,8 @@ export function BrowseHistoryScreen() {
   });
 
   const batchDeleteMutation = useMutation({
-    mutationFn: (historyIds: string[]) => api.deleteBrowseHistoryBatch(historyIds),
+    mutationFn: (historyIds: string[]) =>
+      api.deleteBrowseHistoryBatch(historyIds),
     onSuccess: () => {
       setSelectedIds([]);
       setManageMode(false);
@@ -50,16 +64,25 @@ export function BrowseHistoryScreen() {
   const selectedCount = selectedIds.length;
 
   useEffect(() => {
-    setSelectedIds((prev) => prev.filter((id) => items.some((item) => item.id === id)));
+    setSelectedIds((prev) =>
+      prev.filter((id) => items.some((item) => item.id === id)),
+    );
     if (items.length === 0) {
       setManageMode(false);
     }
   }, [items]);
 
-  const contentPaddingBottom = useMemo(() => (manageMode ? 130 + insets.bottom : 120), [insets.bottom, manageMode]);
+  const contentPaddingBottom = useMemo(
+    () => (manageMode ? 130 + insets.bottom : 120),
+    [insets.bottom, manageMode],
+  );
 
   const toggleSelect = (historyId: string) => {
-    setSelectedIds((prev) => (prev.includes(historyId) ? prev.filter((id) => id !== historyId) : [...prev, historyId]));
+    setSelectedIds((prev) =>
+      prev.includes(historyId)
+        ? prev.filter((id) => id !== historyId)
+        : [...prev, historyId],
+    );
   };
 
   const toggleSelectAll = () => {
@@ -71,18 +94,30 @@ export function BrowseHistoryScreen() {
     const isDeleteAll = selectedCount === items.length;
     Alert.alert(
       isDeleteAll ? "删除全部浏览记录" : "删除浏览记录",
-      isDeleteAll ? "确认删除全部浏览记录吗？" : `确认删除选中的 ${selectedCount} 条浏览记录吗？`,
+      isDeleteAll
+        ? "确认删除全部浏览记录吗？"
+        : `确认删除选中的 ${selectedCount} 条浏览记录吗？`,
       [
         { text: "取消", style: "cancel" },
-        { text: "删除", style: "destructive", onPress: () => batchDeleteMutation.mutate(selectedIds) },
+        {
+          text: "删除",
+          style: "destructive",
+          onPress: () => batchDeleteMutation.mutate(selectedIds),
+        },
       ],
     );
   };
 
   return (
-    <SlideOverlayScreen direction={direction} backgroundColor={colors.background} onDismiss={() => navigation.goBack()}>
+    <SlideOverlayScreen
+      direction={direction}
+      backgroundColor={colors.background}
+      onDismiss={() => navigation.goBack()}
+    >
       {(dismiss) => (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView
+          style={[styles.container, { backgroundColor: colors.background }]}
+        >
           <OverlayContent.Header
             title="浏览记录"
             onBack={dismiss}
@@ -95,27 +130,45 @@ export function BrowseHistoryScreen() {
                     setSelectedIds([]);
                   }}
                 >
-                  <Text style={[styles.manageAction, { color: colors.text }]}>{manageMode ? "完成" : "管理"}</Text>
+                  <Text style={[styles.manageAction, { color: colors.text }]}>
+                    {manageMode ? "完成" : "管理"}
+                  </Text>
                 </Pressable>
               ) : null
             }
           />
           {!token ? (
-            <RequireLogin onLogin={() => navigation.navigate("Login")} message="登录后可查看浏览记录" />
+            <RequireLogin
+              onLogin={() => navigation.navigate("Login")}
+              message="登录后可查看浏览记录"
+            />
           ) : (
             <>
               <FlatList
                 data={items}
                 keyExtractor={(item) => item.id}
                 style={{ backgroundColor: colors.surfaceAlt }}
-                contentContainerStyle={[drawerModuleListStyles.list, { paddingBottom: contentPaddingBottom }]}
+                contentContainerStyle={[
+                  drawerModuleListStyles.list,
+                  { paddingBottom: contentPaddingBottom },
+                ]}
                 ListHeaderComponent={
                   items.length ? (
-                    <DrawerModuleInfoBanner icon="time-outline" title="仅保留最近 30 天" description="浏览记录按最近访问时间排序，管理模式下可批量删除。" />
+                    <DrawerModuleInfoBanner
+                      icon="time-outline"
+                      title="仅保留最近 30 天"
+                      description="浏览记录按最近访问时间排序，管理模式下可批量删除。"
+                    />
                   ) : null
                 }
                 ListEmptyComponent={
-                  <OverlayContent.Empty icon="time-outline" title={query.isLoading ? "正在加载浏览记录" : "你还没有浏览记录"} description="看过的美甲会按时间收纳在这里。" />
+                  <OverlayContent.Empty
+                    icon="time-outline"
+                    title={
+                      query.isLoading ? "正在加载浏览记录" : "你还没有浏览记录"
+                    }
+                    description="看过的美甲会按时间收纳在这里。"
+                  />
                 }
                 renderItem={({ item }) => (
                   <DrawerModuleCard
@@ -125,7 +178,9 @@ export function BrowseHistoryScreen() {
                         toggleSelect(item.id);
                         return;
                       }
-                      navigation.navigate("StylePreview", { styleId: item.style.id });
+                      navigation.navigate("StylePreview", {
+                        styleId: item.style.id,
+                      });
                     }}
                   >
                     {manageMode ? (
@@ -134,20 +189,36 @@ export function BrowseHistoryScreen() {
                           style={[
                             styles.selectionCircle,
                             {
-                              backgroundColor: selectedIds.includes(item.id) ? colors.accent : colors.surfaceAlt,
-                              borderColor: selectedIds.includes(item.id) ? colors.accent : colors.border,
+                              backgroundColor: selectedIds.includes(item.id)
+                                ? colors.accent
+                                : colors.surfaceAlt,
+                              borderColor: selectedIds.includes(item.id)
+                                ? colors.accent
+                                : colors.border,
                             },
                           ]}
                         >
-                          {selectedIds.includes(item.id) ? <Ionicons name="checkmark" size={14} color="#fff" /> : null}
+                          {selectedIds.includes(item.id) ? (
+                            <Ionicons name="checkmark" size={14} color="#fff" />
+                          ) : null}
                         </View>
                       </View>
                     ) : null}
-                    <DrawerModuleThumbnail uri={resolveAssetUrl(item.style.image_url)} size="large" />
+                    <DrawerModuleThumbnail
+                      uri={resolveAssetUrl(item.style.image_url)}
+                      size="large"
+                    />
                     <View style={styles.body}>
-                      <Text style={[styles.title, { color: colors.text }]}>{item.style.title}</Text>
-                      <Text style={[styles.meta, { color: colors.subtext }]}>浏览时间 {formatViewedAt(item.viewed_at)}</Text>
-                      <Text style={[styles.desc, { color: colors.subtext }]} numberOfLines={2}>
+                      <Text style={[styles.title, { color: colors.text }]}>
+                        {item.style.title}
+                      </Text>
+                      <Text style={[styles.meta, { color: colors.subtext }]}>
+                        浏览时间 {formatViewedAt(item.viewed_at)}
+                      </Text>
+                      <Text
+                        style={[styles.desc, { color: colors.subtext }]}
+                        numberOfLines={2}
+                      >
                         {item.style.description}
                       </Text>
                     </View>
@@ -166,10 +237,22 @@ export function BrowseHistoryScreen() {
                   ]}
                 >
                   <Pressable
-                    style={[styles.manageButton, { backgroundColor: allSelected ? colors.surfaceAlt : colors.accentSoft }]}
+                    style={[
+                      styles.manageButton,
+                      {
+                        backgroundColor: allSelected
+                          ? colors.surfaceAlt
+                          : colors.accentSoft,
+                      },
+                    ]}
                     onPress={toggleSelectAll}
                   >
-                    <Text style={[styles.manageButtonText, { color: allSelected ? colors.text : colors.accent }]}>
+                    <Text
+                      style={[
+                        styles.manageButtonText,
+                        { color: allSelected ? colors.text : colors.accent },
+                      ]}
+                    >
                       {allSelected ? "取消全选" : "全选"}
                     </Text>
                   </Pressable>
@@ -178,14 +261,21 @@ export function BrowseHistoryScreen() {
                       styles.manageButton,
                       styles.manageConfirmButton,
                       {
-                        backgroundColor: selectedCount ? colors.dangerText : colors.surfaceAlt,
+                        backgroundColor: selectedCount
+                          ? colors.dangerText
+                          : colors.surfaceAlt,
                         opacity: selectedCount ? 1 : 0.55,
                       },
                     ]}
                     disabled={!selectedCount || batchDeleteMutation.isPending}
                     onPress={confirmDelete}
                   >
-                    <Text style={[styles.manageConfirmText, { color: selectedCount ? "#fff" : colors.subtext }]}>
+                    <Text
+                      style={[
+                        styles.manageConfirmText,
+                        { color: selectedCount ? "#fff" : colors.subtext },
+                      ]}
+                    >
                       确认删除
                     </Text>
                   </Pressable>

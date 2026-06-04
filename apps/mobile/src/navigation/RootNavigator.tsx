@@ -1,11 +1,25 @@
 import { Ionicons } from "@expo/vector-icons";
-import { BottomTabBarButtonProps, createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import {
+  BottomTabBarButtonProps,
+  createBottomTabNavigator,
+} from "@react-navigation/bottom-tabs";
 import { NavigatorScreenParams, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useEffect, useRef, type ComponentType } from "react";
-import { Animated, Easing, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { OverlayContent } from "../components/OverlayContent";
-import { SlideDirection, SlideOverlayScreen } from "../components/SlideOverlayScreen";
+import {
+  SlideDirection,
+  SlideOverlayScreen,
+} from "../components/SlideOverlayScreen";
 import { WeeklyHotNailsModal } from "../components/WeeklyHotNailsModal";
 import { AskAIScreen } from "../screens/AskAIScreen";
 import { AuthorProfileScreen } from "../screens/AuthorProfileScreen";
@@ -85,11 +99,23 @@ export type RootStackParamList = {
   PrivacySettings: OverlayEntryParams | undefined;
   ProfileInfo: OverlayEntryParams | undefined;
   BlockedUsers: OverlayEntryParams | undefined;
-  FollowList: { authorId: string; kind: "following" | "followers"; title: string } & OverlayEntryParams;
+  FollowList: {
+    authorId: string;
+    kind: "following" | "followers";
+    title: string;
+  } & OverlayEntryParams;
   ProfileEdit: OverlayEntryParams | undefined;
   MyPosts: OverlayEntryParams | undefined;
-  AuthorProfile: { authorId: string; initialTab?: "posts" | "comments" | "liked" } & OverlayEntryParams;
-  DirectMessage: ({ userId: string; initialStyleId?: string; initialTryOnJobId?: string; initialMessage?: string } & OverlayEntryParams);
+  AuthorProfile: {
+    authorId: string;
+    initialTab?: "posts" | "comments" | "liked";
+  } & OverlayEntryParams;
+  DirectMessage: {
+    userId: string;
+    initialStyleId?: string;
+    initialTryOnJobId?: string;
+    initialMessage?: string;
+  } & OverlayEntryParams;
   StylePreview: { styleId: string } & OverlayEntryParams;
   TryOnResult: { jobId: string } & OverlayEntryParams;
   WearableStore: { styleId: string } & OverlayEntryParams;
@@ -109,18 +135,36 @@ const overlayOptions = {
 
 function createOverlayComponent(
   Component: ComponentType<any>,
-  options: { defaultEdge?: SlideDirection; title?: string; showHeader?: boolean } = {},
+  options: {
+    defaultEdge?: SlideDirection;
+    title?: string;
+    showHeader?: boolean;
+  } = {},
 ) {
   function OverlayComponent(props: any) {
     const colors = useThemeColors();
-    const direction = (props.route?.params?.entryEdge ?? options.defaultEdge ?? "right") as SlideDirection;
+    const direction = (props.route?.params?.entryEdge ??
+      options.defaultEdge ??
+      "right") as SlideDirection;
 
     return (
-      <SlideOverlayScreen backgroundColor={colors.background} direction={direction} onDismiss={() => props.navigation.goBack()}>
+      <SlideOverlayScreen
+        backgroundColor={colors.background}
+        direction={direction}
+        onDismiss={() => props.navigation.goBack()}
+      >
         {(dismiss) =>
           options.showHeader ? (
-            <SafeAreaView style={[styles.overlayContainer, { backgroundColor: colors.background }]}>
-              <OverlayContent.Header title={options.title ?? ""} onBack={dismiss} />
+            <SafeAreaView
+              style={[
+                styles.overlayContainer,
+                { backgroundColor: colors.background },
+              ]}
+            >
+              <OverlayContent.Header
+                title={options.title ?? ""}
+                onBack={dismiss}
+              />
               <View style={styles.overlayBody}>
                 <Component {...props} />
               </View>
@@ -138,27 +182,76 @@ function createOverlayComponent(
 
 const LoginOverlayScreen = createOverlayComponent(LoginScreen);
 const LoginHelpOverlayScreen = createOverlayComponent(LoginHelpScreen);
-const ConsumerLikesOverlayScreen = createOverlayComponent(ConsumerLikesScreen, { showHeader: true, title: "喜爱" });
-const ConsumerOrdersOverlayScreen = createOverlayComponent(ConsumerOrdersScreen, { showHeader: true, title: "我的订单" });
-const StrangerMessagesOverlayScreen = createOverlayComponent(StrangerMessagesScreen);
-const ProfileSettingsOverlayScreen = createOverlayComponent(ProfileSettingsScreen, { showHeader: true, title: "设置" });
-const ProfileInfoOverlayScreen = createOverlayComponent(ProfileInfoScreen, { showHeader: true, title: "个人信息" });
-const MerchantMarketDataOverlayScreen = createOverlayComponent(MerchantMarketDataScreen, { showHeader: true, title: "市场数据" });
-const MerchantOrdersOverlayScreen = createOverlayComponent(MerchantOrdersScreen, { showHeader: true, title: "订单管理" });
-const MerchantShopOverlayScreen = createOverlayComponent(MerchantShopScreen, { showHeader: true, title: "店铺资料" });
-const MerchantTrendNotificationsOverlayScreen = createOverlayComponent(MerchantTrendNotificationsScreen, { showHeader: true, title: "热门手工甲" });
-const PrivacySettingsOverlayScreen = createOverlayComponent(PrivacySettingsScreen, { showHeader: true, title: "隐私设置" });
-const BlockedUsersOverlayScreen = createOverlayComponent(BlockedUsersScreen, { showHeader: true, title: "不再看她" });
+const ConsumerLikesOverlayScreen = createOverlayComponent(ConsumerLikesScreen, {
+  showHeader: true,
+  title: "喜爱",
+});
+const ConsumerOrdersOverlayScreen = createOverlayComponent(
+  ConsumerOrdersScreen,
+  { showHeader: true, title: "我的订单" },
+);
+const StrangerMessagesOverlayScreen = createOverlayComponent(
+  StrangerMessagesScreen,
+);
+const ProfileSettingsOverlayScreen = createOverlayComponent(
+  ProfileSettingsScreen,
+  { showHeader: true, title: "设置" },
+);
+const ProfileInfoOverlayScreen = createOverlayComponent(ProfileInfoScreen, {
+  showHeader: true,
+  title: "个人信息",
+});
+const MerchantMarketDataOverlayScreen = createOverlayComponent(
+  MerchantMarketDataScreen,
+  { showHeader: true, title: "市场数据" },
+);
+const MerchantOrdersOverlayScreen = createOverlayComponent(
+  MerchantOrdersScreen,
+  { showHeader: true, title: "订单管理" },
+);
+const MerchantShopOverlayScreen = createOverlayComponent(MerchantShopScreen, {
+  showHeader: true,
+  title: "店铺资料",
+});
+const MerchantTrendNotificationsOverlayScreen = createOverlayComponent(
+  MerchantTrendNotificationsScreen,
+  { showHeader: true, title: "热门手工甲" },
+);
+const PrivacySettingsOverlayScreen = createOverlayComponent(
+  PrivacySettingsScreen,
+  { showHeader: true, title: "隐私设置" },
+);
+const BlockedUsersOverlayScreen = createOverlayComponent(BlockedUsersScreen, {
+  showHeader: true,
+  title: "不再看她",
+});
 const FollowListOverlayScreen = createOverlayComponent(FollowListScreen);
-const ProfileEditOverlayScreen = createOverlayComponent(ProfileEditScreen, { showHeader: true, title: "编辑商户信息" });
-const MyPostsOverlayScreen = createOverlayComponent(MyPostsScreen, { showHeader: true, title: "我的发布" });
+const ProfileEditOverlayScreen = createOverlayComponent(ProfileEditScreen, {
+  showHeader: true,
+  title: "编辑商户信息",
+});
+const MyPostsOverlayScreen = createOverlayComponent(MyPostsScreen, {
+  showHeader: true,
+  title: "我的发布",
+});
 const AuthorProfileOverlayScreen = createOverlayComponent(AuthorProfileScreen);
 const DirectMessageOverlayScreen = createOverlayComponent(DirectMessageScreen);
-const TryOnResultOverlayScreen = createOverlayComponent(TryOnResultScreen, { showHeader: true, title: "试戴结果" });
-const WearableStoreOverlayScreen = createOverlayComponent(WearableStoreScreen, { showHeader: true, title: "焕甲生活超市" });
-const WearableOrderOverlayScreen = createOverlayComponent(WearableOrderScreen, { showHeader: true, title: "确认下单" });
+const TryOnResultOverlayScreen = createOverlayComponent(TryOnResultScreen, {
+  showHeader: true,
+  title: "试戴结果",
+});
+const WearableStoreOverlayScreen = createOverlayComponent(WearableStoreScreen, {
+  showHeader: true,
+  title: "焕甲生活超市",
+});
+const WearableOrderOverlayScreen = createOverlayComponent(WearableOrderScreen, {
+  showHeader: true,
+  title: "确认下单",
+});
 const MarketMapOverlayScreen = createOverlayComponent(MarketMapScreen);
-const MarketShopDetailOverlayScreen = createOverlayComponent(MarketShopDetailScreen);
+const MarketShopDetailOverlayScreen = createOverlayComponent(
+  MarketShopDetailScreen,
+);
 
 function CenterTabButton({
   props,
@@ -251,7 +344,16 @@ function CenterTabButton({
           },
         ]}
       />
-      <Animated.View style={[styles.askButtonInner, { backgroundColor: colors.accent, shadowColor: colors.accent, transform: [{ scale: pressScale }] }]}>
+      <Animated.View
+        style={[
+          styles.askButtonInner,
+          {
+            backgroundColor: colors.accent,
+            shadowColor: colors.accent,
+            transform: [{ scale: pressScale }],
+          },
+        ]}
+      >
         <Ionicons name={icon} size={icon === "add" ? 30 : 25} color="white" />
       </Animated.View>
       <Text style={[styles.askLabel, { color: colors.accent }]}>{label}</Text>
@@ -271,7 +373,10 @@ function MainTabs() {
         key={isMerchant ? "merchant-tabs" : "consumer-tabs"}
         screenOptions={{
           headerShown: false,
-          tabBarStyle: [styles.tabBar, { backgroundColor: colors.navBackground }],
+          tabBarStyle: [
+            styles.tabBar,
+            { backgroundColor: colors.navBackground },
+          ],
           tabBarActiveTintColor: colors.accent,
           tabBarInactiveTintColor: colors.navInactive,
         }}
@@ -281,7 +386,9 @@ function MainTabs() {
           component={BrowseScreen}
           options={{
             title: "浏览",
-            tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="grid-outline" size={size} color={color} />
+            ),
           }}
         />
         {isMerchant ? (
@@ -290,7 +397,9 @@ function MainTabs() {
             component={MerchantBookingsScreen}
             options={{
               title: "预约",
-              tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" size={size} color={color} />,
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="calendar-outline" size={size} color={color} />
+              ),
             }}
           />
         ) : (
@@ -299,7 +408,9 @@ function MainTabs() {
             component={MarketScreen}
             options={{
               title: "市场",
-              tabBarIcon: ({ color, size }) => <Ionicons name="storefront-outline" size={size} color={color} />,
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="storefront-outline" size={size} color={color} />
+              ),
             }}
           />
         )}
@@ -309,7 +420,14 @@ function MainTabs() {
             component={MerchantOverviewScreen}
             options={{
               title: "后台",
-              tabBarButton: (props) => <CenterTabButton props={props} icon="analytics-outline" label="后台" colors={colors} />,
+              tabBarButton: (props) => (
+                <CenterTabButton
+                  props={props}
+                  icon="analytics-outline"
+                  label="后台"
+                  colors={colors}
+                />
+              ),
             }}
           />
         ) : (
@@ -318,7 +436,14 @@ function MainTabs() {
             component={AskAIScreen}
             options={{
               title: "问问小嘉",
-              tabBarButton: (props) => <CenterTabButton props={props} icon="sparkles" label="问问小嘉" colors={colors} />,
+              tabBarButton: (props) => (
+                <CenterTabButton
+                  props={props}
+                  icon="sparkles"
+                  label="问问小嘉"
+                  colors={colors}
+                />
+              ),
             }}
           />
         )}
@@ -327,7 +452,9 @@ function MainTabs() {
           component={PublishScreen}
           options={{
             title: "发布",
-            tabBarIcon: ({ color, size }) => <Ionicons name="add-circle-outline" size={size} color={color} />,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="add-circle-outline" size={size} color={color} />
+            ),
           }}
         />
         <Tab.Screen
@@ -335,7 +462,9 @@ function MainTabs() {
           component={ProfileScreen}
           options={{
             title: "我的",
-            tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="person-outline" size={size} color={color} />
+            ),
           }}
         />
       </Tab.Navigator>
@@ -364,38 +493,166 @@ export function RootNavigator() {
         headerTitleStyle: { color: colors.text, fontWeight: "700" },
       }}
     >
-      <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-      <Stack.Screen name="Login" component={LoginOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="LoginHelp" component={LoginHelpOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="BrowseHistory" component={BrowseHistoryScreen} options={overlayOptions} />
-      <Stack.Screen name="BrowseSearch" component={BrowseSearchScreen} options={overlayOptions} />
-      <Stack.Screen name="Hashtag" component={HashtagScreen} options={overlayOptions} />
-      <Stack.Screen name="ConsumerLikes" component={ConsumerLikesOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="ConsumerOrders" component={ConsumerOrdersOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="MessagesInbox" component={MessagesInboxScreen} options={overlayOptions} />
-      <Stack.Screen name="StrangerMessages" component={StrangerMessagesOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="TryOnHistory" component={TryOnHistoryScreen} options={overlayOptions} />
-      <Stack.Screen name="HandPhotoManagement" component={HandPhotoManagementScreen} options={overlayOptions} />
-      <Stack.Screen name="MarketCityPicker" component={MarketCityPickerScreen} options={overlayOptions} />
-      <Stack.Screen name="MarketMap" component={MarketMapOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="MarketShopDetail" component={MarketShopDetailOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="MerchantMarketData" component={MerchantMarketDataOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="MerchantOrders" component={MerchantOrdersOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="MerchantShop" component={MerchantShopOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="MerchantTrendNotifications" component={MerchantTrendNotificationsOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="ProfileSettings" component={ProfileSettingsOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="ProfileInfo" component={ProfileInfoOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="PrivacySettings" component={PrivacySettingsOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="BlockedUsers" component={BlockedUsersOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="FollowList" component={FollowListOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="ProfileEdit" component={ProfileEditOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="MyPosts" component={MyPostsOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="AuthorProfile" component={AuthorProfileOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="DirectMessage" component={DirectMessageOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="StylePreview" component={StylePreviewScreen} options={overlayOptions} />
-      <Stack.Screen name="TryOnResult" component={TryOnResultOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="WearableStore" component={WearableStoreOverlayScreen} options={overlayOptions} />
-      <Stack.Screen name="WearableOrder" component={WearableOrderOverlayScreen} options={overlayOptions} />
+      <Stack.Screen
+        name="MainTabs"
+        component={MainTabs}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Login"
+        component={LoginOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="LoginHelp"
+        component={LoginHelpOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="BrowseHistory"
+        component={BrowseHistoryScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="BrowseSearch"
+        component={BrowseSearchScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="Hashtag"
+        component={HashtagScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="ConsumerLikes"
+        component={ConsumerLikesOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="ConsumerOrders"
+        component={ConsumerOrdersOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="MessagesInbox"
+        component={MessagesInboxScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="StrangerMessages"
+        component={StrangerMessagesOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="TryOnHistory"
+        component={TryOnHistoryScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="HandPhotoManagement"
+        component={HandPhotoManagementScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="MarketCityPicker"
+        component={MarketCityPickerScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="MarketMap"
+        component={MarketMapOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="MarketShopDetail"
+        component={MarketShopDetailOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="MerchantMarketData"
+        component={MerchantMarketDataOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="MerchantOrders"
+        component={MerchantOrdersOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="MerchantShop"
+        component={MerchantShopOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="MerchantTrendNotifications"
+        component={MerchantTrendNotificationsOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="ProfileSettings"
+        component={ProfileSettingsOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="ProfileInfo"
+        component={ProfileInfoOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="PrivacySettings"
+        component={PrivacySettingsOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="BlockedUsers"
+        component={BlockedUsersOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="FollowList"
+        component={FollowListOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="ProfileEdit"
+        component={ProfileEditOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="MyPosts"
+        component={MyPostsOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="AuthorProfile"
+        component={AuthorProfileOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="DirectMessage"
+        component={DirectMessageOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="StylePreview"
+        component={StylePreviewScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="TryOnResult"
+        component={TryOnResultOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="WearableStore"
+        component={WearableStoreOverlayScreen}
+        options={overlayOptions}
+      />
+      <Stack.Screen
+        name="WearableOrder"
+        component={WearableOrderOverlayScreen}
+        options={overlayOptions}
+      />
     </Stack.Navigator>
   );
 }

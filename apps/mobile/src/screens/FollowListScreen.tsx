@@ -1,7 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { FlatList, Image, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import {
+  FlatList,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
@@ -18,12 +26,13 @@ export function FollowListScreen() {
   const queryClient = useQueryClient();
   const colors = useThemeColors();
   const currentUser = useAuthStore((state) => state.user);
-  const {
-    authorId,
-    kind,
-    title,
-  } = route.params as { authorId: string; kind: "following" | "followers"; title?: string };
-  const displayTab: FollowTab = kind === "followers" ? "followers" : "following";
+  const { authorId, kind, title } = route.params as {
+    authorId: string;
+    kind: "following" | "followers";
+    title?: string;
+  };
+  const displayTab: FollowTab =
+    kind === "followers" ? "followers" : "following";
 
   const followingQuery = useQuery({
     queryKey: ["follow-list", authorId, "following"],
@@ -38,7 +47,8 @@ export function FollowListScreen() {
   });
 
   const toggleFollowMutation = useMutation({
-    mutationFn: (item: UserSummary) => (item.is_following ? api.unfollowUser(item.id) : api.followUser(item.id)),
+    mutationFn: (item: UserSummary) =>
+      item.is_following ? api.unfollowUser(item.id) : api.followUser(item.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["follow-list", authorId] });
       queryClient.invalidateQueries({ queryKey: ["author-profile"] });
@@ -51,12 +61,12 @@ export function FollowListScreen() {
   const activeUsers = displayTab === "following" ? following : followers;
   const activeIsLoading =
     displayTab === "following"
-        ? followingQuery.isLoading
-        : followersQuery.isLoading;
+      ? followingQuery.isLoading
+      : followersQuery.isLoading;
   const activeIsError =
     displayTab === "following"
-        ? followingQuery.isError
-        : followersQuery.isError;
+      ? followingQuery.isError
+      : followersQuery.isError;
 
   const sectionTitle =
     displayTab === "following"
@@ -64,68 +74,94 @@ export function FollowListScreen() {
       : `粉丝（${followers.length}）`;
 
   const emptyText =
-    displayTab === "following"
-        ? "还没有关注任何商家"
-        : "还没有粉丝";
+    displayTab === "following" ? "还没有关注任何商家" : "还没有粉丝";
 
   const getSubtitle = (item: UserSummary) => {
     if (displayTab === "followers") {
       return `粉丝 · IP：${item.ip_location || "未知"}`;
     }
-    return item.is_following ? `已关注 · IP：${item.ip_location || "未知"}` : `IP：${item.ip_location || "未知"}`;
+    return item.is_following
+      ? `已关注 · IP：${item.ip_location || "未知"}`
+      : `IP：${item.ip_location || "未知"}`;
   };
 
   const renderUser = ({ item }: { item: UserSummary }) => {
-    const canToggleFollow = displayTab === "following" && item.id !== currentUser?.id;
+    const canToggleFollow =
+      displayTab === "following" && item.id !== currentUser?.id;
     const actionText = item.is_following ? "取消关注" : "关注";
     return (
-    <Pressable
-      style={[styles.userRow, { backgroundColor: colors.background }]}
-      onPress={() => navigation.navigate("AuthorProfile", { authorId: item.id })}
-    >
-      <Image source={item.avatar_url ? { uri: resolveAssetUrl(item.avatar_url) } : defaultAvatar} style={styles.avatar} />
-      <View style={styles.userBody}>
-        <Text style={[styles.username, { color: colors.text }]} numberOfLines={1}>
-          {item.username}
-        </Text>
-        <Text style={[styles.meta, { color: colors.subtext }]} numberOfLines={1}>
-          {getSubtitle(item)}
-        </Text>
-        {item.bio ? (
-          <Text style={[styles.bio, { color: colors.subtext }]} numberOfLines={1}>
-            {item.bio}
+      <Pressable
+        style={[styles.userRow, { backgroundColor: colors.background }]}
+        onPress={() =>
+          navigation.navigate("AuthorProfile", { authorId: item.id })
+        }
+      >
+        <Image
+          source={
+            item.avatar_url
+              ? { uri: resolveAssetUrl(item.avatar_url) }
+              : defaultAvatar
+          }
+          style={styles.avatar}
+        />
+        <View style={styles.userBody}>
+          <Text
+            style={[styles.username, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {item.username}
           </Text>
+          <Text
+            style={[styles.meta, { color: colors.subtext }]}
+            numberOfLines={1}
+          >
+            {getSubtitle(item)}
+          </Text>
+          {item.bio ? (
+            <Text
+              style={[styles.bio, { color: colors.subtext }]}
+              numberOfLines={1}
+            >
+              {item.bio}
+            </Text>
+          ) : null}
+        </View>
+        {canToggleFollow ? (
+          <Pressable
+            disabled={toggleFollowMutation.isPending}
+            style={[
+              styles.followBadge,
+              {
+                borderColor: colors.accent,
+                backgroundColor: item.is_following
+                  ? colors.accentSoft
+                  : "transparent",
+                opacity: toggleFollowMutation.isPending ? 0.7 : 1,
+              },
+            ]}
+            onPress={(event) => {
+              event.stopPropagation();
+              toggleFollowMutation.mutate(item);
+            }}
+          >
+            <Text style={[styles.followBadgeText, { color: colors.accent }]}>
+              {actionText}
+            </Text>
+          </Pressable>
         ) : null}
-      </View>
-      {canToggleFollow ? (
-        <Pressable
-          disabled={toggleFollowMutation.isPending}
-          style={[
-            styles.followBadge,
-            {
-              borderColor: colors.accent,
-              backgroundColor: item.is_following ? colors.accentSoft : "transparent",
-              opacity: toggleFollowMutation.isPending ? 0.7 : 1,
-            },
-          ]}
-          onPress={(event) => {
-            event.stopPropagation();
-            toggleFollowMutation.mutate(item);
-          }}
-        >
-          <Text style={[styles.followBadgeText, { color: colors.accent }]}>
-            {actionText}
-          </Text>
-        </Pressable>
-      ) : null}
-    </Pressable>
+      </Pressable>
     );
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Pressable style={styles.backButton} onPress={() => dismissOverlay?.() ?? navigation.goBack()}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => dismissOverlay?.() ?? navigation.goBack()}
+        >
           <Ionicons name="chevron-back" size={30} color={colors.text} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.text }]}>
@@ -135,8 +171,14 @@ export function FollowListScreen() {
 
       {activeIsError ? (
         <View style={styles.stateWrap}>
-          <Ionicons name="lock-closed-outline" size={30} color={colors.subtext} />
-          <Text style={[styles.stateText, { color: colors.subtext }]}>该列表暂不可见</Text>
+          <Ionicons
+            name="lock-closed-outline"
+            size={30}
+            color={colors.subtext}
+          />
+          <Text style={[styles.stateText, { color: colors.subtext }]}>
+            该列表暂不可见
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -148,7 +190,11 @@ export function FollowListScreen() {
               {sectionTitle}
             </Text>
           }
-          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: colors.border }]} />}
+          ItemSeparatorComponent={() => (
+            <View
+              style={[styles.separator, { backgroundColor: colors.border }]}
+            />
+          )}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={[styles.empty, { color: colors.subtext }]}>

@@ -2,7 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useEffect, useState } from "react";
-import { Image, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../api/client";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
@@ -13,9 +21,21 @@ const DEMO_MERCHANT_PHONE = "13886722666";
 const DEMO_PASSWORD = "admin@123456";
 const DEMO_SMS_CODE = "666666";
 const partnerLogins = [
-  { key: "meituan", image: require("../../assets/login/meituan.png"), label: "美团" },
-  { key: "wechat", image: require("../../assets/login/wechat.png"), label: "微信" },
-  { key: "alipay", image: require("../../assets/login/alipay.png"), label: "支付宝" },
+  {
+    key: "meituan",
+    image: require("../../assets/login/meituan.png"),
+    label: "美团",
+  },
+  {
+    key: "wechat",
+    image: require("../../assets/login/wechat.png"),
+    label: "微信",
+  },
+  {
+    key: "alipay",
+    image: require("../../assets/login/alipay.png"),
+    label: "支付宝",
+  },
 ] as const;
 
 function extractErrorMessage(error: unknown): string {
@@ -38,8 +58,12 @@ export function LoginScreen() {
   const setSession = useAuthStore((state) => state.setSession);
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
-  const [loginRole, setLoginRole] = useState<"consumer" | "merchant">("consumer");
-  const [loginMethod, setLoginMethod] = useState<"sms" | "password">("password");
+  const [loginRole, setLoginRole] = useState<"consumer" | "merchant">(
+    "consumer",
+  );
+  const [loginMethod, setLoginMethod] = useState<"sms" | "password">(
+    "password",
+  );
   const [phone, setPhone] = useState(DEMO_CONSUMER_PHONE);
   const [password, setPassword] = useState(DEMO_PASSWORD);
   const [smsCode, setSmsCode] = useState("");
@@ -49,7 +73,13 @@ export function LoginScreen() {
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: async (payload: { loginMethod: "sms" | "password"; loginRole: "consumer" | "merchant"; phone: string; password: string; smsCode: string }) => {
+    mutationFn: async (payload: {
+      loginMethod: "sms" | "password";
+      loginRole: "consumer" | "merchant";
+      phone: string;
+      password: string;
+      smsCode: string;
+    }) => {
       const normalizedPhone = payload.phone.replace(/\D/g, "").slice(0, 11);
       if (normalizedPhone.length !== 11) {
         throw new Error("请输入正确的 11 位手机号");
@@ -59,11 +89,21 @@ export function LoginScreen() {
       }
 
       if (payload.loginMethod === "password") {
-        return api.login({ phone: normalizedPhone, password: payload.password, requested_role: payload.loginRole });
+        return api.login({
+          phone: normalizedPhone,
+          password: payload.password,
+          requested_role: payload.loginRole,
+        });
       }
 
-      const expectedDemoPhone = payload.loginRole === "merchant" ? DEMO_MERCHANT_PHONE : DEMO_CONSUMER_PHONE;
-      if (payload.loginRole === "merchant" && normalizedPhone !== expectedDemoPhone) {
+      const expectedDemoPhone =
+        payload.loginRole === "merchant"
+          ? DEMO_MERCHANT_PHONE
+          : DEMO_CONSUMER_PHONE;
+      if (
+        payload.loginRole === "merchant" &&
+        normalizedPhone !== expectedDemoPhone
+      ) {
         throw new Error("商家演示请使用默认账号登录");
       }
       if (!smsRequested) {
@@ -74,7 +114,11 @@ export function LoginScreen() {
       }
 
       if (normalizedPhone === expectedDemoPhone) {
-        return api.login({ phone: normalizedPhone, password: DEMO_PASSWORD, requested_role: payload.loginRole });
+        return api.login({
+          phone: normalizedPhone,
+          password: DEMO_PASSWORD,
+          requested_role: payload.loginRole,
+        });
       }
 
       try {
@@ -134,9 +178,14 @@ export function LoginScreen() {
     setFeedback(`演示验证码已发送，固定验证码为 ${DEMO_SMS_CODE}`);
   };
 
-  const handleQuickLogin = (provider: (typeof partnerLogins)[number]["key"]) => {
-    const providerLabel = { meituan: "美团", wechat: "微信", alipay: "支付宝" }[provider];
-    const demoPhone = loginRole === "merchant" ? DEMO_MERCHANT_PHONE : DEMO_CONSUMER_PHONE;
+  const handleQuickLogin = (
+    provider: (typeof partnerLogins)[number]["key"],
+  ) => {
+    const providerLabel = { meituan: "美团", wechat: "微信", alipay: "支付宝" }[
+      provider
+    ];
+    const demoPhone =
+      loginRole === "merchant" ? DEMO_MERCHANT_PHONE : DEMO_CONSUMER_PHONE;
     setAgreed(true);
     setLoginMethod("password");
     setPhone(demoPhone);
@@ -152,7 +201,11 @@ export function LoginScreen() {
   };
 
   const actionLabel =
-    loginMethod === "sms" ? (smsRequested ? "验证码登录" : "获取短信验证码") : "登录";
+    loginMethod === "sms"
+      ? smsRequested
+        ? "验证码登录"
+        : "获取短信验证码"
+      : "登录";
   const actionDisabled =
     mutation.isPending ||
     phone.replace(/\D/g, "").length !== 11 ||
@@ -165,11 +218,25 @@ export function LoginScreen() {
     (loginMethod === "sms"
       ? `${loginRole === "merchant" ? "商家" : "用户"}演示入口，默认手机号可直接获取验证码登录`
       : `${loginRole === "merchant" ? "商家" : "用户"}演示账号和密码相同，可直接登录`);
-  const primaryBackground = actionDisabled ? (isDark ? colors.border : "#fff2a9") : isDark ? colors.accent : "#ffec88";
-  const primaryLabelColor = actionDisabled ? (isDark ? "#8f8983" : "#c8bb78") : isDark ? "#ffffff" : "#6b5f2c";
+  const primaryBackground = actionDisabled
+    ? isDark
+      ? colors.border
+      : "#fff2a9"
+    : isDark
+      ? colors.accent
+      : "#ffec88";
+  const primaryLabelColor = actionDisabled
+    ? isDark
+      ? "#8f8983"
+      : "#c8bb78"
+    : isDark
+      ? "#ffffff"
+      : "#6b5f2c";
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.content}>
         <View style={styles.topBar}>
           <Pressable
@@ -182,7 +249,10 @@ export function LoginScreen() {
           >
             <Ionicons name="close" size={26} color={colors.text} />
           </Pressable>
-          <Pressable onPress={() => navigation.navigate("LoginHelp" as never)} hitSlop={8}>
+          <Pressable
+            onPress={() => navigation.navigate("LoginHelp" as never)}
+            hitSlop={8}
+          >
             <Text style={[styles.helpText, { color: colors.text }]}>帮助</Text>
           </Pressable>
         </View>
@@ -200,18 +270,30 @@ export function LoginScreen() {
             return (
               <Pressable
                 key={item.key}
-                style={[styles.roleTab, selected && { backgroundColor: colors.surface }]}
+                style={[
+                  styles.roleTab,
+                  selected && { backgroundColor: colors.surface },
+                ]}
                 onPress={() => {
                   setLoginRole(item.key);
                   setFeedback(null);
-                  setPhone(item.key === "merchant" ? DEMO_MERCHANT_PHONE : DEMO_CONSUMER_PHONE);
+                  setPhone(
+                    item.key === "merchant"
+                      ? DEMO_MERCHANT_PHONE
+                      : DEMO_CONSUMER_PHONE,
+                  );
                   setPassword(DEMO_PASSWORD);
                   setSmsRequested(false);
                   setSmsCode("");
                   setLoginMethod("password");
                 }}
               >
-                <Text style={[styles.roleTabText, { color: selected ? colors.text : colors.subtext }]}>
+                <Text
+                  style={[
+                    styles.roleTabText,
+                    { color: selected ? colors.text : colors.subtext },
+                  ]}
+                >
                   {item.label}
                 </Text>
               </Pressable>
@@ -221,8 +303,12 @@ export function LoginScreen() {
 
         <View style={styles.formBlock}>
           <View style={[styles.inputShell, { backgroundColor: colors.input }]}>
-            <View style={[styles.prefixBlock, { borderRightColor: colors.border }]}>
-              <Text style={[styles.prefixText, { color: colors.text }]}>+86</Text>
+            <View
+              style={[styles.prefixBlock, { borderRightColor: colors.border }]}
+            >
+              <Text style={[styles.prefixText, { color: colors.text }]}>
+                +86
+              </Text>
               <Ionicons name="chevron-down" size={18} color={colors.text} />
             </View>
             <TextInput
@@ -230,22 +316,32 @@ export function LoginScreen() {
               placeholder="请输入手机号"
               placeholderTextColor={colors.subtext}
               value={phone}
-              onChangeText={(value) => setPhone(value.replace(/\D/g, "").slice(0, 11))}
+              onChangeText={(value) =>
+                setPhone(value.replace(/\D/g, "").slice(0, 11))
+              }
               keyboardType="phone-pad"
             />
           </View>
 
           {loginMethod === "sms" && smsRequested ? (
-            <View style={[styles.inputShell, { backgroundColor: colors.input }]}>
+            <View
+              style={[styles.inputShell, { backgroundColor: colors.input }]}
+            >
               <TextInput
                 style={[styles.codeInput, { color: colors.text }]}
                 placeholder="请输入短信验证码"
                 placeholderTextColor={colors.subtext}
                 value={smsCode}
-                onChangeText={(value) => setSmsCode(value.replace(/\D/g, "").slice(0, 6))}
+                onChangeText={(value) =>
+                  setSmsCode(value.replace(/\D/g, "").slice(0, 6))
+                }
                 keyboardType="number-pad"
               />
-              <Pressable style={styles.resendButton} onPress={requestCode} disabled={countdown > 0}>
+              <Pressable
+                style={styles.resendButton}
+                onPress={requestCode}
+                disabled={countdown > 0}
+              >
                 <Text
                   style={[
                     styles.resendText,
@@ -259,7 +355,9 @@ export function LoginScreen() {
           ) : null}
 
           {loginMethod === "password" ? (
-            <View style={[styles.inputShell, { backgroundColor: colors.input }]}>
+            <View
+              style={[styles.inputShell, { backgroundColor: colors.input }]}
+            >
               <TextInput
                 style={[styles.codeInput, { color: colors.text }]}
                 placeholder="请输入密码"
@@ -271,43 +369,86 @@ export function LoginScreen() {
             </View>
           ) : null}
 
-          <Text style={[styles.helperText, { color: feedback ? colors.accent : colors.subtext }]}>{helperText}</Text>
+          <Text
+            style={[
+              styles.helperText,
+              { color: feedback ? colors.accent : colors.subtext },
+            ]}
+          >
+            {helperText}
+          </Text>
 
-          <Pressable style={styles.agreementRow} onPress={() => setAgreed((value) => !value)}>
+          <Pressable
+            style={styles.agreementRow}
+            onPress={() => setAgreed((value) => !value)}
+          >
             <Ionicons
               name={agreed ? "checkmark-circle" : "ellipse-outline"}
               size={24}
               color={agreed ? colors.accent : colors.subtext}
             />
             <Text style={[styles.agreementText, { color: colors.subtext }]}>
-              我已阅读并同意 <Text style={[styles.agreementLink, { color: isDark ? "#7ab5ff" : "#4d93de" }]}>《用户协议》</Text> 和{" "}
-              <Text style={[styles.agreementLink, { color: isDark ? "#7ab5ff" : "#4d93de" }]}>《隐私政策》</Text>
+              我已阅读并同意{" "}
+              <Text
+                style={[
+                  styles.agreementLink,
+                  { color: isDark ? "#7ab5ff" : "#4d93de" },
+                ]}
+              >
+                《用户协议》
+              </Text>{" "}
+              和{" "}
+              <Text
+                style={[
+                  styles.agreementLink,
+                  { color: isDark ? "#7ab5ff" : "#4d93de" },
+                ]}
+              >
+                《隐私政策》
+              </Text>
             </Text>
           </Pressable>
 
           <Pressable
-            style={[styles.primaryButton, { backgroundColor: primaryBackground }]}
+            style={[
+              styles.primaryButton,
+              { backgroundColor: primaryBackground },
+            ]}
             disabled={actionDisabled}
             onPress={() => {
               if (loginMethod === "sms" && !smsRequested) {
                 requestCode();
                 return;
               }
-              mutation.mutate({ loginMethod, loginRole, phone, password, smsCode });
+              mutation.mutate({
+                loginMethod,
+                loginRole,
+                phone,
+                password,
+                smsCode,
+              });
             }}
           >
-            <Text style={[styles.primaryButtonLabel, { color: primaryLabelColor }]}>{actionLabel}</Text>
+            <Text
+              style={[styles.primaryButtonLabel, { color: primaryLabelColor }]}
+            >
+              {actionLabel}
+            </Text>
           </Pressable>
 
           <Pressable
             onPress={() => {
               setFeedback(null);
-              setLoginMethod((current) => (current === "sms" ? "password" : "sms"));
+              setLoginMethod((current) =>
+                current === "sms" ? "password" : "sms",
+              );
               setSmsRequested(false);
               setSmsCode("");
             }}
           >
-            <Text style={[styles.switchText, { color: colors.text }]}>{loginMethod === "sms" ? "密码登录" : "短信验证码登录"}</Text>
+            <Text style={[styles.switchText, { color: colors.text }]}>
+              {loginMethod === "sms" ? "密码登录" : "短信验证码登录"}
+            </Text>
           </Pressable>
         </View>
 
@@ -315,10 +456,17 @@ export function LoginScreen() {
           {partnerLogins.map((item) => (
             <Pressable
               key={item.key}
-              style={[styles.partnerButton, { backgroundColor: isDark ? colors.surface : "transparent" }]}
+              style={[
+                styles.partnerButton,
+                { backgroundColor: isDark ? colors.surface : "transparent" },
+              ]}
               onPress={() => handleQuickLogin(item.key)}
             >
-              <Image source={item.image} style={styles.partnerIcon} resizeMode="contain" />
+              <Image
+                source={item.image}
+                style={styles.partnerIcon}
+                resizeMode="contain"
+              />
             </Pressable>
           ))}
         </View>

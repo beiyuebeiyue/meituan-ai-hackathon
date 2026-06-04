@@ -1,6 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { TrendNailStyle } from "../types/api";
 import { useThemeColors } from "../utils/theme";
@@ -26,7 +35,9 @@ export function MerchantTrendNotificationsScreen() {
         : api.claimMerchantTrend(styleId, campaignId).then(() => undefined),
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["merchant-trend-notifications"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["merchant-trend-notifications"],
+        }),
         queryClient.invalidateQueries({ queryKey: ["market-shops"] }),
       ]);
     },
@@ -45,32 +56,63 @@ export function MerchantTrendNotificationsScreen() {
   const renderStyle = (item: TrendNailStyle, campaignId?: string | null) => {
     const busy = claimMutation.isPending;
     return (
-      <View key={item.id} style={[styles.styleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={[styles.styleImage, { backgroundColor: colors.surfaceAlt }]} />
+      <View
+        key={item.id}
+        style={[
+          styles.styleCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
+        <Image
+          source={{ uri: resolveAssetUrl(item.image_url) }}
+          style={[styles.styleImage, { backgroundColor: colors.surfaceAlt }]}
+        />
         <View style={styles.styleBody}>
-          <Text style={[styles.styleTitle, { color: colors.text }]} numberOfLines={2}>
+          <Text
+            style={[styles.styleTitle, { color: colors.text }]}
+            numberOfLines={2}
+          >
             {item.title}
           </Text>
-          <Text style={[styles.styleMeta, { color: colors.subtext }]} numberOfLines={1}>
-            {item.tags.slice(0, 3).join(" · ") || "手工甲"} · {item.like_count} 赞 · {item.claim_count} 家已登记
+          <Text
+            style={[styles.styleMeta, { color: colors.subtext }]}
+            numberOfLines={1}
+          >
+            {item.tags.slice(0, 3).join(" · ") || "手工甲"} · {item.like_count}{" "}
+            赞 · {item.claim_count} 家已登记
           </Text>
           <Pressable
             disabled={busy}
             style={[
               styles.claimButton,
               {
-                backgroundColor: item.can_do_style ? colors.surfaceAlt : colors.text,
+                backgroundColor: item.can_do_style
+                  ? colors.surfaceAlt
+                  : colors.text,
                 opacity: busy ? 0.55 : 1,
               },
             ]}
-            onPress={() => claimMutation.mutate({ styleId: item.id, campaignId, claimed: item.can_do_style })}
+            onPress={() =>
+              claimMutation.mutate({
+                styleId: item.id,
+                campaignId,
+                claimed: item.can_do_style,
+              })
+            }
           >
             <Ionicons
               name={item.can_do_style ? "checkmark-circle" : "hammer-outline"}
               size={16}
               color={item.can_do_style ? colors.accent : colors.background}
             />
-            <Text style={[styles.claimButtonText, { color: item.can_do_style ? colors.accent : colors.background }]}>
+            <Text
+              style={[
+                styles.claimButtonText,
+                {
+                  color: item.can_do_style ? colors.accent : colors.background,
+                },
+              ]}
+            >
               {item.can_do_style ? "已登记可做" : "我能做"}
             </Text>
           </Pressable>
@@ -82,8 +124,13 @@ export function MerchantTrendNotificationsScreen() {
   const items = query.data?.items ?? [];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerCopy}>
           <Text style={[styles.title, { color: colors.text }]}>运营推送</Text>
           <Text style={[styles.subtitle, { color: colors.subtext }]}>
@@ -91,28 +138,48 @@ export function MerchantTrendNotificationsScreen() {
           </Text>
         </View>
         {query.isLoading ? (
-          <Text style={[styles.emptyText, { color: colors.subtext }]}>正在加载推送...</Text>
+          <Text style={[styles.emptyText, { color: colors.subtext }]}>
+            正在加载推送...
+          </Text>
         ) : null}
         {!query.isLoading && items.length === 0 ? (
-          <Text style={[styles.emptyText, { color: colors.subtext }]}>暂无运营推送。</Text>
+          <Text style={[styles.emptyText, { color: colors.subtext }]}>
+            暂无运营推送。
+          </Text>
         ) : null}
         {items.map((notification) => (
           <View key={notification.id} style={styles.notificationBlock}>
             <View style={styles.notificationTitleRow}>
-              <View style={[styles.noticeIcon, { backgroundColor: colors.accentSoft }]}>
-                <Ionicons name="flame-outline" size={20} color={colors.accent} />
+              <View
+                style={[
+                  styles.noticeIcon,
+                  { backgroundColor: colors.accentSoft },
+                ]}
+              >
+                <Ionicons
+                  name="flame-outline"
+                  size={20}
+                  color={colors.accent}
+                />
               </View>
               <View style={styles.noticeTextBlock}>
-                <Text style={[styles.noticeTitle, { color: colors.text }]}>{notification.title}</Text>
+                <Text style={[styles.noticeTitle, { color: colors.text }]}>
+                  {notification.title}
+                </Text>
                 {notification.body ? (
-                  <Text style={[styles.noticeBody, { color: colors.subtext }]} numberOfLines={2}>
+                  <Text
+                    style={[styles.noticeBody, { color: colors.subtext }]}
+                    numberOfLines={2}
+                  >
                     {notification.body}
                   </Text>
                 ) : null}
               </View>
             </View>
             <View style={styles.styleList}>
-              {notification.styles.map((style) => renderStyle(style, notification.campaign_id))}
+              {notification.styles.map((style) =>
+                renderStyle(style, notification.campaign_id),
+              )}
             </View>
           </View>
         ))}

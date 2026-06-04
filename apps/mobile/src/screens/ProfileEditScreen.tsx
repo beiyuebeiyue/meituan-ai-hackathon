@@ -1,5 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
-import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
+import DateTimePicker, {
+  DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useEffect, useMemo, useState } from "react";
@@ -9,13 +11,13 @@ import {
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { api, resolveAssetUrl } from "../api/client";
 import { PrimaryButton } from "../components/PrimaryButton";
@@ -58,13 +60,17 @@ export function ProfileEditScreen() {
   const [bio, setBio] = useState(user?.bio ?? "");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
-  const [birthdayDraft, setBirthdayDraft] = useState<Date>(parseBirthdayValue(user?.birthday) ?? new Date(2000, 0, 1));
+  const [birthdayDraft, setBirthdayDraft] = useState<Date>(
+    parseBirthdayValue(user?.birthday) ?? new Date(2000, 0, 1),
+  );
 
   const currentUser = user;
   const isMerchant = currentUser?.role === "merchant";
   const currentUsernameValue = currentUser?.username?.trim() ?? "";
   const parsedCurrentBirthday = parseBirthdayValue(currentUser?.birthday);
-  const effectiveBirthdayValue = parsedCurrentBirthday ? formatBirthdayDate(parsedCurrentBirthday) : "";
+  const effectiveBirthdayValue = parsedCurrentBirthday
+    ? formatBirthdayDate(parsedCurrentBirthday)
+    : "";
   const effectiveBioValue = currentUser?.bio?.trim() ?? "";
 
   useEffect(() => {
@@ -84,13 +90,30 @@ export function ProfileEditScreen() {
       bio.trim() !== effectiveBioValue ||
       Boolean(avatarUri)
     );
-  }, [avatarUri, bio, birthday, currentUser, currentUsernameValue, effectiveBirthdayValue, effectiveBioValue, isMerchant, username]);
+  }, [
+    avatarUri,
+    bio,
+    birthday,
+    currentUser,
+    currentUsernameValue,
+    effectiveBirthdayValue,
+    effectiveBioValue,
+    isMerchant,
+    username,
+  ]);
 
   const saveMutation = useMutation({
     mutationFn: () => {
-      const payload: { username?: string; birthday?: string; bio?: string; avatarUri?: string } = {};
-      if (username.trim() !== currentUsernameValue) payload.username = username.trim();
-      if (!isMerchant && birthday.trim() !== effectiveBirthdayValue) payload.birthday = birthday.trim();
+      const payload: {
+        username?: string;
+        birthday?: string;
+        bio?: string;
+        avatarUri?: string;
+      } = {};
+      if (username.trim() !== currentUsernameValue)
+        payload.username = username.trim();
+      if (!isMerchant && birthday.trim() !== effectiveBirthdayValue)
+        payload.birthday = birthday.trim();
       if (bio.trim() !== effectiveBioValue) payload.bio = bio.trim();
       if (avatarUri) payload.avatarUri = avatarUri;
       return api.updateMe(payload);
@@ -98,14 +121,23 @@ export function ProfileEditScreen() {
     onSuccess: (updatedUser) => {
       setUser(updatedUser);
       if (token) queryClient.setQueryData(["me", token], updatedUser);
-      void queryClient.invalidateQueries({ queryKey: ["profile-author", updatedUser.id] });
-      void queryClient.invalidateQueries({ queryKey: ["author-profile", updatedUser.id] });
+      void queryClient.invalidateQueries({
+        queryKey: ["profile-author", updatedUser.id],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["author-profile", updatedUser.id],
+      });
       dismissOverlay?.() ?? navigation.goBack();
     },
   });
 
   if (!token) {
-    return <RequireLogin onLogin={() => navigation.navigate("Login")} message="登录后可编辑主页资料" />;
+    return (
+      <RequireLogin
+        onLogin={() => navigation.navigate("Login")}
+        message="登录后可编辑主页资料"
+      />
+    );
   }
 
   const currentAvatar = avatarUri
@@ -127,7 +159,11 @@ export function ProfileEditScreen() {
   };
 
   const openBirthdayPicker = () => {
-    setBirthdayDraft(parseBirthdayValue(birthday) ?? parseBirthdayValue(currentUser?.birthday) ?? new Date(2000, 0, 1));
+    setBirthdayDraft(
+      parseBirthdayValue(birthday) ??
+        parseBirthdayValue(currentUser?.birthday) ??
+        new Date(2000, 0, 1),
+    );
     setBirthdayPickerVisible(true);
   };
 
@@ -136,32 +172,64 @@ export function ProfileEditScreen() {
     setBirthdayDraft(date);
   };
 
-  const handleAndroidBirthdayChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+  const handleAndroidBirthdayChange = (
+    event: DateTimePickerEvent,
+    selectedDate?: Date,
+  ) => {
     setBirthdayPickerVisible(false);
     if (event.type === "dismissed" || !selectedDate) return;
     applyBirthday(selectedDate);
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.surfaceAlt }]}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={[styles.previewCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.previewEyebrow, { color: colors.accent }]}>{isMerchant ? "商户信息" : "焕甲主页"}</Text>
-            <Text style={[styles.previewTitle, { color: colors.text }]}>{isMerchant ? "编辑商户信息" : "编辑你的主页形象"}</Text>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.surfaceAlt }]}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.flex}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <View
+            style={[styles.previewCard, { backgroundColor: colors.surface }]}
+          >
+            <Text style={[styles.previewEyebrow, { color: colors.accent }]}>
+              {isMerchant ? "商户信息" : "焕甲主页"}
+            </Text>
+            <Text style={[styles.previewTitle, { color: colors.text }]}>
+              {isMerchant ? "编辑商户信息" : "编辑你的主页形象"}
+            </Text>
             <Text style={[styles.previewSubtitle, { color: colors.subtext }]}>
-              {isMerchant ? "头像、商户名和简介会展示在店铺作品与消息中。" : "头像、昵称和简介会展示在作者页顶部。"}
+              {isMerchant
+                ? "头像、商户名和简介会展示在店铺作品与消息中。"
+                : "头像、昵称和简介会展示在作者页顶部。"}
             </Text>
 
-            <View style={[styles.previewHero, { backgroundColor: colors.accentSoft }]}>
+            <View
+              style={[
+                styles.previewHero,
+                { backgroundColor: colors.accentSoft },
+              ]}
+            >
               <Image source={currentAvatar} style={styles.previewAvatar} />
               <View style={styles.previewMeta}>
-                <Text style={[styles.previewName, { color: colors.text }]} numberOfLines={1}>
+                <Text
+                  style={[styles.previewName, { color: colors.text }]}
+                  numberOfLines={1}
+                >
                   {username.trim() || "点击设置你的昵称"}
                 </Text>
-                <Text style={[styles.previewHandle, { color: colors.subtext }]}>焕甲号：{currentUser?.uid ?? 0}</Text>
+                <Text style={[styles.previewHandle, { color: colors.subtext }]}>
+                  焕甲号：{currentUser?.uid ?? 0}
+                </Text>
                 {bio.trim() ? (
-                  <Text style={[styles.previewBio, { color: colors.subtext }]} numberOfLines={2}>
+                  <Text
+                    style={[styles.previewBio, { color: colors.subtext }]}
+                    numberOfLines={2}
+                  >
                     {bio.trim()}
                   </Text>
                 ) : null}
@@ -169,29 +237,67 @@ export function ProfileEditScreen() {
             </View>
           </View>
 
-          <View style={[styles.sectionCard, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>基础资料</Text>
+          <View
+            style={[styles.sectionCard, { backgroundColor: colors.surface }]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              基础资料
+            </Text>
 
             <Pressable style={styles.avatarRow} onPress={pickAvatar}>
               <View style={styles.avatarRowLeft}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>头像</Text>
-                <Text style={[styles.rowHint, { color: colors.subtext }]}>建议使用清晰的正方形图片</Text>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>
+                  头像
+                </Text>
+                <Text style={[styles.rowHint, { color: colors.subtext }]}>
+                  建议使用清晰的正方形图片
+                </Text>
               </View>
               <View style={styles.avatarRowRight}>
-                <Image source={currentAvatar} style={[styles.inlineAvatar, { backgroundColor: colors.input }]} />
-                <View style={[styles.inlinePill, { backgroundColor: colors.accentSoft }]}>
-                  <Ionicons name="image-outline" size={14} color={colors.accent} />
-                  <Text style={[styles.inlinePillText, { color: colors.accent }]}>更换</Text>
+                <Image
+                  source={currentAvatar}
+                  style={[
+                    styles.inlineAvatar,
+                    { backgroundColor: colors.input },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.inlinePill,
+                    { backgroundColor: colors.accentSoft },
+                  ]}
+                >
+                  <Ionicons
+                    name="image-outline"
+                    size={14}
+                    color={colors.accent}
+                  />
+                  <Text
+                    style={[styles.inlinePillText, { color: colors.accent }]}
+                  >
+                    更换
+                  </Text>
                 </View>
               </View>
             </Pressable>
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
 
             <View style={styles.field}>
-              <Text style={[styles.rowLabel, { color: colors.text }]}>昵称</Text>
+              <Text style={[styles.rowLabel, { color: colors.text }]}>
+                昵称
+              </Text>
               <TextInput
-                style={[styles.input, { backgroundColor: colors.input, color: colors.text, borderColor: colors.border }]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.input,
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
+                ]}
                 value={username}
                 onChangeText={setUsername}
                 placeholder="设置一个让人记住的昵称"
@@ -202,27 +308,53 @@ export function ProfileEditScreen() {
 
             {!isMerchant ? (
               <View style={styles.field}>
-                <Text style={[styles.rowLabel, { color: colors.text }]}>生日</Text>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>
+                  生日
+                </Text>
                 <Pressable
-                  style={[styles.input, styles.dateField, { backgroundColor: colors.input, borderColor: colors.border }]}
+                  style={[
+                    styles.input,
+                    styles.dateField,
+                    {
+                      backgroundColor: colors.input,
+                      borderColor: colors.border,
+                    },
+                  ]}
                   onPress={openBirthdayPicker}
                 >
-                  <Text style={[styles.dateFieldText, { color: birthday ? colors.text : colors.subtext }]}>
+                  <Text
+                    style={[
+                      styles.dateFieldText,
+                      { color: birthday ? colors.text : colors.subtext },
+                    ]}
+                  >
                     {birthday || "请选择生日"}
                   </Text>
-                  <Ionicons name="calendar-outline" size={18} color={colors.subtext} />
+                  <Ionicons
+                    name="calendar-outline"
+                    size={18}
+                    color={colors.subtext}
+                  />
                 </Pressable>
-                <Text style={[styles.dateHint, { color: colors.subtext }]}>日期格式：dd-mm-yyyy</Text>
+                <Text style={[styles.dateHint, { color: colors.subtext }]}>
+                  日期格式：dd-mm-yyyy
+                </Text>
               </View>
             ) : null}
 
             <View style={styles.field}>
-              <Text style={[styles.rowLabel, { color: colors.text }]}>简介</Text>
+              <Text style={[styles.rowLabel, { color: colors.text }]}>
+                简介
+              </Text>
               <TextInput
                 style={[
                   styles.input,
                   styles.textarea,
-                  { backgroundColor: colors.input, color: colors.text, borderColor: colors.border },
+                  {
+                    backgroundColor: colors.input,
+                    color: colors.text,
+                    borderColor: colors.border,
+                  },
                 ]}
                 value={bio}
                 onChangeText={setBio}
@@ -231,12 +363,20 @@ export function ProfileEditScreen() {
                 multiline
                 maxLength={128}
               />
-              <Text style={[styles.characterCount, { color: colors.subtext }]}>{bio.length}/128</Text>
+              <Text style={[styles.characterCount, { color: colors.subtext }]}>
+                {bio.length}/128
+              </Text>
             </View>
           </View>
 
           <PrimaryButton
-            label={saveMutation.isPending ? "保存中..." : isMerchant ? "保存商户信息" : "保存主页"}
+            label={
+              saveMutation.isPending
+                ? "保存中..."
+                : isMerchant
+                  ? "保存商户信息"
+                  : "保存主页"
+            }
             onPress={() => saveMutation.mutate()}
             loading={saveMutation.isPending}
             disabled={!username.trim() || !isDirty}
@@ -256,22 +396,55 @@ export function ProfileEditScreen() {
       ) : null}
 
       {!isMerchant && Platform.OS === "ios" ? (
-        <Modal visible={birthdayPickerVisible} transparent animationType="fade" onRequestClose={() => setBirthdayPickerVisible(false)}>
+        <Modal
+          visible={birthdayPickerVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setBirthdayPickerVisible(false)}
+        >
           <View style={styles.pickerOverlay}>
-            <Pressable style={styles.pickerBackdrop} onPress={() => setBirthdayPickerVisible(false)} />
-            <View style={[styles.pickerSheet, { backgroundColor: colors.surface }]}>
-              <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
+            <Pressable
+              style={styles.pickerBackdrop}
+              onPress={() => setBirthdayPickerVisible(false)}
+            />
+            <View
+              style={[styles.pickerSheet, { backgroundColor: colors.surface }]}
+            >
+              <View
+                style={[
+                  styles.pickerHeader,
+                  { borderBottomColor: colors.border },
+                ]}
+              >
                 <Pressable onPress={() => setBirthdayPickerVisible(false)}>
-                  <Text style={[styles.pickerHeaderAction, { color: colors.subtext }]}>取消</Text>
+                  <Text
+                    style={[
+                      styles.pickerHeaderAction,
+                      { color: colors.subtext },
+                    ]}
+                  >
+                    取消
+                  </Text>
                 </Pressable>
-                <Text style={[styles.pickerHeaderTitle, { color: colors.text }]}>选择生日</Text>
+                <Text
+                  style={[styles.pickerHeaderTitle, { color: colors.text }]}
+                >
+                  选择生日
+                </Text>
                 <Pressable
                   onPress={() => {
                     applyBirthday(birthdayDraft);
                     setBirthdayPickerVisible(false);
                   }}
                 >
-                  <Text style={[styles.pickerHeaderAction, { color: colors.accent }]}>完成</Text>
+                  <Text
+                    style={[
+                      styles.pickerHeaderAction,
+                      { color: colors.accent },
+                    ]}
+                  >
+                    完成
+                  </Text>
                 </Pressable>
               </View>
               <DateTimePicker
