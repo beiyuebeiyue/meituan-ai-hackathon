@@ -193,7 +193,7 @@ export function MarketScreen() {
       {!locationBootstrapped || query.isLoading ? (
         <View style={styles.loadingWrap}>
           <ActivityIndicator color={colors.accent} size="large" />
-          <Text style={[styles.loadingText, { color: colors.subtext }]}>正在帮你找附近值得做的美甲店...</Text>
+          <Text style={[styles.loadingText, { color: colors.subtext }]}>正在为您搜索附近的美甲店</Text>
         </View>
       ) : (
         <FlatList
