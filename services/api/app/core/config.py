@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 10080
 
     openai_api_key: str = ""
+    openai_base_url: str = ""
     openai_text_model: str = "gpt-5.2"
     openai_image_model: str = "gpt-image-2"
     hf_token: str = ""

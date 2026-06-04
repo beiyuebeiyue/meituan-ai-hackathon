@@ -145,7 +145,11 @@ def generate_with_openai(
         raise RuntimeError("OPENAI_API_KEY 未配置")
 
     mask_path = _create_nail_edit_mask(user_hand_path, user_analysis.roi_boxes)
-    client = OpenAI(api_key=api_key)
+    base_url = os.getenv("OPENAI_BASE_URL", "").strip()
+    client_kwargs = {"api_key": api_key}
+    if base_url:
+        client_kwargs["base_url"] = base_url
+    client = OpenAI(**client_kwargs)
     edit_prompt = (
         "Edit the first image. Preserve the hand pose, skin tone, lighting, and background from the first image. "
         "Apply only the manicure style, color, nail finish, and nail pattern from the second image to the fingernails. "

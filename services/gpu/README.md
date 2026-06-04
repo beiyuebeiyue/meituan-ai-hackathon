@@ -7,7 +7,7 @@ cd services/gpu
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-OPENAI_API_KEY=... uvicorn app:app --host 0.0.0.0 --port 8100
+OPENAI_API_KEY=... OPENAI_BASE_URL=... uvicorn app:app --host 0.0.0.0 --port 8100
 ```
 
 主 API `.env`:

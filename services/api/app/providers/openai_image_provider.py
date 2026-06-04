@@ -24,7 +24,10 @@ class OpenAIImageProvider:
             try:
                 from openai import OpenAI
 
-                self._client = OpenAI(api_key=self.settings.openai_api_key)
+                kwargs = {"api_key": self.settings.openai_api_key}
+                if self.settings.openai_base_url:
+                    kwargs["base_url"] = self.settings.openai_base_url
+                self._client = OpenAI(**kwargs)
             except Exception:
                 self._client = None
 
