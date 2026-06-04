@@ -56,16 +56,26 @@ type ConversationGroup = {
   items: AskAIConversation[];
 };
 
+type ChatDebugEntry = {
+  id: string;
+  createdAt: number;
+  request: Record<string, unknown>;
+  response?: unknown;
+  error?: string;
+};
+
 function AnimatedPressable({
   children,
   disabled,
   hitSlop,
+  onLongPress,
   onPress,
   style,
 }: {
   children: ReactNode;
   disabled?: boolean;
   hitSlop?: number;
+  onLongPress?: () => void;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -90,6 +100,7 @@ function AnimatedPressable({
         hitSlop={hitSlop}
         style={style}
         onPress={onPress}
+        onLongPress={onLongPress}
         disabled={disabled}
         onPressIn={() => {
           if (!disabled) animateTo(0.94);
@@ -242,16 +253,54 @@ export function AskAIScreen() {
   const [tryOnFeedback, setTryOnFeedback] = useState<"idle" | "satisfied" | "unsatisfied">("idle");
   const [composerHeight, setComposerHeight] = useState(158);
   const [historyVisible, setHistoryVisible] = useState(false);
+  const [debugVisible, setDebugVisible] = useState(false);
+  const [chatDebugEntries, setChatDebugEntries] = useState<ChatDebugEntry[]>([]);
   const [materializingNoteId, setMaterializingNoteId] = useState<string | null>(null);
   const [queuedTryOnNoteId, setQueuedTryOnNoteId] = useState<string | null>(null);
   const sendHaloScale = useRef(new Animated.Value(1)).current;
   const sendHaloOpacity = useRef(new Animated.Value(0)).current;
 
   const chatMutation = useMutation({
-    mutationFn: (payload: ChatPayload) =>
-      payload.handImageUri || payload.savedHandPhotoId
-        ? api.chatWithHand(payload.messages, payload.handImageUri, payload.savedHandPhotoId)
-        : api.chat(payload.messages),
+    mutationFn: async (payload: ChatPayload) => {
+      const debugId = `chat-debug-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const requestPayload = payload.handImageUri || payload.savedHandPhotoId
+        ? {
+            endpoint: "/api/v1/ai/chat",
+            method: "POST",
+            contentType: "multipart/form-data",
+            messages: payload.messages,
+            savedHandPhotoId: payload.savedHandPhotoId ?? null,
+            handImageUri: payload.handImageUri ? "[local image selected]" : null,
+          }
+        : {
+            endpoint: "/api/v1/ai/chat",
+            method: "POST",
+            contentType: "application/json",
+            body: { messages: payload.messages },
+          };
+      setChatDebugEntries((entries) =>
+        [
+          {
+            id: debugId,
+            createdAt: Date.now(),
+            request: requestPayload,
+          },
+          ...entries,
+        ].slice(0, 20),
+      );
+      try {
+        const data =
+          payload.handImageUri || payload.savedHandPhotoId
+            ? await api.chatWithHand(payload.messages, payload.handImageUri, payload.savedHandPhotoId)
+            : await api.chat(payload.messages);
+        setChatDebugEntries((entries) => entries.map((entry) => (entry.id === debugId ? { ...entry, response: data } : entry)));
+        return data;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setChatDebugEntries((entries) => entries.map((entry) => (entry.id === debugId ? { ...entry, error: message } : entry)));
+        throw error;
+      }
+    },
     onSuccess: (data, payload) => {
       setAssistantLine(data.reply);
       setRecommendations(data.needs_hand_image ? [] : data.recommendations ?? []);
@@ -640,6 +689,7 @@ export function AskAIScreen() {
             <AnimatedPressable
               style={[styles.historyIconButton, { backgroundColor: colors.surface }]}
               onPress={() => setHistoryVisible(true)}
+              onLongPress={() => setDebugVisible(true)}
             >
               <Ionicons name="menu" size={22} color={colors.text} />
             </AnimatedPressable>
@@ -939,6 +989,42 @@ export function AskAIScreen() {
                 <Text style={[styles.historyEndText, { color: colors.subtext }]}>已经到底啦</Text>
               </ScrollView>
             </View>
+          </View>
+        </Modal>
+        <Modal visible={debugVisible} transparent animationType="slide" onRequestClose={() => setDebugVisible(false)}>
+          <View style={[styles.debugOverlay, { backgroundColor: colors.background }]}>
+            <SafeAreaView style={styles.debugSafeArea}>
+              <View style={[styles.debugHeader, { borderBottomColor: colors.border }]}>
+                <View>
+                  <Text style={[styles.debugTitle, { color: colors.text }]}>小嘉调试记录</Text>
+                  <Text style={[styles.debugSubtitle, { color: colors.subtext }]}>最近 20 次 / 仅本机当前页面</Text>
+                </View>
+                <Pressable style={[styles.debugCloseButton, { backgroundColor: colors.surface }]} onPress={() => setDebugVisible(false)}>
+                  <Ionicons name="close" size={22} color={colors.text} />
+                </Pressable>
+              </View>
+              <ScrollView contentContainerStyle={styles.debugContent} showsVerticalScrollIndicator>
+                {chatDebugEntries.length ? (
+                  chatDebugEntries.map((entry) => (
+                    <View key={entry.id} style={[styles.debugCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                      <Text style={[styles.debugTime, { color: colors.subtext }]}>{new Date(entry.createdAt).toLocaleString()}</Text>
+                      <Text style={[styles.debugLabel, { color: colors.text }]}>发送给后端</Text>
+                      <Text selectable style={[styles.debugCode, { color: colors.text, backgroundColor: colors.surfaceAlt }]}>
+                        {JSON.stringify(entry.request, null, 2)}
+                      </Text>
+                      <Text style={[styles.debugLabel, { color: colors.text }]}>{entry.error ? "错误" : entry.response ? "后端返回" : "等待返回"}</Text>
+                      <Text selectable style={[styles.debugCode, { color: entry.error ? colors.dangerText : colors.text, backgroundColor: colors.surfaceAlt }]}>
+                        {entry.error ?? (entry.response ? JSON.stringify(entry.response, null, 2) : "pending")}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.debugEmpty}>
+                    <Text style={[styles.debugSubtitle, { color: colors.subtext }]}>还没有调试记录。发送一次问题后再长按菜单查看。</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </SafeAreaView>
           </View>
         </Modal>
       </KeyboardAvoidingView>
@@ -1423,5 +1509,63 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
     marginTop: 8,
+  },
+  debugOverlay: {
+    flex: 1,
+  },
+  debugSafeArea: {
+    flex: 1,
+  },
+  debugHeader: {
+    minHeight: 68,
+    paddingHorizontal: 18,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  debugTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  debugSubtitle: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  debugCloseButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  debugContent: {
+    padding: 18,
+    gap: 14,
+  },
+  debugCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    gap: 10,
+  },
+  debugTime: {
+    fontSize: 12,
+  },
+  debugLabel: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  debugCode: {
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" }),
+  },
+  debugEmpty: {
+    paddingVertical: 40,
+    alignItems: "center",
   },
 });

@@ -17,7 +17,7 @@ import chinaGeoJson from "../assets/geo/china.json";
 echarts.use([CanvasRenderer, GeoComponent, MapChart, TooltipComponent, VisualMapComponent]);
 echarts.registerMap("china", chinaGeoJson as Parameters<typeof echarts.registerMap>[1]);
 
-const pieColors = ["#1677ff", "#52c41a", "#722ed1", "#faad14", "#13c2c2", "#eb2f96"];
+const pieColors = ["#111827", "#374151", "#4b5563", "#6b7280", "#9ca3af", "#525252"];
 const provinceHeat = [
   { name: "北京市", value: 74 },
   { name: "上海市", value: 82 },
@@ -143,7 +143,7 @@ export function MonitorPage() {
               </div>
               <ResponsiveContainer width="100%" height={110}>
                 <AreaChart data={forecast}>
-                  <Area type="monotone" dataKey="value" stroke="#79a7ff" fill="#dce8ff" strokeWidth={2} />
+                  <Area type="monotone" dataKey="value" stroke="#4b5563" fill="#eeeeee" strokeWidth={2} />
                   <Tooltip />
                 </AreaChart>
               </ResponsiveContainer>
@@ -231,7 +231,7 @@ function ChinaHeatMap() {
         min: 0,
         max: 100,
         inRange: {
-          color: ["#eef4ff", "#d9e7ff", "#9ab8ff", "#8b5cf6"],
+          color: ["#f5f5f5", "#e5e7eb", "#9ca3af", "#374151"],
         },
       },
       geo: {
@@ -241,17 +241,17 @@ function ChinaHeatMap() {
         layoutCenter: ["50%", "54%"],
         layoutSize: "92%",
         itemStyle: {
-          areaColor: "#eef2f7",
-          borderColor: "#d8e0ea",
+          areaColor: "#f3f4f6",
+          borderColor: "#d1d5db",
           borderWidth: 1,
         },
         emphasis: {
           itemStyle: {
-            areaColor: "#dbeafe",
+            areaColor: "#e5e7eb",
           },
           label: {
             show: false,
-            color: "#2563eb",
+            color: "#111827",
           },
         },
       },
@@ -278,9 +278,9 @@ function ChinaHeatMap() {
     <div className="china-map-wrap">
       <div ref={chartRef} className="china-map-chart" role="img" aria-label="中国业务热力分布" />
       <div className="china-map-legend">
-        <Tag color="purple">高热度</Tag>
-        <Tag color="blue">交易活跃</Tag>
-        <Tag color="green">门店增长</Tag>
+        <Tag>高热度</Tag>
+        <Tag>交易活跃</Tag>
+        <Tag>门店增长</Tag>
       </div>
     </div>
   );

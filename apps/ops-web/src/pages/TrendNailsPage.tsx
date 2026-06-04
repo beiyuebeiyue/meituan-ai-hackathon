@@ -128,7 +128,7 @@ export function TrendNailsPage() {
                 {selectedStyles.length ? (
                   <div style={{ marginTop: 8 }}>
                     {selectedStyles.map((item) => (
-                      <Tag key={item.id} color="blue" style={{ marginBottom: 6 }}>
+                      <Tag key={item.id} style={{ marginBottom: 6 }}>
                         {item.title}
                       </Tag>
                     ))}

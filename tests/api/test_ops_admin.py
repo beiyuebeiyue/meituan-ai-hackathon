@@ -164,16 +164,13 @@ def test_ops_xhs_nail_report_reads_markdown_file(client, app_env):
     assert "测试报告" in history.json()[0]["markdown_content"]
 
 
-def test_ops_ai_chat_uses_local_summary_without_openai_key(client):
+def test_ops_ai_chat_returns_gateway_error_when_model_backend_unavailable(client):
     response = client.post(
         "/api/v1/ops/ai/chat",
         headers=_ops_headers(client),
         json={"messages": [{"role": "user", "content": "今天运营数据怎么样？"}]},
     )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["model"] == "local-ops-summary"
-    assert "当前日期" in data["reply"]
+    assert response.status_code == 502
 
 
 def test_ops_ai_chat_prompt_uses_tools_instead_of_full_dashboard():
@@ -198,7 +195,7 @@ def test_ops_ai_chat_can_route_to_openclaw(client, app_env, monkeypatch):
     from app.routers import ops_admin
     from app.schemas.ops import OpsChatResponse
 
-    app_env.ops_ai_provider = "openclaw"
+    app_env.openclaw_enabled = True
 
     def fake_openclaw_reply(dashboard, messages):
         return OpsChatResponse(reply=f"openclaw:{messages[-1].content}", model="openclaw/default")

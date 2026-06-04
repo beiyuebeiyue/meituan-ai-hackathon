@@ -31,8 +31,8 @@ class HandLandmarkerProvider:
         try:
             import mediapipe as mp  # type: ignore
             import numpy as np  # type: ignore
-        except Exception:
-            return self._fallback_detect(image_path)
+        except Exception as exc:
+            raise RuntimeError("MediaPipe hand landmarker is not available") from exc
 
         image = Image.open(image_path).convert("RGB")
         width, height = image.size
@@ -41,7 +41,7 @@ class HandLandmarkerProvider:
         result = hands.process(array)
         hands.close()
         if not result.multi_hand_landmarks:
-            return self._fallback_detect(image_path)
+            raise RuntimeError("No hand landmarks detected")
 
         landmarks = [
             Landmark(x=point.x, y=point.y)
@@ -63,25 +63,4 @@ class HandLandmarkerProvider:
                     height=min(roi_height, height),
                 )
             )
-        return HandDetectionResult(landmarks=landmarks, fingertip_rois=rois)
-
-    def _fallback_detect(self, image_path: Path) -> HandDetectionResult:
-        image = Image.open(image_path)
-        width, height = image.size
-        xs = [0.2, 0.35, 0.5, 0.65, 0.8]
-        rois: list[FingertipROI] = []
-        landmarks: list[Landmark] = []
-        for index, x_ratio in enumerate(xs):
-            y_ratio = 0.27 + (abs(2 - index) * 0.03)
-            center_x = int(width * x_ratio)
-            center_y = int(height * y_ratio)
-            rois.append(
-                FingertipROI(
-                    x=max(center_x - int(width * 0.05), 0),
-                    y=max(center_y - int(height * 0.04), 0),
-                    width=max(int(width * 0.1), 26),
-                    height=max(int(height * 0.08), 26),
-                )
-            )
-            landmarks.append(Landmark(x=x_ratio, y=y_ratio))
         return HandDetectionResult(landmarks=landmarks, fingertip_rois=rois)

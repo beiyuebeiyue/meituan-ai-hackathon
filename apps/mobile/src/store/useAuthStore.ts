@@ -33,19 +33,23 @@ export const useAuthStore = create<AuthState>((set) => ({
 }));
 
 export async function hydrateAuthFromStorage() {
-  const token = await getStoredValue("nailtry_token");
-  if (!token) {
-    useAuthStore.setState({ token: null, user: null, hydrated: true });
-    return;
-  }
-
-  const storedUser = await getStoredValue("nailtry_user");
-  let parsedUser: User | null = null;
   try {
-    parsedUser = storedUser ? (JSON.parse(storedUser) as User) : null;
-  } catch {
-    parsedUser = null;
-  }
+    const token = await getStoredValue("nailtry_token");
+    if (!token) {
+      useAuthStore.setState({ token: null, user: null, hydrated: true });
+      return;
+    }
 
-  useAuthStore.setState({ token, user: parsedUser, hydrated: true });
+    const storedUser = await getStoredValue("nailtry_user");
+    let parsedUser: User | null = null;
+    try {
+      parsedUser = storedUser ? (JSON.parse(storedUser) as User) : null;
+    } catch {
+      parsedUser = null;
+    }
+
+    useAuthStore.setState({ token, user: parsedUser, hydrated: true });
+  } catch {
+    useAuthStore.setState({ token: null, user: null, hydrated: true });
+  }
 }

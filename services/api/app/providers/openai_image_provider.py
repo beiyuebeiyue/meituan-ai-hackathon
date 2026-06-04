@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
-from PIL import Image, ImageDraw
-
 from app.core.config import get_settings
 from app.utils.files import public_url_for_path
 
@@ -39,12 +37,8 @@ class OpenAIImageProvider:
         mask_path: Path | None = None,
     ) -> GeneratedImageResult:
         if self._client is not None:
-            try:
-                return self._generate_with_openai(hand_image_path, style_image_path, prompt_text, mask_path)
-            except Exception:
-                if not self.settings.allow_mock_image_edit_fallback:
-                    raise
-        return self._generate_fallback(hand_image_path, style_image_path, roi_boxes)
+            return self._generate_with_openai(hand_image_path, style_image_path, prompt_text, mask_path)
+        raise RuntimeError("OpenAI image provider is not configured")
 
     def _generate_with_openai(
         self,
@@ -82,31 +76,4 @@ class OpenAIImageProvider:
             local_path=output_path,
             public_url=public_url_for_path(output_path),
             provider_trace_id=getattr(result, "_request_id", None),
-        )
-
-    def _generate_fallback(
-        self,
-        hand_image_path: Path,
-        style_image_path: Path,
-        roi_boxes: list[dict[str, int]],
-    ) -> GeneratedImageResult:
-        hand = Image.open(hand_image_path).convert("RGBA")
-        style = Image.open(style_image_path).convert("RGBA")
-        overlay = hand.copy()
-        for box in roi_boxes:
-            patch = style.copy().resize((box["width"], box["height"]))
-            mask = Image.new("L", (box["width"], box["height"]), 0)
-            draw = ImageDraw.Draw(mask)
-            draw.rounded_rectangle((0, 0, box["width"] - 1, box["height"] - 1), radius=max(6, box["width"] // 4), fill=210)
-            overlay.alpha_composite(patch, dest=(box["x"], box["y"]))
-            highlight = Image.new("RGBA", (box["width"], box["height"]), (255, 255, 255, 0))
-            highlight_draw = ImageDraw.Draw(highlight)
-            highlight_draw.arc((2, 2, box["width"] - 2, box["height"] - 2), start=200, end=330, fill=(255, 255, 255, 90), width=2)
-            overlay.alpha_composite(highlight, dest=(box["x"], box["y"]))
-        output_path = self.settings.tryon_result_path / f"tryon_{uuid4().hex}.png"
-        overlay.convert("RGB").save(output_path)
-        return GeneratedImageResult(
-            local_path=output_path,
-            public_url=public_url_for_path(output_path),
-            provider_trace_id="fallback",
         )

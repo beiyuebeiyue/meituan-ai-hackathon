@@ -3,7 +3,8 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import * as Location from "expo-location";
-import { ActivityIndicator, FlatList, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "../api/client";
 import { BrowseFeedCard } from "../components/BrowseFeedCard";
 import { RequireLogin } from "../components/RequireLogin";
@@ -30,6 +31,7 @@ const defaultBrowseFilterState: BrowseFilterState = {
 
 export function BrowseScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<FeedTab>("discover");
   const [filterStates, setFilterStates] = useState<Record<FilterableTab, BrowseFilterState>>({
     discover: defaultBrowseFilterState,
@@ -199,6 +201,10 @@ export function BrowseScreen() {
     );
   }, [feedItems.map((item) => item.id).join(","), tab]);
   const canRefresh = hydrated && contentPreferenceHydrated && (tab === "discover" || (tab === "local" && canUseLocalFeed) || hasToken);
+  const topBarPaddingTop = Math.max(insets.top, 10) + 10;
+  const sourceMenuTopOffset = topBarPaddingTop + 102;
+  const listPaddingBottom = 120 + insets.bottom;
+  const refreshIndicatorBottom = 108 + insets.bottom;
   const handleRefresh = async () => {
     if (!canRefresh) return;
     setIsPullRefreshing(true);
@@ -210,8 +216,17 @@ export function BrowseScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? "#17171b" : colors.background }]}>
-      <View style={[styles.topBar, { backgroundColor: isDark ? "#17171b" : colors.background, borderBottomColor: colors.border }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? "#17171b" : colors.background }]}>
+      <View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: isDark ? "#17171b" : colors.background,
+            borderBottomColor: colors.border,
+            paddingTop: topBarPaddingTop,
+          },
+        ]}
+      >
         <Pressable
           style={styles.iconButton}
           onPress={() => navigation.navigate("MessagesInbox", { entryEdge: "left" })}
@@ -278,7 +293,7 @@ export function BrowseScreen() {
       ) : null}
 
       <Modal transparent visible={sourceMenuOpen && showBrowseFilters} animationType="fade" onRequestClose={() => setSourceMenuOpen(false)}>
-        <Pressable style={styles.sourceMenuBackdrop} onPress={() => setSourceMenuOpen(false)}>
+        <Pressable style={[styles.sourceMenuBackdrop, { paddingTop: sourceMenuTopOffset }]} onPress={() => setSourceMenuOpen(false)}>
           <View
             style={[
               styles.sourceMenu,
@@ -368,20 +383,20 @@ export function BrowseScreen() {
               <Text style={[styles.emptyText, { color: colors.subtext }]}>换一个标签，或回到“全部”查看更多作品。</Text>
             </View>
           ) : null
-        }
-          contentContainerStyle={styles.list}
+          }
+          contentContainerStyle={[styles.list, { paddingBottom: listPaddingBottom }]}
         />
       )}
 
       {isPullRefreshing ? (
-        <View style={styles.refreshIndicatorWrap} pointerEvents="none">
+        <View style={[styles.refreshIndicatorWrap, { bottom: refreshIndicatorBottom }]} pointerEvents="none">
           <View style={[styles.refreshIndicator, { backgroundColor: isDark ? "#222228" : colors.surface }]}>
             <ActivityIndicator size="small" color={isDark ? "#ffffff" : "#111111"} />
             <Text style={[styles.refreshIndicatorText, { color: isDark ? "#ffffff" : "#111111" }]}>刷新中...</Text>
           </View>
         </View>
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -394,7 +409,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 14,
-    paddingTop: 14,
     paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
@@ -487,7 +501,6 @@ const styles = StyleSheet.create({
   },
   sourceMenuBackdrop: {
     flex: 1,
-    paddingTop: 122,
     paddingHorizontal: 14,
     backgroundColor: "rgba(0,0,0,0.08)",
   },
@@ -543,7 +556,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 108,
     alignItems: "center",
   },
   refreshIndicator: {

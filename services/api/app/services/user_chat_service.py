@@ -24,9 +24,6 @@ from app.services.xhs_vector_recommendation_service import XhsVectorRecommendati
 from app.utils.files import resolve_local_path
 
 
-HAND_MATCH_QUERY_WORDS = ("我的手", "我适合", "适合我", "按我的手", "适合我本人", "手型", "肤色", "手图", "图搜图")
-
-
 class UserChatService:
     def __init__(self) -> None:
         self.hand_feature_service = HandFeatureService()
@@ -66,8 +63,6 @@ class UserChatService:
             response = client.chat.completions.create(
                 model=settings.longcat_chat_model,
                 messages=self._tool_chat_messages(messages, hand_features, available_tools),
-                tools=_openai_tool_definitions(available_tools),
-                tool_choice="auto",
                 max_tokens=700,
                 temperature=0.2,
             )
@@ -75,10 +70,6 @@ class UserChatService:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="小嘉暂时不可用") from exc
 
         assistant_message = response.choices[0].message
-        structured_tool_calls = _structured_tool_calls(assistant_message)
-        if structured_tool_calls:
-            return self._longcat_markup_tool_reply(settings.longcat_chat_model, question, hand_features, structured_tool_calls)
-
         raw_reply = (assistant_message.content or "").strip()
         parsed_tool_calls = _parse_longcat_tool_call_markup(raw_reply)
         if parsed_tool_calls:
@@ -125,8 +116,6 @@ class UserChatService:
         default_query: str,
         hand_features: dict[str, str] | None,
     ) -> dict[str, Any]:
-        if name == TEXT_TOOL_NAME and hand_features is None and _needs_hand_match_from_query(arguments, default_query):
-            name = HAND_TOOL_NAME
         tool = self.chat_tools_by_name.get(name)
         if tool is None:
             return {"status": "failed", "tool": name, "query": default_query, "error": "未知工具", "recommendations": []}
@@ -193,8 +182,10 @@ class UserChatService:
             "## Tools\n"
             "You have access to the following tools:\n\n"
             f"{tool_docs}\n\n"
-            "工具由 API 的 function tool calling 提供。需要使用工具时，必须发起 function tool call，"
-            "不要在自然语言正文里手写工具名、XML、JSON 或任何内部调用痕迹。\n\n"
+            "工具调用格式必须严格为 XML 标签包裹 JSON 对象：\n"
+            '<longcat_tool_call>{"name":"工具名","arguments":{}}</longcat_tool_call>\n'
+            "多个工具调用时，每个调用都使用独立的 longcat_tool_call 标签连续输出。\n"
+            "不要使用 markdown 代码块，不要使用其他工具格式。\n\n"
             "工具使用规则：\n"
             "1. 用户明确要求推荐、查找、看看、有没有、挑几款具体美甲图片时，必须调用工具。\n"
             "2. 只涉及美甲知识解释、护理建议、概念说明或普通聊天时，不调用工具，直接回答。\n"
@@ -204,7 +195,7 @@ class UserChatService:
             "6. 用户提到颜色时，把细分颜色归并为基础色系并写入 filters.colors；例如墨绿/深绿归为绿色，裸粉归为粉色和裸色，奶白归为白色。\n"
             "7. 只能调用上方列出的工具名，不要自造工具名。\n\n"
             "输出规则：\n"
-            "- 如果需要推荐图片，发起 function tool call，不要只在正文里说“我来搜索”。\n"
+            "- 如果需要推荐图片，只输出 longcat_tool_call，不要只在正文里说“我来搜索”。\n"
             "- 工具返回推荐时，只做简短说明，推荐卡片会在界面中展示。\n"
             "- 工具没有返回结果时，如实说明暂时没找到稳定匹配，并建议用户换个描述。\n"
             "- 不要提到 RAG、FAISS、embedding、JSON、数据库等内部实现。"
@@ -233,42 +224,6 @@ def _recommendations_from_tool_results(tool_results: list[dict[str, Any]]) -> li
     for result in tool_results:
         recommendations.extend(result.get("recommendations", []))
     return recommendations
-
-
-def _openai_tool_definitions(tools: list[ChatTool]) -> list[dict[str, Any]]:
-    return [
-        {
-            "type": "function",
-            "function": {
-                "name": tool.name,
-                "description": tool.description,
-                "parameters": tool.parameters(),
-            },
-        }
-        for tool in tools
-    ]
-
-
-def _structured_tool_calls(message: Any) -> list[dict[str, Any]]:
-    result: list[dict[str, Any]] = []
-    for tool_call in getattr(message, "tool_calls", None) or []:
-        function = getattr(tool_call, "function", None)
-        if function is None:
-            continue
-        arguments = getattr(function, "arguments", None)
-        try:
-            parsed_arguments = json.loads(arguments) if isinstance(arguments, str) and arguments.strip() else {}
-        except json.JSONDecodeError:
-            parsed_arguments = {}
-        result.append({"name": getattr(function, "name", ""), "arguments": parsed_arguments})
-    return result
-
-
-def _needs_hand_match_from_query(arguments: Any, default_query: str) -> bool:
-    queries = [default_query]
-    if isinstance(arguments, dict):
-        queries.append(str(arguments.get("query") or ""))
-    return any(word in query for query in queries for word in HAND_MATCH_QUERY_WORDS)
 
 
 def _loads_json_object(value: str) -> dict[str, Any]:

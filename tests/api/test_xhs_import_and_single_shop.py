@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from app.models.nail_style import NailStyle
 from app.models.user import User
 
@@ -52,6 +54,46 @@ def test_nail_lists_can_exclude_xhs_posts(client, db_session):
 
     assert {item["source_type"] for item in included["items"]} == {"xhs_note", "user_upload"}
     assert [item["source_type"] for item in excluded["items"]] == ["user_upload"]
+
+
+def test_discover_materializes_xhs_assets_when_database_is_empty(client, app_env):
+    assets_root = app_env.xhs_crawler_assets_path
+    run_dir = assets_root / "20260603"
+    image_dir = run_dir / "images"
+    image_dir.mkdir(parents=True, exist_ok=True)
+    image_path = image_dir / "nail.webp"
+    image_path.write_bytes(b"fake-image")
+    note_id = "xhs-note-auto-1"
+
+    (assets_root / "xhs_note_registry.json").write_text(json.dumps({"note_ids": [note_id]}), encoding="utf-8")
+    (run_dir / "xhs_note_digest.json").write_text(
+        json.dumps(
+            {
+                "notes": [
+                    {
+                        "note_id": note_id,
+                        "title": "自动导入猫眼美甲",
+                        "standard_nail_image": "20260603/images/nail.webp",
+                        "tag_list": ["猫眼", "显白"],
+                        "liked_count": 120,
+                        "collected_count": 30,
+                        "share_count": 6,
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    response = client.get("/api/v1/nails/discover?include_xhs_posts=true")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["total"] == 1
+    assert payload["items"][0]["title"] == "自动导入猫眼美甲"
+    assert payload["items"][0]["source_type"] == "xhs_note"
+    assert payload["items"][0]["image_url"] == "/openclaw-assets/20260603/images/nail.webp"
 
 
 def test_merchant_shop_create_updates_single_shop(client, db_session):

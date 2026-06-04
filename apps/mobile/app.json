@@ -27,7 +27,9 @@
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -40,8 +42,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "nailtry-ai"
+        "projectId": "9ef5178e-485f-4f9c-a214-f8d4abcf2a40"
       }
-    }
+    },
+    "owner": "hedongli"
   }
 }

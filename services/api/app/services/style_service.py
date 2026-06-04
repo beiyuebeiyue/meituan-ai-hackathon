@@ -16,12 +16,18 @@ from app.models.user_style_view import UserStyleView
 from app.models.user_post import UserPost
 from app.models.user import User
 from app.services.block_service import BlockService
+from app.services.xhs_style_materialization_service import XhsStyleMaterializationService
 from app.utils.files import public_url_for_path, relative_to_base
 
 
 class StyleService:
     def __init__(self) -> None:
         self.block_service = BlockService()
+        self.xhs_materialization_service = XhsStyleMaterializationService()
+
+    def ensure_xhs_styles(self, db: Session, include_xhs_posts: bool) -> None:
+        if include_xhs_posts:
+            self.xhs_materialization_service.ensure_top_styles(db)
 
     def list_hot(
         self,
@@ -31,6 +37,7 @@ class StyleService:
         viewer: User | None = None,
         include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
+        self.ensure_xhs_styles(db, include_xhs_posts)
         ordered = list(
             db.scalars(
                 select(NailStyle).order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
@@ -49,6 +56,7 @@ class StyleService:
         viewer: User | None = None,
         include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
+        self.ensure_xhs_styles(db, include_xhs_posts)
         ordered = list(db.scalars(select(NailStyle).order_by(NailStyle.created_at.desc())))
         visible = self.filter_visible_styles(db, ordered, viewer, include_xhs_posts=include_xhs_posts)
         total = len(visible)
@@ -64,6 +72,7 @@ class StyleService:
         page_size: int,
         include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
+        self.ensure_xhs_styles(db, include_xhs_posts)
         ordered_styles = list(db.scalars(select(NailStyle).order_by(NailStyle.created_at.desc())))
         matched: list[NailStyle] = []
         for style in ordered_styles:
@@ -89,6 +98,7 @@ class StyleService:
         viewer: User | None = None,
         include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
+        self.ensure_xhs_styles(db, include_xhs_posts)
         normalized_city = city.strip().replace("市", "") or "深圳"
         ordered_styles = list(db.scalars(select(NailStyle).order_by(NailStyle.created_at.desc())))
         matched = []
@@ -111,6 +121,7 @@ class StyleService:
         viewer: User | None = None,
         include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
+        self.ensure_xhs_styles(db, include_xhs_posts)
         ordered = list(
             db.scalars(
                 select(NailStyle)
@@ -132,6 +143,7 @@ class StyleService:
         viewer: User | None = None,
         include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
+        self.ensure_xhs_styles(db, include_xhs_posts)
         normalized_query = query_text.strip().lower().replace("＃", "#")
         tokens = [token for token in re.split(r"[\s#]+", normalized_query) if token]
         if not tokens:

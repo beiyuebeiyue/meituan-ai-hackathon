@@ -1,7 +1,8 @@
 import { Refine } from "@refinedev/core";
 import routerProvider from "@refinedev/react-router";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
-import { getOpsToken } from "./api/client";
+import { useEffect, useState } from "react";
+import { getOpsToken, OPS_AUTH_CHANGED_EVENT } from "./api/client";
 import { AppLayout } from "./layouts/AppLayout";
 import { CouponsPage } from "./pages/CouponsPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -17,7 +18,19 @@ import { TrendNailsPage } from "./pages/TrendNailsPage";
 import { UsersPage } from "./pages/UsersPage";
 
 function RequireAuth() {
-  if (!getOpsToken()) return <Navigate to="/login" replace />;
+  const [token, setToken] = useState(() => getOpsToken());
+
+  useEffect(() => {
+    const syncToken = () => setToken(getOpsToken());
+    window.addEventListener(OPS_AUTH_CHANGED_EVENT, syncToken);
+    window.addEventListener("storage", syncToken);
+    return () => {
+      window.removeEventListener(OPS_AUTH_CHANGED_EVENT, syncToken);
+      window.removeEventListener("storage", syncToken);
+    };
+  }, []);
+
+  if (!token) return <Navigate to="/login" replace />;
   return <Outlet />;
 }
 

@@ -44,6 +44,10 @@ function formatDateTime(value: string) {
   });
 }
 
+function funnelColor(index: number) {
+  return ["#2563eb", "#16a34a", "#f97316", "#a855f7", "#06b6d4", "#e11d48"][index % 6];
+}
+
 function kpiTone(index: number) {
   return ["is-revenue", "is-order", "is-recommend", "is-tryon", "is-conversion", "is-aov"][index % 6];
 }
@@ -90,7 +94,7 @@ function ConversionFunnel({ analytics }: { analytics: OpsAnalyticsOverview }) {
               <Progress
                 percent={Math.round((step.count / maxCount) * 100)}
                 showInfo={false}
-                strokeColor={index < 2 ? "#ff6b45" : "#2563eb"}
+                strokeColor={funnelColor(index)}
               />
               <div className="ops-funnel-meta">
                 {index === 0 ? (
@@ -143,11 +147,11 @@ function TrendPanel({ analytics }: { analytics: OpsAnalyticsOverview }) {
       {rows.length ? (
         <ResponsiveContainer width="100%" height={340}>
           <LineChart data={rows}>
-            <CartesianGrid stroke="#eef2f7" vertical={false} />
+            <CartesianGrid stroke="#eeeeee" vertical={false} />
             <XAxis dataKey="label" axisLine={false} tickLine={false} />
             <YAxis allowDecimals={false} axisLine={false} tickLine={false} />
             <Tooltip formatter={(value) => (metric === "revenue" ? formatCents(Number(value) * 100) : formatNumber(Number(value)))} />
-            <Line type="monotone" dataKey={metric} name={metricLabel} stroke="#2563eb" strokeWidth={3} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey={metric} name={metricLabel} stroke="#2563eb" strokeWidth={3} dot={{ r: 3, fill: "#f97316" }} />
           </LineChart>
         </ResponsiveContainer>
       ) : (
@@ -257,7 +261,7 @@ export function DashboardPage() {
               setAnalyticsRange(dateStrings[0] && dateStrings[1] ? [dateStrings[0], dateStrings[1]] : undefined);
             }}
           />
-          <Tag color="blue">
+          <Tag>
             {analytics.start_date} 至 {analytics.end_date}
           </Tag>
           <Tag icon={<ClockCircleOutlined />} color="default">

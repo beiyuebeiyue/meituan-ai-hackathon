@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     default_admin_password: str = "admin@123456"
     ops_admin_username: str = "admin"
     ops_admin_password: str = "admin"
-    ops_ai_provider: str = "openclaw"
     default_admin_bio: str = (
         "谢谢关注!\n"
         "大家有对我不满的地方都可以提出来，尽情发言，一会就给你们全删了。"
@@ -72,7 +71,6 @@ class Settings(BaseSettings):
     openclaw_gateway_token: str = ""
     ops_report_timezone: str = "Asia/Shanghai"
 
-    allow_mock_image_edit_fallback: bool = True
     hot_keywords: list[str] = Field(default_factory=lambda: ["热门", "流行", "当季", "最近", "爆款", "trend"])
 
     @property

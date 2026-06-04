@@ -209,6 +209,7 @@ web-build/
 dist/
 coverage/
 apps/*/tsconfig.tsbuildinfo
+apps/mobile/builds/
 
 # Project-local OpenClaw runtime state and secrets
 .openclaw/openclaw.json

@@ -32,7 +32,7 @@ export function CouponsPage() {
       title: "目标",
       render: (_, record) => (
         <Space>
-          <Tag color="blue">用户</Tag>
+          <Tag>用户</Tag>
           {record.target_name}
         </Space>
       ),

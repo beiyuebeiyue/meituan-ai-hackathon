@@ -1,6 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
 const TOKEN_KEY = "ops_access_token";
+export const OPS_AUTH_CHANGED_EVENT = "ops-auth-changed";
 
 type RequestOptions = RequestInit & { skipAuth?: boolean };
 
@@ -10,10 +11,12 @@ export function getOpsToken(): string | null {
 
 export function setOpsToken(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
+  window.dispatchEvent(new Event(OPS_AUTH_CHANGED_EVENT));
 }
 
 export function clearOpsToken() {
   localStorage.removeItem(TOKEN_KEY);
+  window.dispatchEvent(new Event(OPS_AUTH_CHANGED_EVENT));
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {

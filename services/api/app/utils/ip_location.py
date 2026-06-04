@@ -32,7 +32,7 @@ def request_ip_location(request: Request) -> str:
         return direct_location
 
     province = _header_value(request, "x-geo-province", "x-vercel-ip-country-region")
-    city = _header_value(request, "x-geo-city", "x-vercel-ip-city", "cf-ipcity")
+    city = _header_value(request, "x-geo-city", "x-vercel-ip-city")
     if province and city and city not in province:
         return f"{province}{city}"
     if city:
@@ -40,7 +40,7 @@ def request_ip_location(request: Request) -> str:
     if province:
         return province
 
-    country = _header_value(request, "cf-ipcountry", "x-vercel-ip-country")
+    country = _header_value(request, "x-vercel-ip-country")
     if country and country != "XX":
         return country
 

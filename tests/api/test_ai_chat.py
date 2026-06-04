@@ -178,46 +178,6 @@ def test_hand_tool_without_hand_features_returns_failed_result():
     assert "上传" in result["error"]
 
 
-def test_longcat_unknown_textual_tool_markup_is_not_treated_as_recommendations(app_env, monkeypatch):
-    from app.core.config import get_settings
-    from app.schemas.ai import AIChatMessage
-    from app.services.user_chat_service import UserChatService
-
-    monkeypatch.setenv("LONGCAT_API_KEY", "test-key")
-    get_settings.cache_clear()
-
-    class FakeCompletions:
-        def create(self, **kwargs):
-            return SimpleNamespace(
-                choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(
-                            content=(
-                                "我来帮你搜索。\n"
-                                '<longcat_tool_call>\n{"name":"search_nail_rag","arguments":{"query":"显白猫眼"}}\n</longcat_tool_call>'
-                            ),
-                        )
-                    )
-                ]
-            )
-
-    class FakeOpenAI:
-        def __init__(self, **kwargs):
-            self.chat = SimpleNamespace(completions=FakeCompletions())
-
-    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
-
-    response = UserChatService()._longcat_reply(
-        [AIChatMessage(role="user", content="帮我找几款最近热门的显白猫眼")],
-        "帮我找几款最近热门的显白猫眼",
-        None,
-    )
-
-    assert response.recommendations == []
-    assert "<longcat_tool_call>" not in response.reply
-    assert "没有调用到可用" in response.reply
-
-
 def test_longcat_textual_tool_markup_executes_known_tool(app_env, image_factory, monkeypatch):
     from app.core.config import get_settings
     from app.routers.ai_recommend import user_chat_service
@@ -300,93 +260,11 @@ def test_longcat_textual_tool_markup_executes_known_tool(app_env, image_factory,
     assert [item.note_id for item in response.recommendations] == [note_id]
 
 
-def test_longcat_structured_tool_call_executes_known_tool(app_env, monkeypatch):
-    from app.core.config import get_settings
-    from app.schemas.ai import AIChatMessage
-    from app.services.user_chat_service import UserChatService
-    from app.services.user_chat_tools import TEXT_TOOL_NAME
-
-    monkeypatch.setenv("LONGCAT_API_KEY", "test-key")
-    get_settings.cache_clear()
-    captured_kwargs = {}
-
-    class FakeTool:
-        name = TEXT_TOOL_NAME
-        description = "根据用户文字需求检索美甲图片"
-
-        def parameters(self):
-            return {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
-
-        def execute(self, arguments, default_query, hand_features):
-            assert arguments == {"query": "绿色美甲", "filters": {"colors": ["绿色"]}}
-            assert default_query == "给我推荐绿色美甲"
-            assert hand_features is None
-            return {
-                "status": "succeeded",
-                "tool": self.name,
-                "query": arguments["query"],
-                "recommendations": [
-                    {
-                        "note_id": "green-note",
-                        "title": "绿色猫眼美甲",
-                        "image_url": "/openclaw-assets/green.webp",
-                        "tags": ["绿色", "猫眼"],
-                        "reason": "含绿色色系，贴合你的颜色需求",
-                        "score": 1.0,
-                        "liked_count": 10,
-                        "collected_count": 5,
-                        "share_count": 1,
-                    }
-                ],
-            }
-
-    class FakeCompletions:
-        def create(self, **kwargs):
-            captured_kwargs.update(kwargs)
-            return SimpleNamespace(
-                choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(
-                            content="我来为你推荐绿色美甲。",
-                            tool_calls=[
-                                SimpleNamespace(
-                                    function=SimpleNamespace(
-                                        name=TEXT_TOOL_NAME,
-                                        arguments='{"query":"绿色美甲","filters":{"colors":["绿色"]}}',
-                                    )
-                                )
-                            ],
-                        )
-                    )
-                ]
-            )
-
-    class FakeOpenAI:
-        def __init__(self, **kwargs):
-            self.chat = SimpleNamespace(completions=FakeCompletions())
-
-    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
-    service = UserChatService()
-    service.chat_tools_by_name = {TEXT_TOOL_NAME: FakeTool()}
-    monkeypatch.setattr(service, "_available_tools", lambda hand_features: [FakeTool()])
-
-    response = service._longcat_reply(
-        [AIChatMessage(role="user", content="给我推荐绿色美甲")],
-        "给我推荐绿色美甲",
-        None,
-    )
-
-    assert captured_kwargs["tools"][0]["function"]["name"] == TEXT_TOOL_NAME
-    assert captured_kwargs["tool_choice"] == "auto"
-    assert response.reply == "我按你的需求挑好了几款美甲，下面卡片里有图片和推荐理由。"
-    assert [item.note_id for item in response.recommendations] == ["green-note"]
-
-
 def test_longcat_text_tool_call_for_hand_query_requests_hand_image(app_env, monkeypatch):
     from app.core.config import get_settings
     from app.schemas.ai import AIChatMessage
     from app.services.user_chat_service import UserChatService
-    from app.services.user_chat_tools import TEXT_TOOL_NAME
+    from app.services.user_chat_tools import HAND_TOOL_NAME
 
     monkeypatch.setenv("LONGCAT_API_KEY", "test-key")
     get_settings.cache_clear()
@@ -397,15 +275,11 @@ def test_longcat_text_tool_call_for_hand_query_requests_hand_image(app_env, monk
                 choices=[
                     SimpleNamespace(
                         message=SimpleNamespace(
-                            content="我来帮你找适合你的款式。",
-                            tool_calls=[
-                                SimpleNamespace(
-                                    function=SimpleNamespace(
-                                        name=TEXT_TOOL_NAME,
-                                        arguments='{"query":"温柔裸粉美甲","filters":{"colors":["粉色","裸色"]}}',
-                                    )
-                                )
-                            ],
+                            content=(
+                                '<longcat_tool_call>{"name":"'
+                                f'{HAND_TOOL_NAME}'
+                                '","arguments":{"query":"温柔裸粉美甲","filters":{"colors":["粉色","裸色"]}}}</longcat_tool_call>'
+                            ),
                         )
                     )
                 ]
@@ -428,48 +302,7 @@ def test_longcat_text_tool_call_for_hand_query_requests_hand_image(app_env, monk
     assert response.hand_picker_message
 
 
-def test_longcat_legacy_arg_markup_is_ignored(app_env, image_factory, monkeypatch):
-    from app.core.config import get_settings
-    from app.schemas.ai import AIChatMessage
-    from app.services.user_chat_service import UserChatService
-
-    monkeypatch.setenv("LONGCAT_API_KEY", "test-key")
-    get_settings.cache_clear()
-
-    class FakeCompletions:
-        def create(self, **kwargs):
-            return SimpleNamespace(
-                choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(
-                            content=(
-                                "<longcat_tool_call>search_nail_images_by_text\n"
-                                "<longcat_arg_key>query</longcat_arg_key>\n"
-                                "<longcat_arg_value>绿色美甲</longcat_arg_value>\n"
-                                "</longcat_tool_call>"
-                            )
-                        )
-                    )
-                ]
-            )
-
-    class FakeOpenAI:
-        def __init__(self, **kwargs):
-            self.chat = SimpleNamespace(completions=FakeCompletions())
-
-    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
-
-    response = UserChatService()._longcat_reply(
-        [AIChatMessage(role="user", content="给我推荐绿色美甲")],
-        "给我推荐绿色美甲",
-        None,
-    )
-
-    assert response.recommendations == []
-    assert "没有调用到可用" in response.reply
-
-
-def test_longcat_tool_prompt_uses_structured_tool_calls(app_env):
+def test_longcat_tool_prompt_uses_longcat_xml_json_tool_calls(app_env):
     from app.services.user_chat_service import UserChatService
     from app.services.user_chat_tools import SearchNailImagesByTextTool
     from app.services.xhs_vector_recommendation_service import XhsVectorRecommendationService
@@ -479,8 +312,7 @@ def test_longcat_tool_prompt_uses_structured_tool_calls(app_env):
         [SearchNailImagesByTextTool(XhsVectorRecommendationService())],
     )
 
-    assert "function tool call" in prompt
-    assert "<longcat_tool_call>" not in prompt
+    assert "<longcat_tool_call>" in prompt
     assert "<longcat_arg_key>" not in prompt
     assert "<longcat_arg_value>" not in prompt
 
@@ -496,8 +328,8 @@ def test_longcat_no_tool_call_returns_plain_reply_without_recommendations(app_en
     class FakeCompletions:
         def create(self, **kwargs):
             assert "## Tools" in kwargs["messages"][0]["content"]
-            assert kwargs["tool_choice"] == "auto"
-            assert kwargs["tools"][0]["type"] == "function"
+            assert "tools" not in kwargs
+            assert "tool_choice" not in kwargs
             return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="可以，我先了解一下你的偏好。"))])
 
     class FakeOpenAI:

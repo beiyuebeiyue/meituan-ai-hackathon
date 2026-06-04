@@ -3,6 +3,7 @@ import {
   FireOutlined,
   GlobalOutlined,
   DashboardOutlined,
+  MoonOutlined,
   RobotOutlined,
   MenuOutlined,
   LeftOutlined,
@@ -10,16 +11,16 @@ import {
   QuestionCircleOutlined,
   ReadOutlined,
   RightOutlined,
-  ShopOutlined,
+  SunOutlined,
   TagsOutlined,
-  TeamOutlined,
   UserOutlined,
 } from "@ant-design/icons";
 import { Avatar, Button, Drawer, Grid, Layout, Menu, Space, Typography } from "antd";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearOpsToken } from "../api/client";
 import { OpsChatWidget } from "../components/OpsChatWidget";
+import { OpsThemeContext } from "../theme";
 
 const { Header, Sider, Content } = Layout;
 
@@ -67,6 +68,7 @@ const navItems = [
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { mode, toggleMode } = useContext(OpsThemeContext);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   const [collapsed, setCollapsed] = useState(false);
@@ -97,9 +99,7 @@ export function AppLayout() {
     <Layout className="ops-shell">
       <Sider className="ops-sider" width={280} collapsedWidth={80} collapsed={collapsed}>
         <div className="ops-brand">
-          <span className="ops-brand-logo">
-            <img src="/logo.png" alt="焕甲" />
-          </span>
+          <span className="ops-brand-logo" aria-hidden="true">HJ</span>
           {!collapsed && <span>焕甲后台系统</span>}
         </div>
         <Button
@@ -117,10 +117,17 @@ export function AppLayout() {
             <Typography.Text type="secondary">焕甲后台系统</Typography.Text>
           </Space>
           <Space className="ops-header-actions">
+            <Button
+              type="text"
+              icon={mode === "dark" ? <SunOutlined /> : <MoonOutlined />}
+              onClick={toggleMode}
+              aria-label={mode === "dark" ? "切换白天主题" : "切换黑夜主题"}
+              title={mode === "dark" ? "切换白天主题" : "切换黑夜主题"}
+            />
             <Button type="text" icon={<QuestionCircleOutlined />} />
             <Button type="text" icon={<GlobalOutlined />} />
             <Button type="text" icon={<BellOutlined />} />
-            <Avatar size={28} style={{ background: "#e6f4ff", color: "#1677ff" }}>
+            <Avatar size={28} style={{ background: "#f3f4f6", color: "#111827" }}>
               A
             </Avatar>
             <Typography.Text type="secondary">admin</Typography.Text>

@@ -30,7 +30,7 @@ import {
   AnalyticsEventPayload,
 } from "../types/api";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://dongli-meituan-ai-hackathon.hf.space/api/v1";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
 const AUTH_FAILURE_EXEMPT_PATHS = new Set(["/auth/login", "/auth/register"]);
 

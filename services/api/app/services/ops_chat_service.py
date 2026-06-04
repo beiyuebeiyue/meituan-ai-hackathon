@@ -25,14 +25,9 @@ class OpsChatService:
 
     def chat(self, db: Session, messages: list[OpsChatMessage]) -> OpsChatResponse:
         settings = get_settings()
-        provider = settings.ops_ai_provider.lower()
-        if provider == "openclaw":
+        if settings.openclaw_enabled:
             return self._openclaw_reply(db, messages)
-        if provider == "longcat" and settings.longcat_api_key:
-            return self._longcat_reply(db, messages)
-        if provider == "openai" and settings.openai_api_key:
-            return self._openai_reply(messages)
-        return OpsChatResponse(reply=self._local_reply(db, messages[-1].content), model="local-ops-summary")
+        return self._longcat_reply(db, messages)
 
     def _openclaw_reply(self, db: Session, messages: list[OpsChatMessage]) -> OpsChatResponse:
         settings = get_settings()
@@ -53,21 +48,6 @@ class OpsChatService:
             client = OpenAI(api_key=settings.longcat_api_key, base_url=settings.longcat_base_url)
             content = self._chat_with_optional_tools(client, settings.longcat_chat_model, db, messages)
             return OpsChatResponse(reply=content.strip(), model=settings.longcat_chat_model)
-        except Exception as exc:
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="运营小嘉暂不可用") from exc
-
-    def _openai_reply(self, messages: list[OpsChatMessage]) -> OpsChatResponse:
-        settings = get_settings()
-        try:
-            from openai import OpenAI
-
-            client = OpenAI(api_key=settings.openai_api_key)
-            response = client.responses.create(
-                model=settings.openai_text_model,
-                instructions=self._system_prompt(),
-                input=[message.model_dump() for message in messages[-6:]],
-            )
-            return OpsChatResponse(reply=response.output_text.strip(), model=settings.openai_text_model)
         except Exception as exc:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="运营小嘉暂不可用") from exc
 
@@ -241,22 +221,3 @@ class OpsChatService:
             return date.fromisoformat(value)
         except ValueError:
             return None
-
-    def _local_reply(self, db: Session, question: str) -> str:
-        dashboard = self._dashboard_summary(db, {"popular_limit": 1})
-        metrics = dashboard["metrics"]  # type: ignore[index]
-        popular_nails = dashboard["popular_nails"]  # type: ignore[index]
-        summary = [
-            f"当前日期是 {dashboard['report_date']}，口径为 {dashboard['timezone']}。",
-            f"用户 {metrics['users']['total']}，今日新增 {metrics['users']['today']}。",
-            f"商家 {metrics['merchants']['total']}，今日新增 {metrics['merchants']['today']}。",
-            f"图片 {metrics['images']['total']}，今日新增 {metrics['images']['today']}。",
-            f"预定单 {metrics['bookings']['total']}，完成单 {metrics['completed_bookings']['total']}，营收 {metrics['revenue']['total']} 元。",
-        ]
-        if popular_nails:
-            top = popular_nails[0]
-            summary.append(
-                f"今日热门美甲第一条是《{top['title']}》，Like {top['liked_count']}，Collect {top['collected_count']}。"
-            )
-        summary.append(f"你刚才问的是：{question}")
-        return "\n".join(summary)
