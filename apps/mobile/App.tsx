@@ -15,7 +15,7 @@ import { initAnalytics, trackEvent } from "./src/utils/analytics";
 import { getNavigationTheme } from "./src/utils/theme";
 
 const queryClient = new QueryClient();
-const welcomeLogo = require("./assets/login/logo.png");
+const openingImage = require("./assets/app/opening.png");
 const WELCOME_VISIBLE_MS = 2000;
 const WELCOME_FADE_MS = 360;
 
@@ -71,9 +71,7 @@ export default function App() {
       </SafeAreaProvider>
       {showWelcome ? (
         <Animated.View pointerEvents="none" style={[styles.welcomeOverlay, { opacity: welcomeOpacity }]}>
-          <View style={styles.logoBox}>
-            <Image source={welcomeLogo} style={styles.welcomeLogo} resizeMode="contain" />
-          </View>
+          <Image source={openingImage} style={styles.openingImage} resizeMode="cover" />
         </Animated.View>
       ) : null}
     </QueryClientProvider>
@@ -83,20 +81,10 @@ export default function App() {
 const styles = StyleSheet.create({
   welcomeOverlay: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    backgroundColor: "#f4f1ed",
-    justifyContent: "center",
+    backgroundColor: "#fbfaf8",
     zIndex: 9999,
   },
-  logoBox: {
-    alignItems: "center",
-    height: 156,
-    justifyContent: "center",
-    maxWidth: 340,
-    transform: [{ translateY: -52 }],
-    width: "48%",
-  },
-  welcomeLogo: {
+  openingImage: {
     height: "100%",
     width: "100%",
   },
