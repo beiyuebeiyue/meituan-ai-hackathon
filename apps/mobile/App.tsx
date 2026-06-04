@@ -3,8 +3,7 @@ import "react-native-gesture-handler";
 import { NavigationContainer } from "@react-navigation/native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Image, StyleSheet, View } from "react-native";
+import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthSessionGate } from "./src/components/AuthSessionGate";
 import { RootNavigator } from "./src/navigation/RootNavigator";
@@ -15,14 +14,9 @@ import { initAnalytics, trackEvent } from "./src/utils/analytics";
 import { getNavigationTheme } from "./src/utils/theme";
 
 const queryClient = new QueryClient();
-const openingImage = require("./assets/app/opening.png");
-const WELCOME_VISIBLE_MS = 2000;
-const WELCOME_FADE_MS = 360;
 
 export default function App() {
   const mode = useAppearanceStore((state) => state.mode);
-  const [showWelcome, setShowWelcome] = useState(true);
-  const welcomeOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     void (async () => {
@@ -34,31 +28,6 @@ export default function App() {
     void bootstrapContentPreferences();
   }, []);
 
-  useEffect(() => {
-    let hideTimer: ReturnType<typeof setTimeout> | undefined;
-    const show = () => {
-      if (hideTimer) clearTimeout(hideTimer);
-      welcomeOpacity.stopAnimation();
-      welcomeOpacity.setValue(1);
-      setShowWelcome(true);
-      hideTimer = setTimeout(() => {
-        Animated.timing(welcomeOpacity, {
-          toValue: 0,
-          duration: WELCOME_FADE_MS,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }).start(({ finished }) => {
-          if (finished) setShowWelcome(false);
-        });
-      }, WELCOME_VISIBLE_MS);
-    };
-
-    show();
-    return () => {
-      if (hideTimer) clearTimeout(hideTimer);
-    };
-  }, [welcomeOpacity]);
-
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
@@ -69,23 +38,6 @@ export default function App() {
           </NavigationContainer>
         </AuthSessionGate>
       </SafeAreaProvider>
-      {showWelcome ? (
-        <Animated.View pointerEvents="none" style={[styles.welcomeOverlay, { opacity: welcomeOpacity }]}>
-          <Image source={openingImage} style={styles.openingImage} resizeMode="cover" />
-        </Animated.View>
-      ) : null}
     </QueryClientProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  welcomeOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#fbfaf8",
-    zIndex: 9999,
-  },
-  openingImage: {
-    height: "100%",
-    width: "100%",
-  },
-});
