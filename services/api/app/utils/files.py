@@ -7,7 +7,7 @@ import re
 import shutil
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -171,6 +171,28 @@ def path_from_public_url(url: str | None) -> Path | None:
             suffix = Path(*parts[len(public_prefix.parts) :])
             return (root / suffix).resolve()
     return (settings.base_dir / "data" / relative).resolve()
+
+
+def ensure_local_file(relative_or_absolute_path: str | None, public_url: str | None = None, cache_prefix: str = "remote") -> Path | None:
+    local_path = resolve_local_path(relative_or_absolute_path)
+    if local_path is not None and local_path.exists():
+        return local_path
+
+    if not public_url or not public_url.startswith(("http://", "https://")):
+        return local_path
+
+    settings = get_settings()
+    extension = guess_extension(urlparse(public_url).path, ".png")
+    digest = hashlib.sha256(public_url.encode("utf-8")).hexdigest()
+    cache_path = settings.tryon_artifact_path / "remote_cache" / f"{cache_prefix}_{digest[:24]}{extension}"
+    if cache_path.exists():
+        return cache_path
+
+    ensure_parent(cache_path)
+    response = httpx.get(public_url, timeout=60, follow_redirects=True)
+    response.raise_for_status()
+    cache_path.write_bytes(response.content)
+    return cache_path
 
 
 def guess_extension(url_or_content_type: str, default: str = ".png") -> str:

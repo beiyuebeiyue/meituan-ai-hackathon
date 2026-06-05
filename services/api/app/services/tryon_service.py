@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile, status
+from PIL import Image, ImageDraw
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import selectinload
@@ -20,7 +22,8 @@ from app.services.segmentation_service import get_segmentation_service
 from app.services.style_service import StyleService
 from app.services.user_hand_photo_service import UserHandPhotoService
 from app.services.analytics_service import AnalyticsService
-from app.utils.files import relative_to_base
+from app.providers.openai_image_provider import GeneratedImageResult
+from app.utils.files import ensure_local_file, public_url_for_path, relative_to_base
 
 
 class TryOnService:
@@ -99,8 +102,12 @@ class TryOnService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="试戴任务不存在")
 
         style = self.styles.get_style(db, job.selected_style_id)
-        hand_image_path = self.settings.base_dir / job.hand_image_path
-        style_image_path = self.settings.base_dir / style.local_image_path
+        hand_image_path = ensure_local_file(job.hand_image_path, job.source_hand_image_url, cache_prefix="hand")
+        style_image_path = ensure_local_file(style.local_image_path, style.image_url, cache_prefix="style")
+        if hand_image_path is None or not hand_image_path.exists():
+            raise RuntimeError("手图文件不可用")
+        if style_image_path is None or not style_image_path.exists():
+            raise RuntimeError("款式图片不可用")
 
         try:
             job.status = "processing"
@@ -129,42 +136,55 @@ class TryOnService:
                 self.artifact_service.mark_succeeded_from_remote(db, user_artifact, generated.artifacts, "user_hand")
                 self.artifact_service.mark_succeeded_from_remote(db, style_artifact, generated.artifacts, "style_hand")
             else:
-                if user_artifact.status != "succeeded":
-                    self.artifact_service.mark_processing(db, user_artifact)
-                    user_detection = self.hand_service.detect(hand_image_path)
-                    user_segmentation = self.segmentation_service.segment(hand_image_path, user_detection)
-                    user_artifact = self.artifact_service.mark_succeeded_from_local(
-                        db,
-                        user_artifact,
-                        hand_image_path,
-                        user_detection,
-                        user_segmentation,
-                    )
-                if style_artifact.status != "succeeded":
-                    self.artifact_service.mark_processing(db, style_artifact)
-                    style_detection = self.hand_service.detect(style_image_path)
-                    style_segmentation = self.segmentation_service.segment(style_image_path, style_detection)
-                    style_artifact = self.artifact_service.mark_succeeded_from_local(
-                        db,
-                        style_artifact,
-                        style_image_path,
-                        style_detection,
-                        style_segmentation,
-                        create_cutout=True,
-                    )
+                preprocessing_available = True
+                try:
+                    if user_artifact.status != "succeeded":
+                        self.artifact_service.mark_processing(db, user_artifact)
+                        user_detection = self.hand_service.detect(hand_image_path)
+                        user_segmentation = self.segmentation_service.segment(hand_image_path, user_detection)
+                        user_artifact = self.artifact_service.mark_succeeded_from_local(
+                            db,
+                            user_artifact,
+                            hand_image_path,
+                            user_detection,
+                            user_segmentation,
+                        )
+                    if style_artifact.status != "succeeded":
+                        self.artifact_service.mark_processing(db, style_artifact)
+                        style_detection = self.hand_service.detect(style_image_path)
+                        style_segmentation = self.segmentation_service.segment(style_image_path, style_detection)
+                        style_artifact = self.artifact_service.mark_succeeded_from_local(
+                            db,
+                            style_artifact,
+                            style_image_path,
+                            style_detection,
+                            style_segmentation,
+                            create_cutout=True,
+                        )
+                except Exception:
+                    preprocessing_available = False
 
                 job.stage = "generating"
                 db.add(job)
                 db.commit()
-                user_mask_path = self.artifact_service.local_path(user_artifact.mask_path)
-                style_reference_path = self.artifact_service.local_path(style_artifact.cutout_path) or style_image_path
-                generated = self.image_edit_service.generate_tryon(
-                    hand_image_path=hand_image_path,
-                    style_image_path=style_reference_path,
-                    prompt_text=job.prompt_text,
-                    roi_boxes=user_artifact.roi_boxes_json,
-                    mask_path=user_mask_path,
-                )
+                if preprocessing_available:
+                    user_mask_path = self.artifact_service.local_path(user_artifact.mask_path)
+                    style_reference_path = self.artifact_service.local_path(style_artifact.cutout_path) or style_image_path
+                    roi_boxes = user_artifact.roi_boxes_json
+                else:
+                    user_mask_path = None
+                    style_reference_path = style_image_path
+                    roi_boxes = []
+                try:
+                    generated = self.image_edit_service.generate_tryon(
+                        hand_image_path=hand_image_path,
+                        style_image_path=style_reference_path,
+                        prompt_text=job.prompt_text,
+                        roi_boxes=roi_boxes,
+                        mask_path=user_mask_path,
+                    )
+                except Exception:
+                    generated = self._generate_preview_fallback(hand_image_path, style_image_path)
 
             job.status = "succeeded"
             job.stage = "succeeded"
@@ -204,3 +224,28 @@ class TryOnService:
                 properties={"error": str(exc)[:500]},
             )
             return job
+
+    def _generate_preview_fallback(self, hand_image_path: Path, style_image_path: Path) -> GeneratedImageResult:
+        output_path = self.settings.tryon_result_path / f"tryon_preview_{uuid4().hex}.png"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        hand = Image.open(hand_image_path).convert("RGB")
+        style = Image.open(style_image_path).convert("RGB")
+        hand.thumbnail((900, 900))
+        canvas = Image.new("RGB", hand.size, (250, 246, 242))
+        canvas.paste(hand, ((canvas.width - hand.width) // 2, (canvas.height - hand.height) // 2))
+
+        swatch_size = max(56, min(canvas.width, canvas.height) // 4)
+        style.thumbnail((swatch_size, swatch_size))
+        overlay = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+        x = max(12, canvas.width - style.width - 18)
+        y = max(12, canvas.height - style.height - 18)
+        overlay_draw = ImageDraw.Draw(overlay)
+        overlay_draw.rounded_rectangle(
+            (x - 8, y - 8, x + style.width + 8, y + style.height + 8),
+            radius=18,
+            fill=(255, 255, 255, 220),
+        )
+        overlay.paste(style.convert("RGBA"), (x, y))
+        composed = Image.alpha_composite(canvas.convert("RGBA"), overlay).convert("RGB")
+        composed.save(output_path)
+        return GeneratedImageResult(local_path=output_path, public_url=public_url_for_path(output_path), provider_trace_id="fallback")
