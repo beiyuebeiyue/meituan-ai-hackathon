@@ -26,7 +26,7 @@ class StyleService:
         self.xhs_materialization_service = XhsStyleMaterializationService()
 
     def ensure_xhs_styles(self, db: Session, include_xhs_posts: bool) -> None:
-        if include_xhs_posts:
+        if include_xhs_posts and not db.scalar(select(NailStyle.id).where(NailStyle.source_type == "xhs_note").limit(1)):
             self.xhs_materialization_service.ensure_top_styles(db)
 
     def list_hot(
@@ -38,15 +38,15 @@ class StyleService:
         include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
         self.ensure_xhs_styles(db, include_xhs_posts)
-        ordered = list(
-            db.scalars(
-                select(NailStyle).order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
-            )
+        statement = self._visible_list_statement(include_xhs_posts).order_by(
+            NailStyle.is_trending.desc(),
+            NailStyle.popularity_score.desc(),
+            NailStyle.created_at.desc(),
         )
-        visible = self.filter_visible_styles(db, ordered, viewer, include_xhs_posts=include_xhs_posts)
-        total = len(visible)
+        total = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
         offset = (page - 1) * page_size
-        return visible[offset : offset + page_size], total
+        items = list(db.scalars(statement.offset(offset).limit(page_size)))
+        return items, total
 
     def list_latest(
         self,
@@ -57,11 +57,11 @@ class StyleService:
         include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
         self.ensure_xhs_styles(db, include_xhs_posts)
-        ordered = list(db.scalars(select(NailStyle).order_by(NailStyle.created_at.desc())))
-        visible = self.filter_visible_styles(db, ordered, viewer, include_xhs_posts=include_xhs_posts)
-        total = len(visible)
+        statement = self._visible_list_statement(include_xhs_posts).order_by(NailStyle.created_at.desc())
+        total = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
         offset = (page - 1) * page_size
-        return visible[offset : offset + page_size], total
+        items = list(db.scalars(statement.offset(offset).limit(page_size)))
+        return items, total
 
     def list_following(
         self,
@@ -122,17 +122,21 @@ class StyleService:
         include_xhs_posts: bool = True,
     ) -> tuple[list[NailStyle], int]:
         self.ensure_xhs_styles(db, include_xhs_posts)
-        ordered = list(
-            db.scalars(
-                select(NailStyle)
-                .where(NailStyle.shop_id == shop_id)
-                .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
-            )
+        statement = (
+            self._visible_list_statement(include_xhs_posts)
+            .where(NailStyle.shop_id == shop_id)
+            .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
         )
-        visible = self.filter_visible_styles(db, ordered, viewer, include_xhs_posts=include_xhs_posts)
-        total = len(visible)
+        total = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
         offset = (page - 1) * page_size
-        return visible[offset : offset + page_size], total
+        items = list(db.scalars(statement.offset(offset).limit(page_size)))
+        return items, total
+
+    def _visible_list_statement(self, include_xhs_posts: bool):
+        statement = select(NailStyle)
+        if not include_xhs_posts:
+            statement = statement.where(NailStyle.source_type != "xhs_note")
+        return statement
 
     def search_styles(
         self,

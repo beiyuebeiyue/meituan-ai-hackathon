@@ -64,6 +64,12 @@ class Settings(BaseSettings):
     xhs_embedding_timeout_seconds: float = 20.0
     xhs_embedding_search_top_k: int = 200
     public_files_prefix: str = "/files"
+    r2_enabled: bool = False
+    r2_account_id: str = ""
+    r2_bucket_name: str = ""
+    r2_api_token: str = ""
+    r2_public_base_url: str = ""
+    r2_cache_control: str = "public, max-age=31536000, immutable"
 
     openclaw_enabled: bool = True
     openclaw_skill_name: str = "xhs-daily-nail-report"

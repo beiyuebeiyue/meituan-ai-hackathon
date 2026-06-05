@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import hashlib
 import mimetypes
+import os
 import re
 import shutil
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from fastapi import UploadFile
+import httpx
 
 from app.core.config import get_settings
 
@@ -34,6 +37,12 @@ def relative_to_base(path: Path) -> str:
 def public_url_for_path(path: Path) -> str:
     settings = get_settings()
     resolved = path.resolve()
+    if _r2_is_configured():
+        key = storage_key_for_path(resolved)
+        if key:
+            upload_path_to_r2(resolved, key)
+            return f"{settings.r2_public_base_url.rstrip('/')}/{key}"
+
     candidates = [
         (settings.upload_path, "uploads"),
         (settings.tryon_result_path, "tryon_results"),
@@ -52,6 +61,80 @@ def public_url_for_path(path: Path) -> str:
         except ValueError:
             continue
     return f"{settings.public_files_prefix}/{resolved.name}"
+
+
+def _r2_is_configured() -> bool:
+    settings = get_settings()
+    return bool(
+        settings.r2_enabled
+        and settings.r2_account_id
+        and settings.r2_bucket_name
+        and _r2_api_token()
+        and settings.r2_public_base_url
+    )
+
+
+def _r2_api_token() -> str:
+    settings = get_settings()
+    candidates = [
+        settings.r2_api_token,
+        os.getenv("R2_API_TOKEN", ""),
+        os.getenv("CLOUDFLARE_API_TOKEN", ""),
+    ]
+    for secret_name in ("R2_API_TOKEN", "CLOUDFLARE_API_TOKEN"):
+        secret_path = Path("/run/secrets") / secret_name
+        if secret_path.exists():
+            candidates.append(secret_path.read_text(encoding="utf-8").strip())
+    return next((candidate.strip() for candidate in candidates if candidate and candidate.strip()), "")
+
+
+def storage_key_for_path(path: Path) -> str | None:
+    settings = get_settings()
+    resolved = path.resolve()
+    candidates = [
+        (settings.upload_path, "uploads"),
+        (settings.tryon_result_path, "tryon_results"),
+        (settings.tryon_artifact_path, "tryon_artifacts"),
+        (settings.seed_path, "seed"),
+        (settings.report_path, "reports"),
+    ]
+    for root, prefix in candidates:
+        try:
+            suffix = resolved.relative_to(root.resolve()).as_posix()
+            return f"{prefix}/{suffix}" if prefix else suffix
+        except ValueError:
+            continue
+    try:
+        return resolved.relative_to((settings.base_dir / "data").resolve()).as_posix()
+    except ValueError:
+        return None
+
+
+def upload_path_to_r2(path: Path, key: str | None = None) -> None:
+    settings = get_settings()
+    if not _r2_is_configured():
+        return
+    resolved = path.resolve()
+    if not resolved.exists() or not resolved.is_file():
+        return
+
+    object_key = key or storage_key_for_path(resolved)
+    if not object_key:
+        return
+
+    content_type = mimetypes.guess_type(resolved.name)[0] or "application/octet-stream"
+    url = (
+        f"https://api.cloudflare.com/client/v4/accounts/{settings.r2_account_id}"
+        f"/r2/buckets/{settings.r2_bucket_name}/objects/{quote(object_key, safe='/')}"
+    )
+    headers = {
+        "Authorization": f"Bearer {_r2_api_token()}",
+        "Content-Type": content_type,
+        "Cache-Control": settings.r2_cache_control,
+    }
+    with resolved.open("rb") as file_handle:
+        response = httpx.put(url, headers=headers, content=file_handle, timeout=60)
+    response.raise_for_status()
 
 
 def resolve_local_path(relative_or_absolute_path: str | None) -> Path | None:
