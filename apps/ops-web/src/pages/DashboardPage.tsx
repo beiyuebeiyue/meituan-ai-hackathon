@@ -1,6 +1,6 @@
 import { CalendarOutlined, ClockCircleOutlined } from "@ant-design/icons";
-import { App, Card, Col, DatePicker, Empty, Progress, Row, Segmented, Space, Spin, Table, Tag, Typography } from "antd";
-import type { ColumnsType } from "antd/es/table";
+import { App, Card, Col, DatePicker, Empty, Progress, Row, Segmented, Space, Spin, Tag, Typography } from "antd";
+import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
@@ -71,12 +71,27 @@ function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value * 100)));
+}
+
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString("zh-CN", {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+  });
+}
+
+function formatClockTime(value: Date) {
+  return value.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   });
 }
 
@@ -88,6 +103,10 @@ function kpiTone(index: number) {
   return ["is-revenue", "is-order", "is-recommend", "is-tryon", "is-conversion", "is-aov"][index % 6];
 }
 
+function kpiAccent(index: number) {
+  return ["#16a34a", "#f97316", "#2563eb", "#a855f7", "#06b6d4", "#e11d48"][index % 6];
+}
+
 function toDateString(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -97,8 +116,7 @@ function toDateString(date: Date) {
 
 function defaultAnalyticsRange(): [string, string] {
   const end = new Date();
-  const start = new Date(end);
-  start.setDate(end.getDate() - 13);
+  const start = new Date(end.getFullYear(), end.getMonth(), 1);
   return [toDateString(start), toDateString(end)];
 }
 
@@ -265,12 +283,48 @@ function buildDemoAnalyticsOverview(range: [string, string] | undefined): OpsAna
 function AnalyticsKpiGrid({ analytics }: { analytics: OpsAnalyticsOverview }) {
   const kpis = analytics.kpis;
   const cards = [
-    { label: "营业额", value: formatCents(kpis.revenue_cents), hint: `ARPU ${formatCents(kpis.arpu_cents)}` },
-    { label: "完成订单", value: formatNumber(kpis.completed_orders), hint: `预约提交 ${formatNumber(kpis.booking_submits)}` },
-    { label: "推荐点击率", value: formatPercent(kpis.recommendation_ctr), hint: `曝光 ${formatNumber(kpis.recommendation_impressions)} · 点击 ${formatNumber(kpis.recommendation_clicks)}` },
-    { label: "焕甲完成率", value: formatPercent(kpis.tryon_completion_rate), hint: `开始 ${formatNumber(kpis.tryon_started)} · 完成 ${formatNumber(kpis.tryon_completed)}` },
-    { label: "点击到成交率", value: formatPercent(kpis.click_to_order_rate), hint: `点击到试戴 ${formatPercent(kpis.click_to_tryon_rate)}` },
-    { label: "客单价", value: formatCents(kpis.average_order_value_cents), hint: `收入转化 ${formatPercent(kpis.revenue_conversion_rate)}` },
+    {
+      label: "营业额",
+      value: formatCents(kpis.revenue_cents),
+      hint: `ARPU ${formatCents(kpis.arpu_cents)}`,
+      detail: `${formatNumber(kpis.completed_orders)} 单已完成`,
+      progress: kpis.revenue_conversion_rate,
+    },
+    {
+      label: "完成订单",
+      value: formatNumber(kpis.completed_orders),
+      hint: `预约提交 ${formatNumber(kpis.booking_submits)}`,
+      detail: `核销率 ${formatPercent(kpis.booking_to_order_rate)}`,
+      progress: kpis.booking_to_order_rate,
+    },
+    {
+      label: "推荐点击率",
+      value: formatPercent(kpis.recommendation_ctr),
+      hint: `曝光 ${formatNumber(kpis.recommendation_impressions)}`,
+      detail: `点击 ${formatNumber(kpis.recommendation_clicks)}`,
+      progress: kpis.recommendation_ctr,
+    },
+    {
+      label: "焕甲完成率",
+      value: formatPercent(kpis.tryon_completion_rate),
+      hint: `开始 ${formatNumber(kpis.tryon_started)}`,
+      detail: `完成 ${formatNumber(kpis.tryon_completed)}`,
+      progress: kpis.tryon_completion_rate,
+    },
+    {
+      label: "点击到成交率",
+      value: formatPercent(kpis.click_to_order_rate),
+      hint: `点击到试戴 ${formatPercent(kpis.click_to_tryon_rate)}`,
+      detail: `试戴到预约 ${formatPercent(kpis.tryon_to_booking_rate)}`,
+      progress: kpis.click_to_order_rate,
+    },
+    {
+      label: "客单价",
+      value: formatCents(kpis.average_order_value_cents),
+      hint: `收入转化 ${formatPercent(kpis.revenue_conversion_rate)}`,
+      detail: `新用户 ${formatNumber(kpis.new_users)}`,
+      progress: kpis.revenue_conversion_rate,
+    },
   ];
 
   return (
@@ -278,8 +332,19 @@ function AnalyticsKpiGrid({ analytics }: { analytics: OpsAnalyticsOverview }) {
       {cards.map((card, index) => (
         <Col xs={24} sm={12} xl={8} xxl={4} key={card.label}>
           <Card className={`ops-command-kpi ${kpiTone(index)}`}>
-            <Typography.Text type="secondary">{card.label}</Typography.Text>
+            <div className="ops-kpi-head">
+              <Typography.Text type="secondary">{card.label}</Typography.Text>
+              <span className="ops-kpi-dot" style={{ backgroundColor: kpiAccent(index) }} />
+            </div>
             <div className="ops-command-kpi-value">{card.value}</div>
+            <div className="ops-kpi-detail">{card.detail}</div>
+            <Progress
+              className="ops-kpi-progress"
+              percent={clampPercent(card.progress)}
+              showInfo={false}
+              strokeColor={kpiAccent(index)}
+              trailColor="#edf0f5"
+            />
             <Typography.Text type="secondary">{card.hint}</Typography.Text>
           </Card>
         </Col>
@@ -302,6 +367,7 @@ function ConversionFunnel({ analytics }: { analytics: OpsAnalyticsOverview }) {
                 <strong>{formatNumber(step.count)}</strong>
               </div>
               <Progress
+                className="ops-funnel-progress"
                 percent={Math.round((step.count / maxCount) * 100)}
                 showInfo={false}
                 strokeColor={funnelColor(index)}
@@ -340,6 +406,9 @@ function TrendPanel({ analytics }: { analytics: OpsAnalyticsOverview }) {
     [analytics.trends],
   );
   const metricLabel = trendOptions.find((item) => item.value === metric)?.label ?? "趋势";
+  const firstValue = rows[0]?.[metric] ?? 0;
+  const lastValue = rows[rows.length - 1]?.[metric] ?? 0;
+  const trendChange = firstValue > 0 ? (lastValue - firstValue) / firstValue : 0;
 
   return (
     <Card
@@ -355,15 +424,36 @@ function TrendPanel({ analytics }: { analytics: OpsAnalyticsOverview }) {
       }
     >
       {rows.length ? (
-        <ResponsiveContainer width="100%" height={340}>
-          <LineChart data={rows}>
-            <CartesianGrid stroke="#eeeeee" vertical={false} />
-            <XAxis dataKey="label" axisLine={false} tickLine={false} />
-            <YAxis allowDecimals={false} axisLine={false} tickLine={false} />
-            <Tooltip formatter={(value) => (metric === "revenue" ? formatCents(Number(value) * 100) : formatNumber(Number(value)))} />
-            <Line type="monotone" dataKey={metric} name={metricLabel} stroke="#2563eb" strokeWidth={3} dot={{ r: 3, fill: "#f97316" }} />
-          </LineChart>
-        </ResponsiveContainer>
+        <>
+          <div className="ops-trend-summary">
+            <div>
+              <Typography.Text type="secondary">当前指标</Typography.Text>
+              <div className="ops-trend-summary-value">{metricLabel}</div>
+            </div>
+            <div>
+              <Typography.Text type="secondary">期末值</Typography.Text>
+              <div className="ops-trend-summary-value">
+                {metric === "revenue" ? formatCents(lastValue * 100) : formatNumber(lastValue)}
+              </div>
+            </div>
+            <div>
+              <Typography.Text type="secondary">较期初</Typography.Text>
+              <div className={`ops-trend-change ${trendChange >= 0 ? "is-up" : "is-down"}`}>
+                {trendChange >= 0 ? "+" : ""}
+                {formatPercent(trendChange)}
+              </div>
+            </div>
+          </div>
+          <ResponsiveContainer width="100%" height={286}>
+            <LineChart data={rows} margin={{ top: 14, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#eeeeee" vertical={false} />
+              <XAxis dataKey="label" axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} axisLine={false} tickLine={false} />
+              <Tooltip formatter={(value) => (metric === "revenue" ? formatCents(Number(value) * 100) : formatNumber(Number(value)))} />
+              <Line type="monotone" dataKey={metric} name={metricLabel} stroke="#2563eb" strokeWidth={3} dot={{ r: 3, fill: "#f97316" }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </>
       ) : (
         <Empty description="当前日期范围暂无趋势数据" />
       )}
@@ -371,65 +461,58 @@ function TrendPanel({ analytics }: { analytics: OpsAnalyticsOverview }) {
   );
 }
 
-function rankColumns(kind: "style" | "shop"): ColumnsType<OpsAnalyticsRankItem> {
-  const baseColumns: ColumnsType<OpsAnalyticsRankItem> = [
-    {
-      title: kind === "style" ? "款式" : "门店",
-      key: "name",
-      dataIndex: "name",
-      fixed: "left",
-      width: 230,
-      render: (_: string, row) => (
-        <Space>
-          {row.image_url ? <img className="analytics-rank-thumb" src={resolveAssetUrl(row.image_url)} alt="" /> : null}
-          <Typography.Text strong ellipsis style={{ maxWidth: 170 }}>
-            {row.name}
-          </Typography.Text>
-        </Space>
-      ),
-    },
-    { title: "曝光", key: "impressions", dataIndex: "impressions", width: 90, render: formatNumber },
-    { title: "点击", key: "clicks", dataIndex: "clicks", width: 90, render: formatNumber },
-    { title: "点击率", key: "ctr", dataIndex: "ctr", width: 90, render: formatPercent },
-    { title: "试戴", key: "tryons", dataIndex: "tryons", width: 90, render: formatNumber },
-    { title: "预约", key: "bookings", dataIndex: "bookings", width: 90, render: formatNumber },
-    { title: "成交", key: "completed_orders", dataIndex: "completed_orders", width: 90, render: formatNumber },
-    { title: "成交率", key: "completion_rate", dataIndex: "completion_rate", width: 90, render: formatPercent },
-    { title: "营业额", key: "revenue_cents", dataIndex: "revenue_cents", width: 110, render: formatCents },
-    { title: "收入贡献", key: "revenue_share", dataIndex: "revenue_share", width: 100, render: formatPercent },
-  ];
-  if (kind === "style") return baseColumns;
-  return baseColumns.filter((column) => column.key !== "clicks" && column.key !== "ctr");
+function RankingList({ title, items, kind }: { title: string; items: OpsAnalyticsRankItem[]; kind: "style" | "shop" }) {
+  return (
+    <Card className="ops-command-card ops-rank-card" title={title}>
+      {items.length ? (
+        <div className="ops-rank-list">
+          {items.map((item, index) => (
+            <div className="ops-rank-row" key={item.id}>
+              <div className="ops-rank-index">{index + 1}</div>
+              {item.image_url ? (
+                <img className="analytics-rank-thumb" src={resolveAssetUrl(item.image_url)} alt="" />
+              ) : (
+                <div className="analytics-rank-thumb ops-rank-shop-thumb">{item.name.slice(0, 1)}</div>
+              )}
+              <div className="ops-rank-main">
+                <div className="ops-rank-title">
+                  <Typography.Text strong ellipsis>
+                    {item.name}
+                  </Typography.Text>
+                  <span>{formatCents(item.revenue_cents)}</span>
+                </div>
+                <div className="ops-rank-meta">
+                  <span>试戴 {formatNumber(item.tryons)}</span>
+                  <span>预约 {formatNumber(item.bookings)}</span>
+                  <span>成交 {formatNumber(item.completed_orders)}</span>
+                  {kind === "style" ? <span>点击率 {formatPercent(item.ctr)}</span> : null}
+                </div>
+                <Progress
+                  percent={clampPercent(item.revenue_share)}
+                  showInfo={false}
+                  strokeColor={index === 0 ? "#f97316" : "#111827"}
+                  trailColor="#edf0f5"
+                />
+              </div>
+              <div className="ops-rank-share">{formatPercent(item.revenue_share)}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Empty description={kind === "style" ? "暂无款式转化数据" : "暂无门店转化数据"} />
+      )}
+    </Card>
+  );
 }
 
 function RankingTables({ analytics }: { analytics: OpsAnalyticsOverview }) {
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24} xl={12}>
-        <Card className="ops-command-card" title="Top 款式">
-          <Table
-            rowKey="id"
-            size="small"
-            columns={rankColumns("style")}
-            dataSource={analytics.top_styles}
-            pagination={false}
-            scroll={{ x: 1060 }}
-            locale={{ emptyText: "暂无款式转化数据" }}
-          />
-        </Card>
+        <RankingList title="Top 款式" items={analytics.top_styles} kind="style" />
       </Col>
       <Col xs={24} xl={12}>
-        <Card className="ops-command-card" title="Top 门店">
-          <Table
-            rowKey="id"
-            size="small"
-            columns={rankColumns("shop")}
-            dataSource={analytics.top_shops}
-            pagination={false}
-            scroll={{ x: 860 }}
-            locale={{ emptyText: "暂无门店转化数据" }}
-          />
-        </Card>
+        <RankingList title="Top 门店" items={analytics.top_shops} kind="shop" />
       </Col>
     </Row>
   );
@@ -437,12 +520,18 @@ function RankingTables({ analytics }: { analytics: OpsAnalyticsOverview }) {
 
 export function DashboardPage() {
   const { message } = App.useApp();
-  const [analyticsRange, setAnalyticsRange] = useState<[string, string] | undefined>();
+  const [analyticsRange, setAnalyticsRange] = useState<[string, string]>(() => defaultAnalyticsRange());
   const [dataSource, setDataSource] = useState<AnalyticsDataSource>(() => getAnalyticsDataSource());
+  const [clockTime, setClockTime] = useState(() => new Date());
   const [analytics, setAnalytics] = useState<OpsAnalyticsOverview | null>(() => {
     return getAnalyticsDataSource() === "demo" ? buildDemoAnalyticsOverview(undefined) : null;
   });
   const [loading, setLoading] = useState(() => getAnalyticsDataSource() === "real");
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockTime(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const handleDataSourceChanged = (event: Event) => {
@@ -494,23 +583,22 @@ export function DashboardPage() {
 
   if (loading) return <Spin />;
   if (!analytics) return <Empty description="暂无运营数据" />;
+  const rangePickerValue: [dayjs.Dayjs, dayjs.Dayjs] = [dayjs(analyticsRange[0]), dayjs(analyticsRange[1])];
 
   return (
     <Space direction="vertical" size={20} className="page-stack analysis-page ops-command-page">
       <div className="ops-command-toolbar">
         <Space wrap size={[8, 8]} className="ops-command-toolbar-meta">
-          <Tag>
-            统计区间 {analytics.start_date} 至 {analytics.end_date}
-          </Tag>
           <Tag icon={<ClockCircleOutlined />} color="default">
-            更新 {formatDateTime(analytics.generated_at)}
+            实时 {formatClockTime(clockTime)}
           </Tag>
         </Space>
         <Space wrap className="ops-command-toolbar-actions">
           <DatePicker.RangePicker
             suffixIcon={<CalendarOutlined />}
+            value={rangePickerValue}
             onChange={(_, dateStrings) => {
-              setAnalyticsRange(dateStrings[0] && dateStrings[1] ? [dateStrings[0], dateStrings[1]] : undefined);
+              setAnalyticsRange(dateStrings[0] && dateStrings[1] ? [dateStrings[0], dateStrings[1]] : defaultAnalyticsRange());
             }}
           />
         </Space>

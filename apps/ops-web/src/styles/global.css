@@ -818,6 +818,39 @@ textarea {
   line-height: 1.12;
 }
 
+.ops-kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ops-kpi-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.ops-kpi-detail {
+  min-height: 20px;
+  margin-bottom: 10px;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ops-kpi-progress {
+  margin-bottom: 6px;
+}
+
+.ops-kpi-progress .ant-progress-inner,
+.ops-funnel-progress .ant-progress-inner,
+.ops-rank-row .ant-progress-inner {
+  background: #edf0f5 !important;
+}
+
 .ops-funnel-list {
   display: flex;
   flex-direction: column;
@@ -865,6 +898,127 @@ textarea {
 
 .ops-command-note .ant-card-body {
   padding: 12px 16px;
+}
+
+.ops-trend-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.ops-trend-summary > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.ops-trend-summary-value,
+.ops-trend-change {
+  margin-top: 4px;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-trend-change.is-up {
+  color: #16a34a;
+}
+
+.ops-trend-change.is-down {
+  color: #e11d48;
+}
+
+.ops-rank-card .ant-card-body {
+  padding-top: 14px;
+}
+
+.ops-rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ops-rank-row {
+  display: grid;
+  grid-template-columns: 28px 44px minmax(0, 1fr) 46px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #edf0f5;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ops-rank-row:first-child {
+  background: linear-gradient(180deg, #fff7ed, #ffffff);
+  border-color: #fed7aa;
+}
+
+.ops-rank-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-rank-row:first-child .ops-rank-index {
+  background: #f97316;
+}
+
+.ops-rank-shop-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.ops-rank-main {
+  min-width: 0;
+}
+
+.ops-rank-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: #111827;
+}
+
+.ops-rank-title > span {
+  flex: 0 0 auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-rank-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-bottom: 5px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.ops-rank-share {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .monitor-page {
@@ -2323,6 +2477,36 @@ textarea {
   color: var(--ops-text);
 }
 
+:root[data-theme="dark"] .ops-kpi-detail,
+:root[data-theme="dark"] .ops-trend-summary-value,
+:root[data-theme="dark"] .ops-rank-title,
+:root[data-theme="dark"] .ops-rank-title > span,
+:root[data-theme="dark"] .ops-rank-share,
+:root[data-theme="dark"] .ops-rank-shop-thumb {
+  color: var(--ops-text);
+}
+
+:root[data-theme="dark"] .ops-trend-summary > div,
+:root[data-theme="dark"] .ops-rank-row {
+  border-color: var(--ops-border);
+  background: var(--ops-surface-soft);
+}
+
+:root[data-theme="dark"] .ops-rank-row:first-child {
+  border-color: color-mix(in srgb, var(--ops-orange) 45%, var(--ops-border));
+  background: color-mix(in srgb, var(--ops-orange) 12%, var(--ops-surface));
+}
+
+:root[data-theme="dark"] .ops-rank-meta {
+  color: var(--ops-text-secondary);
+}
+
+:root[data-theme="dark"] .ops-kpi-progress .ant-progress-inner,
+:root[data-theme="dark"] .ops-funnel-progress .ant-progress-inner,
+:root[data-theme="dark"] .ops-rank-row .ant-progress-inner {
+  background: var(--ops-surface-muted) !important;
+}
+
 :root[data-theme="dark"] .ops-chat-bubble-user {
   background: #e5e7eb;
 }
@@ -2632,6 +2816,18 @@ textarea {
 
   .ops-funnel-meta {
     gap: 4px 10px;
+  }
+
+  .ops-trend-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-rank-row {
+    grid-template-columns: 26px 40px minmax(0, 1fr);
+  }
+
+  .ops-rank-share {
+    display: none;
   }
 
   .analysis-mode-row {
