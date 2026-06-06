@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigation } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as Location from "expo-location";
 import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,7 +31,9 @@ const defaultBrowseFilterState: BrowseFilterState = {
 
 export function BrowseScreen() {
   const navigation = useNavigation<any>();
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
+  const lastAutoRefreshKey = useRef("");
   const [tab, setTab] = useState<FeedTab>("discover");
   const [filterStates, setFilterStates] = useState<Record<FilterableTab, BrowseFilterState>>({
     discover: defaultBrowseFilterState,
@@ -119,6 +121,10 @@ export function BrowseScreen() {
     queryKey: ["browse", tab, authScope, localCity, includeXhsPosts],
     queryFn: () => (tab === "following" ? api.getFollowingStyles() : tab === "local" ? api.getLocalStyles(localCity) : api.getDiscover()),
     enabled: hydrated && contentPreferenceHydrated && (tab === "discover" || (tab === "local" && canUseLocalFeed) || hasToken),
+    refetchOnMount: "always",
+    refetchOnReconnect: true,
+    staleTime: 0,
+    retry: 2,
   });
   const messageInboxQuery = useQuery({
     queryKey: ["message-inbox"],
@@ -201,10 +207,17 @@ export function BrowseScreen() {
     );
   }, [feedItems.map((item) => item.id).join(","), tab]);
   const canRefresh = hydrated && contentPreferenceHydrated && (tab === "discover" || (tab === "local" && canUseLocalFeed) || hasToken);
+  const autoRefreshKey = `${tab}:${authScope}:${localCity}:${includeXhsPosts}`;
+  useEffect(() => {
+    if (!isFocused || !canRefresh) return;
+    if (lastAutoRefreshKey.current === autoRefreshKey) return;
+    lastAutoRefreshKey.current = autoRefreshKey;
+    void query.refetch();
+  }, [autoRefreshKey, canRefresh, isFocused, query.refetch]);
+  const showInitialLoading = canRefresh && !query.data && (query.isLoading || query.isFetching);
   const topBarPaddingTop = Math.max(insets.top, 10) + 10;
   const sourceMenuTopOffset = topBarPaddingTop + 102;
   const listPaddingBottom = 120 + insets.bottom;
-  const refreshIndicatorBottom = 108 + insets.bottom;
   const handleRefresh = async () => {
     if (!canRefresh) return;
     setIsPullRefreshing(true);
@@ -300,7 +313,7 @@ export function BrowseScreen() {
               {
                 backgroundColor: colors.surface,
                 borderColor: colors.border,
-                shadowColor: isDark ? "#000000" : "#9f7d70",
+                shadowColor: "#000000",
               },
             ]}
             onStartShouldSetResponder={() => true}
@@ -355,7 +368,13 @@ export function BrowseScreen() {
             </View>
           )}
           ListEmptyComponent={
-            tab === "following" ? (
+            showInitialLoading ? (
+              <View style={styles.emptyState}>
+                <ActivityIndicator size="small" color={colors.accent} />
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>正在加载美甲</Text>
+                <Text style={[styles.emptyText, { color: colors.subtext }]}>请稍等，发现页会自动刷新。</Text>
+              </View>
+            ) : tab === "following" ? (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyTitle, { color: colors.text }]}>你的关注页还是空的</Text>
               <Text style={[styles.emptyText, { color: colors.subtext }]}>去任意美甲详情页关注作者后，这里会优先显示对方发布的新图片。</Text>
@@ -387,15 +406,6 @@ export function BrowseScreen() {
           contentContainerStyle={[styles.list, { paddingBottom: listPaddingBottom }]}
         />
       )}
-
-      {isPullRefreshing ? (
-        <View style={[styles.refreshIndicatorWrap, { bottom: refreshIndicatorBottom }]} pointerEvents="none">
-          <View style={[styles.refreshIndicator, { backgroundColor: isDark ? "#222228" : colors.surface }]}>
-            <ActivityIndicator size="small" color={isDark ? "#ffffff" : "#111111"} />
-            <Text style={[styles.refreshIndicatorText, { color: isDark ? "#ffffff" : "#111111" }]}>刷新中...</Text>
-          </View>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -551,28 +561,5 @@ const styles = StyleSheet.create({
     color: "#8f8f98",
     lineHeight: 20,
     textAlign: "center",
-  },
-  refreshIndicatorWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
-  refreshIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    shadowColor: "#000000",
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  refreshIndicatorText: {
-    fontSize: 13,
-    fontWeight: "700",
   },
 });

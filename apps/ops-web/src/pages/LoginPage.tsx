@@ -2,6 +2,7 @@ import { LockOutlined, UserOutlined } from "@ant-design/icons";
 import { App, Button, Card, Form, Input, Typography } from "antd";
 import { Navigate, useNavigate } from "react-router-dom";
 import { api, getOpsToken, setOpsToken } from "../api/client";
+import brandLogo from "../assets/logo.png";
 
 type LoginValues = {
   username: string;
@@ -17,7 +18,10 @@ export function LoginPage() {
   return (
     <div className="login-page">
       <Card className="login-card">
-        <Typography.Title level={3}>焕甲后台系统</Typography.Title>
+        <div className="login-brand">
+          <img src={brandLogo} alt="焕甲" />
+          <Typography.Title level={3}>焕甲后台系统</Typography.Title>
+        </div>
         <Form<LoginValues>
           layout="vertical"
           initialValues={{ username: "admin", password: "admin" }}

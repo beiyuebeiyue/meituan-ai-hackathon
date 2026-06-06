@@ -216,8 +216,10 @@ class OpsUserListResponse(BaseModel):
 class OpsMerchantListItem(BaseModel):
     id: str
     merchant_user_id: str
+    merchant_uid: int
     merchant_name: str
     merchant_phone: str | None = None
+    merchant_last_login_ip_location: str | None = None
     name: str
     city: str
     address: str
@@ -284,8 +286,7 @@ class OpsCouponGrantCreate(BaseModel):
     target_id: str = Field(min_length=1, max_length=36)
     coupon_name: str = Field(min_length=1, max_length=120)
     amount: int = Field(gt=0)
-    valid_from: date | None = None
-    valid_until: date | None = None
+    expiry_date: date | None = None
     note: str = Field(default="", max_length=500)
 
 
@@ -296,8 +297,7 @@ class OpsCouponGrantRead(BaseModel):
     target_name: str
     coupon_name: str
     amount: int
-    valid_from: date | None = None
-    valid_until: date | None = None
+    expiry_date: date | None = None
     note: str
     created_by: str
     created_at: datetime

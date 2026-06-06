@@ -92,12 +92,15 @@ def _build_digest_index(root: Path) -> dict[str, dict[str, Any]]:
         notes = payload.get("notes", payload) if isinstance(payload, dict) else payload
         if not isinstance(notes, list):
             continue
+        digest_date = digest_path.parent.name
         for note in notes:
             if not isinstance(note, dict):
                 continue
             note_id = str(note.get("note_id") or note.get("id") or "").strip()
             if note_id:
-                index[note_id] = note
+                indexed_note = dict(note)
+                indexed_note["_digest_date"] = digest_date
+                index[note_id] = indexed_note
     return index
 
 

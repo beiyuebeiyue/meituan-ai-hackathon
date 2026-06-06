@@ -15,10 +15,15 @@ type CouponGrantModalProps = {
 type FormValues = {
   coupon_name: string;
   amount: number;
-  valid_from?: string;
-  valid_until?: string;
+  expiry_date?: string;
   note?: string;
 };
+
+function defaultExpiryDate() {
+  const value = new Date();
+  value.setMonth(value.getMonth() + 3);
+  return value.toISOString().slice(0, 10);
+}
 
 export function CouponGrantModal({ open, target, onCancel, onDone }: CouponGrantModalProps) {
   const [form] = Form.useForm<FormValues>();
@@ -37,7 +42,7 @@ export function CouponGrantModal({ open, target, onCancel, onDone }: CouponGrant
       <Form
         form={form}
         layout="vertical"
-        initialValues={{ coupon_name: "运营优惠券", amount: 20 }}
+        initialValues={{ coupon_name: "运营优惠券", amount: 20, expiry_date: defaultExpiryDate() }}
         onFinish={async (values) => {
           if (!target) return;
           const payload: CouponGrantPayload = {
@@ -45,8 +50,7 @@ export function CouponGrantModal({ open, target, onCancel, onDone }: CouponGrant
             target_id: target.id,
             coupon_name: values.coupon_name,
             amount: values.amount,
-            valid_from: values.valid_from || undefined,
-            valid_until: values.valid_until || undefined,
+            expiry_date: values.expiry_date || undefined,
             note: values.note ?? "",
           };
           try {
@@ -65,14 +69,9 @@ export function CouponGrantModal({ open, target, onCancel, onDone }: CouponGrant
         <Form.Item name="amount" label="金额" rules={[{ required: true, message: "请输入金额" }]}>
           <InputNumber min={1} precision={0} className="full-width" addonAfter="元" />
         </Form.Item>
-        <div className="form-grid">
-          <Form.Item name="valid_from" label="开始日期">
-            <Input type="date" />
-          </Form.Item>
-          <Form.Item name="valid_until" label="结束日期">
-            <Input type="date" />
-          </Form.Item>
-        </div>
+        <Form.Item name="expiry_date" label="过期日期">
+          <Input type="date" />
+        </Form.Item>
         <Form.Item name="note" label="备注">
           <Input.TextArea rows={3} maxLength={500} />
         </Form.Item>

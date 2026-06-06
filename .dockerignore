@@ -14,6 +14,8 @@
 .openclaw/skills/*/assets
 .openclaw/skills/*/spaces
 data
+!data/seed
+!data/seed/**
 data/uploads
 data/reports
 data/tryon_results
@@ -21,4 +23,3 @@ data/tryon_artifacts
 *.ipynb
 *.jpg
 *.jpeg
-*.png

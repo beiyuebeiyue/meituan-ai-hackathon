@@ -169,5 +169,5 @@ const styles = StyleSheet.create({
     borderRadius: 26,
   },
   loadingText: {},
-  error: { color: "#c43333", lineHeight: 22 },
+  error: { color: "#111111", lineHeight: 22 },
 });

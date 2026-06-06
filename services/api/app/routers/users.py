@@ -412,6 +412,7 @@ def get_author_profile(
     if author is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="作者不存在")
 
+    published_count = style_service.count_styles_for_author(db, author)
     styles = style_service.list_styles_for_author(db, author, user)
     is_mine = bool(user and user.id == author.id)
     like_ids = style_service.get_like_ids(db, user.id) if user else set()
@@ -450,7 +451,7 @@ def get_author_profile(
         ip_location=author.last_login_ip_location or "未知",
         follower_count=follower_count,
         following_count=following_count,
-        published_count=len(styles),
+        published_count=published_count,
         total_like_count=total_like_count,
         is_following=bool(user and user.id != author.id and follow_service.is_following(db, user.id, author.id)),
         is_mine=is_mine,

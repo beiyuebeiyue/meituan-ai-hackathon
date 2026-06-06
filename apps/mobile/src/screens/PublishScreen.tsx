@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -40,6 +41,7 @@ export function PublishScreen() {
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [metadataHint, setMetadataHint] = useState("");
   const [verifiedBookingId, setVerifiedBookingId] = useState<string | null>(
     null,
   );
@@ -86,6 +88,22 @@ export function PublishScreen() {
     },
   });
 
+  const metadataMutation = useMutation({
+    mutationFn: (uri: string) => api.generatePostMetadata(uri),
+    onMutate: () => {
+      setMetadataHint("");
+    },
+    onSuccess: (metadata) => {
+      setTitle(metadata.title);
+      setDescription(metadata.description);
+      setTags(metadata.tags.join("，"));
+      setMetadataHint("已根据图片生成标题、正文和标签，可以继续手动调整。");
+    },
+    onError: (error) => {
+      setMetadataHint(error instanceof Error ? error.message : "生成失败，请稍后再试");
+    },
+  });
+
   if (!token) {
     return (
       <RequireLogin
@@ -102,7 +120,13 @@ export function PublishScreen() {
     });
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
+      setMetadataHint("");
     }
+  };
+
+  const generateMetadata = () => {
+    if (!imageUri || metadataMutation.isPending) return;
+    metadataMutation.mutate(imageUri);
   };
 
   const tagPreview = tags
@@ -160,8 +184,8 @@ export function PublishScreen() {
             </View>
             <Text style={[styles.heroCopy, { color: colors.subtext }]}>
               {isMerchant
-                ? "发布后会自动关联你的默认门店，并进入店铺作品与同城内容。"
-                : "上传你的美甲实拍或灵感图，写下标题、文案和标签。"}
+                ? "上传门店作品，系统会自动关联默认门店。"
+                : "上传图片，补充标题和标签即可。"}
             </Text>
           </View>
 
@@ -176,7 +200,7 @@ export function PublishScreen() {
                 作品封面
               </Text>
               <Text style={[styles.sectionHint, { color: colors.subtext }]}>
-                建议选择清晰手部图
+                清晰手部图更好
               </Text>
             </View>
             <View style={styles.coverRow}>
@@ -227,36 +251,6 @@ export function PublishScreen() {
               <View style={styles.coverTips}>
                 <View
                   style={[
-                    styles.tipPill,
-                    { backgroundColor: colors.background },
-                  ]}
-                >
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={15}
-                    color={colors.accent}
-                  />
-                  <Text style={[styles.tipPillText, { color: colors.subtext }]}>
-                    竖图更适合首页瀑布流
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.tipPill,
-                    { backgroundColor: colors.background },
-                  ]}
-                >
-                  <Ionicons
-                    name="text-outline"
-                    size={15}
-                    color={colors.accent}
-                  />
-                  <Text style={[styles.tipPillText, { color: colors.subtext }]}>
-                    标题尽量短且有记忆点
-                  </Text>
-                </View>
-                <View
-                  style={[
                     styles.publishTarget,
                     { backgroundColor: colors.background },
                   ]}
@@ -287,6 +281,39 @@ export function PublishScreen() {
                 </View>
               </View>
             </View>
+            <Pressable
+              style={[
+                styles.generateButton,
+                {
+                  borderColor: imageUri ? colors.accent : colors.border,
+                  backgroundColor: imageUri ? colors.accentSoft : colors.background,
+                  opacity: imageUri ? 1 : 0.55,
+                },
+              ]}
+              onPress={generateMetadata}
+              disabled={!imageUri || metadataMutation.isPending}
+            >
+              {metadataMutation.isPending ? (
+                <ActivityIndicator size="small" color={colors.accent} />
+              ) : (
+                <Ionicons name="sparkles-outline" size={17} color={colors.accent} />
+              )}
+              <Text style={[styles.generateButtonText, { color: colors.accent }]}>
+                {metadataMutation.isPending ? "生成中" : "一键生成"}
+              </Text>
+            </Pressable>
+            {metadataHint ? (
+              <Text
+                style={[
+                  styles.metadataHint,
+                  {
+                    color: metadataMutation.isError ? colors.text : colors.subtext,
+                  },
+                ]}
+              >
+                {metadataHint}
+              </Text>
+            ) : null}
           </View>
 
           <View
@@ -300,7 +327,7 @@ export function PublishScreen() {
                 标题
               </Text>
               <TextInput
-                placeholder="比如：这款裸粉猫眼真的太显白"
+                placeholder="裸粉猫眼"
                 placeholderTextColor={colors.subtext}
                 value={title}
                 onChangeText={setTitle}
@@ -315,7 +342,7 @@ export function PublishScreen() {
                 正文
               </Text>
               <TextInput
-                placeholder="分享上手感受、适合场景、显白程度..."
+                placeholder="简单写几句感受"
                 placeholderTextColor={colors.subtext}
                 value={description}
                 onChangeText={setDescription}
@@ -332,7 +359,7 @@ export function PublishScreen() {
                 标签
               </Text>
               <TextInput
-                placeholder="法式，裸粉，显白，通勤"
+                placeholder="法式，裸粉，显白"
                 placeholderTextColor={colors.subtext}
                 value={tags}
                 onChangeText={setTags}
@@ -374,7 +401,7 @@ export function PublishScreen() {
                 </Text>
               </View>
               <Text style={[styles.verifiedHint, { color: colors.subtext }]}>
-                只有已完成订单可以绑定，绑定后详情页会展示“真实消费”和店铺信息。
+                可选。绑定后会展示真实消费标识。
               </Text>
               {completedBookings.length ? (
                 <ScrollView
@@ -463,7 +490,7 @@ export function PublishScreen() {
                 准备发布
               </Text>
               <Text style={[styles.submitHint, { color: colors.subtext }]}>
-                至少需要一张图片和标题
+                需要图片和标题
               </Text>
             </View>
             <PrimaryButton
@@ -523,15 +550,6 @@ const styles = StyleSheet.create({
   sectionHint: { fontSize: 12, fontWeight: "700" },
   coverRow: { flexDirection: "row", gap: 12, alignItems: "stretch" },
   coverTips: { flex: 1, gap: 8 },
-  tipPill: {
-    minHeight: 34,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-  },
-  tipPillText: { flex: 1, fontSize: 12, fontWeight: "700" },
   publishTarget: {
     flex: 1,
     minHeight: 52,
@@ -545,6 +563,28 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: "800",
+    lineHeight: 18,
+  },
+  generateButton: {
+    minHeight: 46,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  generateButtonText: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  metadataHint: {
+    fontSize: 12,
+    fontWeight: "700",
     lineHeight: 18,
   },
   formCard: {
@@ -612,9 +652,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     justifyContent: "center",
     alignItems: "center",
-  },
-  uploadCardFilled: {
-    borderStyle: "solid",
   },
   uploadPlaceholder: {
     alignItems: "center",

@@ -10,6 +10,7 @@ import {
   BrowseHistoryItem,
   DirectMessage,
   DirectMessageThread,
+  GeneratedPostMetadata,
   MessageInboxResponse,
   MessageInboxThread,
   MerchantTrendNotification,
@@ -165,6 +166,11 @@ export const api = {
     if (payload.verifiedBookingId) form.append("verified_booking_id", payload.verifiedBookingId);
     form.append("image", { uri: payload.imageUri, name: "post.jpg", type: "image/jpeg" } as never);
     return request<UserPost>("/posts", { method: "POST", body: form });
+  },
+  generatePostMetadata: async (imageUri: string) => {
+    const form = new FormData();
+    form.append("image", { uri: imageUri, name: "post.jpg", type: "image/jpeg" } as never);
+    return request<GeneratedPostMetadata>("/posts/generate-metadata", { method: "POST", body: form });
   },
   getMyMerchantShops: () => request<{ items: MerchantShop[] }>("/merchant/shops/me"),
   createMerchantShop: (payload: Partial<MerchantShop> & { name: string; city: string }) =>

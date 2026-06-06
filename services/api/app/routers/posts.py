@@ -9,9 +9,10 @@ from app.models.merchant_shop import MerchantShop
 from app.models.user import User
 from app.routers.helpers import serialize_post
 from app.schemas.events import StyleEventInput
-from app.schemas.posts import UserPostListResponse, UserPostRead, UserPostUpdateRequest
+from app.schemas.posts import GeneratedPostMetadataRead, UserPostListResponse, UserPostRead, UserPostUpdateRequest
 from app.services.event_service import EventService
 from app.services.merchant_service import MerchantShopService
+from app.services.post_metadata_generation_service import PostMetadataGenerationService
 from app.services.post_service import PostService
 from app.services.style_service import StyleService
 from app.utils.files import public_url_for_path, relative_to_base, save_user_upload_file, user_upload_dir
@@ -22,6 +23,7 @@ style_service = StyleService()
 event_service = EventService()
 post_service = PostService()
 shop_service = MerchantShopService()
+metadata_generation_service = PostMetadataGenerationService()
 
 
 @router.post("", response_model=UserPostRead)
@@ -86,6 +88,15 @@ def list_my_posts(
 ) -> UserPostListResponse:
     posts = post_service.list_for_user(db, user)
     return UserPostListResponse(items=[serialize_post(post) for post in posts])
+
+
+@router.post("/generate-metadata", response_model=GeneratedPostMetadataRead)
+def generate_post_metadata(
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> GeneratedPostMetadataRead:
+    return GeneratedPostMetadataRead.model_validate(metadata_generation_service.generate(db, image))
 
 
 @router.patch("/{post_id}", response_model=UserPostRead)

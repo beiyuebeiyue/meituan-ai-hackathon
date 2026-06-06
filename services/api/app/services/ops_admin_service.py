@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import calendar
 import json
 from datetime import date, datetime, time, timezone
 from zoneinfo import ZoneInfo
@@ -132,11 +133,37 @@ class OpsAdminService:
             completed_bookings=self._metric(completed_total, completed_today),
             revenue=self._metric(revenue_total, revenue_today),
         )
+        if self._should_use_demo_metrics(metrics):
+            metrics = self._demo_dashboard_metrics()
         return OpsDashboardResponse(
             report_date=report_date,
             timezone=tz_name,
             metrics=metrics,
             popular_nails=self.popular_nails(report_date),
+        )
+
+    def _should_use_demo_metrics(self, metrics: OpsDashboardMetrics) -> bool:
+        settings = get_settings()
+        return bool(
+            settings.ops_demo_metrics_enabled
+            and metrics.users.total == 0
+            and metrics.images.total == 0
+            and metrics.bookings.total == 0
+            and metrics.revenue.total == 0
+        )
+
+    def _demo_dashboard_metrics(self) -> OpsDashboardMetrics:
+        return OpsDashboardMetrics(
+            users=self._metric(1286, 96),
+            merchants=self._metric(48, 5),
+            images=self._metric(3920, 286),
+            likes=self._metric(18420, 1388),
+            collects=self._metric(7240, 531),
+            shares=self._metric(2180, 167),
+            tryon_users=self._metric(862, 74),
+            bookings=self._metric(328, 31),
+            completed_bookings=self._metric(246, 24),
+            revenue=self._metric(59860, 6288),
         )
 
     def popular_nails(self, report_date: date) -> list[OpsPopularNail]:
@@ -158,7 +185,7 @@ class OpsAdminService:
         payload = json.loads(digest_path.read_text(encoding="utf-8"))
         return [OpsPopularNail(**item) for item in payload.get("notes", [])]
 
-    def list_users(self, db: Session, query: str = "", limit: int = 50, offset: int = 0) -> OpsUserListResponse:
+    def list_users(self, db: Session, query: str = "", limit: int = 10, offset: int = 0) -> OpsUserListResponse:
         statement = select(User).where(User.role == "consumer")
         count_statement = select(func.count(User.id)).where(User.role == "consumer")
         if query:
@@ -197,7 +224,7 @@ class OpsAdminService:
         db: Session,
         query: str = "",
         city: str = "",
-        limit: int = 50,
+        limit: int = 10,
         offset: int = 0,
     ) -> OpsMerchantListResponse:
         statement = select(MerchantShop).join(User, MerchantShop.merchant_user_id == User.id)
@@ -235,8 +262,10 @@ class OpsAdminService:
         return OpsMerchantListItem(
             id=shop.id,
             merchant_user_id=shop.merchant_user_id,
+            merchant_uid=merchant.uid if merchant else 0,
             merchant_name=merchant.username if merchant else "商家",
             merchant_phone=merchant.phone if merchant else None,
+            merchant_last_login_ip_location=merchant.last_login_ip_location if merchant else None,
             name=shop.name,
             city=shop.city,
             address=shop.address,
@@ -345,8 +374,8 @@ class OpsAdminService:
             target_id=payload.target_id,
             coupon_name=payload.coupon_name.strip(),
             amount=payload.amount,
-            valid_from=payload.valid_from,
-            valid_until=payload.valid_until,
+            valid_from=None,
+            valid_until=payload.expiry_date or self._default_coupon_expiry_date(),
             note=payload.note.strip(),
             created_by=created_by,
         )
@@ -368,12 +397,19 @@ class OpsAdminService:
             target_name=self._target_name(db, grant.target_type, grant.target_id),
             coupon_name=grant.coupon_name,
             amount=grant.amount,
-            valid_from=grant.valid_from,
-            valid_until=grant.valid_until,
+            expiry_date=grant.valid_until,
             note=grant.note,
             created_by=grant.created_by,
             created_at=grant.created_at,
         )
+
+    def _default_coupon_expiry_date(self) -> date:
+        today = datetime.now(ZoneInfo(get_settings().ops_report_timezone)).date()
+        month = today.month + 3
+        year = today.year + (month - 1) // 12
+        month = (month - 1) % 12 + 1
+        day = min(today.day, calendar.monthrange(year, month)[1])
+        return date(year, month, day)
 
     def _target_name(self, db: Session, target_type: str, target_id: str) -> str:
         if target_type == "user":

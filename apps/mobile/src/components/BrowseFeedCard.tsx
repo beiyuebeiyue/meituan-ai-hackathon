@@ -47,7 +47,7 @@ export function BrowseFeedCard({ item, onPress, onToggleLike, showLike = true }:
               <Ionicons
                 name={item.is_liked ? "heart" : "heart-outline"}
                 size={17}
-                color={item.is_liked ? "#ff7a8a" : "#d0d0d5"}
+                color={item.is_liked ? colors.accent : colors.subtext}
               />
               <Text style={[styles.likeText, { color: isDark ? "#d0d0d5" : colors.subtext }]}>{item.like_count}</Text>
             </Pressable>

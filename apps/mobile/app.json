@@ -9,7 +9,7 @@
     "splash": {
       "image": "./assets/app/opening.png",
       "resizeMode": "cover",
-      "backgroundColor": "#fbfaf8"
+      "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -25,7 +25,7 @@
       "package": "com.nailtry.ai",
       "adaptiveIcon": {
         "foregroundImage": "./assets/app/icon.png",
-        "backgroundColor": "#f4f1ed"
+        "backgroundColor": "#ffffff"
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
@@ -40,7 +40,17 @@
     "plugins": [
       "expo-secure-store",
       "expo-media-library",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/app/opening.png",
+          "imageWidth": 360,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

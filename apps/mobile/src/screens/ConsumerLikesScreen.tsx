@@ -11,8 +11,6 @@ import { NailStyle } from "../types/api";
 import { useThemeColors } from "../utils/theme";
 
 const defaultAvatar = require("../../assets/profile/default_avatar.png");
-const HEART_ACTIVE_COLOR = "#ff7a8a";
-const HEART_INACTIVE_COLOR = "#d0d0d5";
 
 export function ConsumerLikesScreen() {
   const navigation = useNavigation<any>();
@@ -79,7 +77,7 @@ export function ConsumerLikesScreen() {
             <Ionicons
               name={item.is_liked ? "heart" : "heart-outline"}
               size={18}
-              color={item.is_liked ? HEART_ACTIVE_COLOR : HEART_INACTIVE_COLOR}
+              color={item.is_liked ? colors.accent : colors.subtext}
             />
             <Text style={[styles.likeCount, { color: colors.subtext }]}>{item.like_count}</Text>
           </Pressable>

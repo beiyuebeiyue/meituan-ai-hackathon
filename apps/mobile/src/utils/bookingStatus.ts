@@ -20,8 +20,8 @@ export const merchantBookingStatusLabel: Record<Booking["status"], string> = {
 export function getBookingStatusTone(status: Booking["status"], colors: AppPalette) {
   if (status === "completed") {
     return {
-      backgroundColor: "#e5f7ed",
-      textColor: "#238a52",
+      backgroundColor: colors.accentSoft,
+      textColor: colors.accent,
     };
   }
 

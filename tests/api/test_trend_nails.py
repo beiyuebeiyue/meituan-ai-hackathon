@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.core.config import get_settings
 from app.models.merchant_shop import MerchantShop
 from app.models.nail_style import NailStyle
 from app.models.tryon_job import TryOnJob
@@ -30,7 +31,11 @@ def _promote_to_merchant(db_session, user_payload: dict[str, object]) -> User:
 
 
 def _ops_headers(client) -> dict[str, str]:
-    response = client.post("/api/v1/ops/auth/login", json={"username": "admin", "password": "admin"})
+    settings = get_settings()
+    response = client.post(
+        "/api/v1/ops/auth/login",
+        json={"username": settings.ops_admin_username, "password": settings.ops_admin_password},
+    )
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 

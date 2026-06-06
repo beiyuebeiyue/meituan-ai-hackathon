@@ -465,7 +465,7 @@ class MarketService:
             .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
         )
         merchant_name = shop.merchant.username if shop.merchant is not None else shop.name
-        is_keke = merchant_name == "keke" or shop.name == "keke"
+        is_default_test_shop = merchant_name in {"keke", "焕甲测试美甲店"} or shop.name in {"keke", "焕甲测试美甲店"}
         return NearbyShopRead(
             id=f"platform-{shop.id}",
             platform_shop_id=shop.id,
@@ -473,15 +473,15 @@ class MarketService:
             name=shop.name,
             cover_image_url=cover_style.image_url if cover_style is not None else GAODE_PLACEHOLDER_COVER_URL,
             city=shop.city or DEFAULT_CITY,
-            region=KEKE_SHOP_REGION if is_keke else shop.city or DEFAULT_CITY,
+            region=KEKE_SHOP_REGION if is_default_test_shop else shop.city or DEFAULT_CITY,
             address=shop.address or "地址暂未开放",
             latitude=shop.latitude,
             longitude=shop.longitude,
             distance_meters=distance_meters,
-            rating=KEKE_SHOP_RATING if is_keke else None,
-            heat_text=KEKE_SHOP_REGION if is_keke else "平台商家",
-            average_price_text=KEKE_SHOP_AVERAGE_PRICE_TEXT if is_keke else "价格到店咨询",
-            business_time_text=KEKE_SHOP_BUSINESS_TIME_TEXT if is_keke else None,
+            rating=KEKE_SHOP_RATING if is_default_test_shop else None,
+            heat_text=KEKE_SHOP_REGION if is_default_test_shop else "平台商家",
+            average_price_text=KEKE_SHOP_AVERAGE_PRICE_TEXT if is_default_test_shop else "价格到店咨询",
+            business_time_text=KEKE_SHOP_BUSINESS_TIME_TEXT if is_default_test_shop else None,
             phone_text=shop.contact_phone,
             can_do_style=can_do_style,
         )

@@ -9,6 +9,7 @@ import { useEffect, useRef, type ComponentType } from "react";
 import {
   Animated,
   Easing,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -124,6 +125,7 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
+const brandLogo = require("../../assets/app/logo.png");
 
 const overlayOptions = {
   headerShown: false,
@@ -260,11 +262,12 @@ function CenterTabButton({
   colors,
 }: {
   props: BottomTabBarButtonProps;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: keyof typeof Ionicons.glyphMap | "brand";
   label: string;
   colors: ReturnType<typeof useThemeColors>;
 }) {
   const selected = Boolean(props.accessibilityState?.selected);
+  const iconColor = colors.accent === "#ffffff" ? "#111111" : "#ffffff";
   const pressScale = useRef(new Animated.Value(1)).current;
   const haloScale = useRef(new Animated.Value(1)).current;
   const haloOpacity = useRef(new Animated.Value(0)).current;
@@ -348,13 +351,18 @@ function CenterTabButton({
         style={[
           styles.askButtonInner,
           {
-            backgroundColor: colors.accent,
+            backgroundColor: icon === "brand" ? "#ffffff" : colors.accent,
+            borderColor: colors.accent,
             shadowColor: colors.accent,
             transform: [{ scale: pressScale }],
           },
         ]}
       >
-        <Ionicons name={icon} size={icon === "add" ? 30 : 25} color="white" />
+        {icon === "brand" ? (
+          <Image source={brandLogo} style={styles.askButtonLogo} resizeMode="contain" />
+        ) : (
+          <Ionicons name={icon} size={icon === "add" ? 30 : 25} color={iconColor} />
+        )}
       </Animated.View>
       <Text style={[styles.askLabel, { color: colors.accent }]}>{label}</Text>
     </Pressable>
@@ -423,7 +431,7 @@ function MainTabs() {
               tabBarButton: (props) => (
                 <CenterTabButton
                   props={props}
-                  icon="analytics-outline"
+                  icon="brand"
                   label="后台"
                   colors={colors}
                 />
@@ -687,11 +695,17 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     shadowOpacity: 0.25,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 },
+  },
+  askButtonLogo: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
   },
   askLabel: {
     marginTop: 6,

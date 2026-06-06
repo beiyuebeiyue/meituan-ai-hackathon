@@ -39,8 +39,7 @@ export function CouponsPage() {
     },
     { title: "券名", dataIndex: "coupon_name" },
     { title: "金额", dataIndex: "amount", width: 110, render: (value: number) => `¥${value}` },
-    { title: "开始日期", dataIndex: "valid_from", width: 130, render: (value?: string) => value || "-" },
-    { title: "结束日期", dataIndex: "valid_until", width: 130, render: (value?: string) => value || "-" },
+    { title: "过期日期", dataIndex: "expiry_date", width: 130, render: (value?: string) => value || "-" },
     { title: "备注", dataIndex: "note" },
     { title: "创建人", dataIndex: "created_by", width: 110 },
     {

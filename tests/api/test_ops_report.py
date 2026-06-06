@@ -10,7 +10,11 @@ from app.models.style_event_daily import StyleEventDaily
 
 
 def _ops_headers(client) -> dict[str, str]:
-    response = client.post("/api/v1/ops/auth/login", json={"username": "admin", "password": "admin"})
+    settings = get_settings()
+    response = client.post(
+        "/api/v1/ops/auth/login",
+        json={"username": settings.ops_admin_username, "password": settings.ops_admin_password},
+    )
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 

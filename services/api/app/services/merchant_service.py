@@ -11,9 +11,10 @@ from app.models.user import User
 from app.models.user_post import UserPost
 
 
-KEKE_SHOP_ADDRESS = "龙岗区香港中文大学深圳图书馆"
-KEKE_SHOP_LATITUDE = 22.683980
-KEKE_SHOP_LONGITUDE = 114.208552
+DEFAULT_MERCHANT_SHOP_NAME = "焕甲测试美甲店"
+DEFAULT_MERCHANT_SHOP_ADDRESS = "福田中心"
+DEFAULT_MERCHANT_SHOP_LATITUDE = 22.543096
+DEFAULT_MERCHANT_SHOP_LONGITUDE = 114.057865
 
 
 def require_merchant(user: User) -> None:
@@ -141,11 +142,11 @@ class MerchantShopService:
         if shop is None:
             shop = MerchantShop(
                 merchant_user_id=admin_user.id,
-                name=admin_user.username,
+                name=DEFAULT_MERCHANT_SHOP_NAME,
                 city="深圳",
-                address=KEKE_SHOP_ADDRESS,
-                latitude=KEKE_SHOP_LATITUDE,
-                longitude=KEKE_SHOP_LONGITUDE,
+                address=DEFAULT_MERCHANT_SHOP_ADDRESS,
+                latitude=DEFAULT_MERCHANT_SHOP_LATITUDE,
+                longitude=DEFAULT_MERCHANT_SHOP_LONGITUDE,
                 contact_phone=settings.default_admin_phone,
                 is_default=True,
             )
@@ -154,8 +155,8 @@ class MerchantShopService:
         elif not shop.is_default:
             shop.is_default = True
             db.add(shop)
-        if shop.name != admin_user.username:
-            shop.name = admin_user.username
+        if shop.name != DEFAULT_MERCHANT_SHOP_NAME:
+            shop.name = DEFAULT_MERCHANT_SHOP_NAME
             db.add(shop)
         if shop.contact_phone != settings.default_admin_phone:
             shop.contact_phone = settings.default_admin_phone
@@ -163,14 +164,14 @@ class MerchantShopService:
         if shop.city != "深圳":
             shop.city = "深圳"
             db.add(shop)
-        if shop.address != KEKE_SHOP_ADDRESS:
-            shop.address = KEKE_SHOP_ADDRESS
+        if shop.address != DEFAULT_MERCHANT_SHOP_ADDRESS:
+            shop.address = DEFAULT_MERCHANT_SHOP_ADDRESS
             db.add(shop)
-        if shop.latitude != KEKE_SHOP_LATITUDE:
-            shop.latitude = KEKE_SHOP_LATITUDE
+        if shop.latitude != DEFAULT_MERCHANT_SHOP_LATITUDE:
+            shop.latitude = DEFAULT_MERCHANT_SHOP_LATITUDE
             db.add(shop)
-        if shop.longitude != KEKE_SHOP_LONGITUDE:
-            shop.longitude = KEKE_SHOP_LONGITUDE
+        if shop.longitude != DEFAULT_MERCHANT_SHOP_LONGITUDE:
+            shop.longitude = DEFAULT_MERCHANT_SHOP_LONGITUDE
             db.add(shop)
 
         for post in db.scalars(select(UserPost).where(UserPost.user_id == admin_user.id, UserPost.shop_id.is_(None))):

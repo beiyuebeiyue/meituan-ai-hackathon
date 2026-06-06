@@ -21,9 +21,9 @@ import { NearbyShop } from "../types/api";
 type CoordinateShop = NearbyShop & { latitude: number; longitude: number };
 
 const MARKER_OVERLAP_DISTANCE = 54;
-const MARKER_PINK = "#F65CA8";
-const MARKER_PINK_ACTIVE = "#E83E8C";
-const MARKER_PINK_SOFT = "#FF8BC1";
+const MARKER_PINK = "#111111";
+const MARKER_PINK_ACTIVE = "#111111";
+const MARKER_PINK_SOFT = "#666666";
 const COLLAPSED_SHEET_HEIGHT = 270;
 const EXPANDED_SHEET_TOP_OFFSET = 148;
 
@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(37, 145, 255, 0.18)",
+    backgroundColor: "rgba(0, 0, 0, 0.14)",
   },
   currentLocationDot: {
     width: 16,
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 3,
     borderColor: "#fff",
-    backgroundColor: "#248dff",
+    backgroundColor: "#111111",
   },
   markerWrap: {
     alignItems: "center",
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   scoreText: {
-    color: "#ff6b26",
+    color: "#111111",
     fontSize: 14,
     fontWeight: "900",
   },

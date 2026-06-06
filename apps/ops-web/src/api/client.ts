@@ -161,27 +161,15 @@ export type OpsUser = {
 export type OpsMerchant = {
   id: string;
   merchant_user_id: string;
+  merchant_uid: number;
   merchant_name: string;
   merchant_phone?: string | null;
+  merchant_last_login_ip_location?: string | null;
   name: string;
   city: string;
   address: string;
   contact_phone?: string | null;
   created_at: string;
-  booking_count: number;
-  completed_booking_count: number;
-};
-
-export type OpsMerchantUser = {
-  id: string;
-  uid: number;
-  username: string;
-  phone?: string | null;
-  avatar_url?: string | null;
-  last_login_ip_location?: string | null;
-  role: string;
-  created_at: string;
-  shop_count: number;
   booking_count: number;
   completed_booking_count: number;
 };
@@ -216,8 +204,7 @@ export type CouponGrantPayload = {
   target_id: string;
   coupon_name: string;
   amount: number;
-  valid_from?: string;
-  valid_until?: string;
+  expiry_date?: string;
   note?: string;
 };
 
@@ -253,6 +240,14 @@ export type OpsMarkdownReport = {
   report_date: string;
   date_key: string;
   markdown_content: string;
+  local_file_path: string;
+  created_at: string;
+};
+
+export type OpsHtmlReport = {
+  report_date: string;
+  date_key: string;
+  html_content: string;
   local_file_path: string;
   created_at: string;
 };
@@ -296,7 +291,7 @@ export type TrendNailCampaign = {
   styles: TrendNailStyle[];
 };
 
-const XHS_REPORT_FILE = "xhs_daily_nail_report.md";
+const XHS_WEEKLY_REPORT_FILE = "xhs-weekly-nail-report.html";
 
 function shanghaiDateKey(value: Date): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -339,6 +334,29 @@ async function fetchXhsMarkdownReportHistory(fileName: string, limit = 30): Prom
   return reports.filter((item): item is OpsMarkdownReport => Boolean(item));
 }
 
+async function fetchXhsWeeklyHtmlReport(): Promise<OpsHtmlReport | null> {
+  const url = `${API_ORIGIN}/${XHS_WEEKLY_REPORT_FILE}`;
+  const response = await fetch(url, { cache: "no-store" });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  const todayKey = shanghaiDateKey(new Date());
+  const htmlContent = await response.text();
+  return {
+    report_date: dateKeyToReportDate(todayKey),
+    date_key: todayKey,
+    html_content: normalizeXhsWeeklyReportHtml(htmlContent),
+    local_file_path: url,
+    created_at: response.headers.get("last-modified") ?? new Date().toISOString(),
+  };
+}
+
+function normalizeXhsWeeklyReportHtml(html: string): string {
+  return html.replace(
+    /(["'])([^"']*xhs-popular-nail-posts-crawler\/assets\/([^"']+))\1/g,
+    (_match, quote: string, _src: string, assetPath: string) => `${quote}${API_ORIGIN}/openclaw-assets/${assetPath}${quote}`,
+  );
+}
+
 export const api = {
   login: (username: string, password: string) =>
     request<{ access_token: string; token_type: string }>("/ops/auth/login", {
@@ -354,20 +372,15 @@ export const api = {
     const suffix = search.toString() ? `?${search.toString()}` : "";
     return request<OpsAnalyticsOverview>(`/ops/analytics/overview${suffix}`);
   },
-  getUsers: (query = "", limit = 50, offset = 0) =>
+  getUsers: (query = "", limit = 10, offset = 0) =>
     request<ListResponse<OpsUser>>(`/ops/users?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`),
   getUser: (id: string) => request<OpsUser>(`/ops/users/${id}`),
-  getMerchants: (query = "", city = "", limit = 50, offset = 0) =>
+  getMerchants: (query = "", city = "", limit = 10, offset = 0) =>
     request<ListResponse<OpsMerchant>>(
       `/ops/merchants?query=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}&limit=${limit}&offset=${offset}`,
     ),
   getMerchantCities: () => request<string[]>("/ops/merchants/cities"),
   getMerchant: (id: string) => request<OpsMerchant>(`/ops/merchants/${id}`),
-  getMerchantUsers: (query = "", limit = 50, offset = 0) =>
-    request<ListResponse<OpsMerchantUser>>(
-      `/ops/merchant-users?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`,
-    ),
-  getMerchantUser: (id: string) => request<OpsMerchantUser>(`/ops/merchant-users/${id}`),
   getPosts: (query = "", limit = 50, offset = 0) =>
     request<ListResponse<OpsPost>>(`/ops/posts?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`),
   getPost: (id: string) => request<OpsPost>(`/ops/posts/${id}`),
@@ -380,12 +393,16 @@ export const api = {
   saveReport: (payload: ReportGenerateResponse) =>
     request<OpsReport>("/ops/reports/save", { method: "POST", body: JSON.stringify(payload) }),
   getTodayReport: () => request<OpsReport | null>("/ops/reports/today"),
-  getTodayXhsNailReport: () => fetchXhsMarkdownReport(shanghaiDateKey(new Date()), XHS_REPORT_FILE),
-  getXhsNailReportHistory: () => fetchXhsMarkdownReportHistory(XHS_REPORT_FILE),
+  getTodayXhsNailReport: () => fetchXhsWeeklyHtmlReport(),
+  getXhsNailReportHistory: () => Promise.resolve([] as OpsMarkdownReport[]),
   getPerformance: () => request<PerformanceMetrics>("/ops/metrics/performance"),
   getTrendNailCandidates: (limit = 20) => request<{ items: TrendNailStyle[] }>(`/ops/trend-nails/candidates?limit=${limit}`),
   createTrendNailCampaign: (payload: { title: string; description: string; style_ids: string[]; merchant_user_ids?: string[] | null }) =>
     request<TrendNailCampaign>("/ops/trend-nail-campaigns", { method: "POST", body: JSON.stringify(payload) }),
+  createAutoTrendNailCampaign: (force = false, limit = 12) =>
+    request<TrendNailCampaign | null>(`/ops/trend-nail-campaigns/auto?force=${force ? "true" : "false"}&limit=${limit}`, {
+      method: "POST",
+    }),
   getTrendNailCampaign: (id: string) => request<TrendNailCampaign>(`/ops/trend-nail-campaigns/${id}`),
 };
 

@@ -169,7 +169,7 @@ export function ProfileSettingsScreen() {
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <Pressable style={styles.row} onPress={() => handlePress(logoutItem.key)}>
               <View style={styles.rowText}>
-                <Text style={[styles.rowTitle, { color: "#c44d39" }]}>{logoutItem.title}</Text>
+                <Text style={[styles.rowTitle, { color: colors.text }]}>{logoutItem.title}</Text>
                 <Text style={[styles.rowSubtitle, { color: colors.subtext }]}>{logoutItem.subtitle}</Text>
               </View>
               <View style={styles.rowRight}>

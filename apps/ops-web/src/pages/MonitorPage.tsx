@@ -17,7 +17,11 @@ import chinaGeoJson from "../assets/geo/china.json";
 echarts.use([CanvasRenderer, GeoComponent, MapChart, TooltipComponent, VisualMapComponent]);
 echarts.registerMap("china", chinaGeoJson as Parameters<typeof echarts.registerMap>[1]);
 
-const pieColors = ["#111827", "#374151", "#4b5563", "#6b7280", "#9ca3af", "#525252"];
+const DASHBOARD_CACHE_TTL_MS = 5 * 60 * 1000;
+let dashboardCache: { data: OpsDashboard; cachedAt: number } | null = null;
+let dashboardRequest: Promise<OpsDashboard> | null = null;
+
+const accentColors = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 const provinceHeat = [
   { name: "北京市", value: 74 },
   { name: "上海市", value: 82 },
@@ -91,18 +95,55 @@ function monitorValues(dashboard: OpsDashboard) {
   };
 }
 
+function isDashboardCacheFresh() {
+  return dashboardCache !== null && Date.now() - dashboardCache.cachedAt < DASHBOARD_CACHE_TTL_MS;
+}
+
+function loadDashboard() {
+  if (dashboardRequest) return dashboardRequest;
+  dashboardRequest = api
+    .getDashboard()
+    .then((data) => {
+      dashboardCache = { data, cachedAt: Date.now() };
+      return data;
+    })
+    .finally(() => {
+      dashboardRequest = null;
+    });
+  return dashboardRequest;
+}
+
 export function MonitorPage() {
   const { message } = App.useApp();
-  const [dashboard, setDashboard] = useState<OpsDashboard | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [dashboard, setDashboard] = useState<OpsDashboard | null>(() => dashboardCache?.data ?? null);
+  const [loading, setLoading] = useState(() => dashboardCache === null);
   const [remainingTime, setRemainingTime] = useState(activityCountdown);
 
   useEffect(() => {
-    api
-      .getDashboard()
-      .then(setDashboard)
-      .catch((error) => message.error(error instanceof Error ? error.message : "加载失败"))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    if (isDashboardCacheFresh()) {
+      setDashboard(dashboardCache?.data ?? null);
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(dashboardCache === null);
+    if (dashboardCache) setDashboard(dashboardCache.data);
+    loadDashboard()
+      .then((data) => {
+        if (!cancelled) setDashboard(data);
+      })
+      .catch((error) => {
+        if (!cancelled) message.error(error instanceof Error ? error.message : "加载失败");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [message]);
 
   useEffect(() => {
@@ -143,7 +184,7 @@ export function MonitorPage() {
               </div>
               <ResponsiveContainer width="100%" height={110}>
                 <AreaChart data={forecast}>
-                  <Area type="monotone" dataKey="value" stroke="#4b5563" fill="#eeeeee" strokeWidth={2} />
+                  <Area type="monotone" dataKey="value" stroke="#2563eb" fill="#dbeafe" strokeWidth={2} />
                   <Tooltip />
                 </AreaChart>
               </ResponsiveContainer>
@@ -164,9 +205,9 @@ export function MonitorPage() {
         <Col xs={24} xl={10}>
           <Card className="monitor-card monitor-bottom-card" title="各品类占比">
             <div className="monitor-ring-row">
-              <Ring value={75} label="美甲预约" />
-              <Ring value={48} label="AI 焕手" />
-              <Ring value={33} label="发券转化" />
+              <Ring value={75} label="美甲预约" color="#2563eb" />
+              <Ring value={48} label="AI 焕手" color="#10b981" />
+              <Ring value={33} label="发券转化" color="#f59e0b" />
             </div>
           </Card>
         </Col>
@@ -177,7 +218,7 @@ export function MonitorPage() {
                 <span
                   key={item.name}
                   style={{
-                    color: pieColors[index % pieColors.length],
+                    color: accentColors[index % accentColors.length],
                     fontSize: `${15 + Math.min(item.value * 2, 18)}px`,
                     transform: `rotate(${[-18, 14, -28, 22, -8, 30, -14, 18][index % 8]}deg)`,
                   }}
@@ -231,7 +272,7 @@ function ChinaHeatMap() {
         min: 0,
         max: 100,
         inRange: {
-          color: ["#f5f5f5", "#e5e7eb", "#9ca3af", "#374151"],
+          color: ["#eff6ff", "#bfdbfe", "#60a5fa", "#2563eb", "#f97316"],
         },
       },
       geo: {
@@ -247,7 +288,7 @@ function ChinaHeatMap() {
         },
         emphasis: {
           itemStyle: {
-            areaColor: "#e5e7eb",
+            areaColor: "#f59e0b",
           },
           label: {
             show: false,
@@ -298,18 +339,16 @@ function Gauge({ value }: { value: number }) {
         <path d="M169 59 A85 85 0 0 1 205 125" className="gauge-segment gauge-dark" />
         <line x1="120" y1="125" x2="120" y2="62" className="gauge-pointer" transform={`rotate(${angle} 120 125)`} />
         <circle cx="120" cy="125" r="12" className="gauge-center" />
-        <text x="120" y="150" textAnchor="middle" className="gauge-text">
-          优
-        </text>
       </svg>
+      <div className="gauge-text">优</div>
     </div>
   );
 }
 
-function Ring({ value, label }: { value: number; label: string }) {
+function Ring({ value, label, color }: { value: number; label: string; color: string }) {
   return (
     <div className="monitor-ring-item">
-      <div className="monitor-ring" style={{ "--ring-value": `${value}%` } as CSSProperties}>
+      <div className="monitor-ring" style={{ "--ring-value": `${value}%`, "--ring-color": color } as CSSProperties}>
         <span>{value}%</span>
       </div>
       <Typography.Text type="secondary">{label}</Typography.Text>

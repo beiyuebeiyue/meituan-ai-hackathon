@@ -8,7 +8,6 @@ import { CouponsPage } from "./pages/CouponsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ChatbotPage } from "./pages/ChatbotPage";
 import { LoginPage } from "./pages/LoginPage";
-import { MerchantUsersPage } from "./pages/MerchantUsersPage";
 import { MerchantsPage } from "./pages/MerchantsPage";
 import { MonitorPage } from "./pages/MonitorPage";
 import { PostsPage } from "./pages/PostsPage";
@@ -42,7 +41,6 @@ export default function App() {
         { name: "dashboard", list: "/dashboard" },
         { name: "monitor", list: "/monitor" },
         { name: "users", list: "/users" },
-        { name: "merchant-users", list: "/merchant-users" },
         { name: "merchants", list: "/merchants" },
         { name: "posts", list: "/posts" },
         { name: "trend-nails", list: "/trend-nails" },
@@ -61,7 +59,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/monitor" element={<MonitorPage />} />
             <Route path="/users" element={<UsersPage />} />
-            <Route path="/merchant-users" element={<MerchantUsersPage />} />
+            <Route path="/merchant-users" element={<Navigate to="/merchants" replace />} />
             <Route path="/merchants" element={<MerchantsPage />} />
             <Route path="/posts" element={<PostsPage />} />
             <Route path="/trend-nails" element={<TrendNailsPage />} />

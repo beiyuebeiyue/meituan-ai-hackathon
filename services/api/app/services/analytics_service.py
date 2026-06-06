@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, timedelta, time, timezone
 from hashlib import sha1
 from zoneinfo import ZoneInfo
 
@@ -54,6 +54,7 @@ class AnalyticsService:
     def record_client_events(self, db: Session, items: list[AnalyticsEventInput], user: User | None = None) -> tuple[int, int]:
         inserted = 0
         skipped = 0
+        linked_identities: set[tuple[str, str]] = set()
         for item in items:
             existing = db.scalar(select(AnalyticsEvent.id).where(AnalyticsEvent.event_id == item.event_id))
             if existing:
@@ -78,7 +79,49 @@ class AnalyticsService:
             db.add(event)
             inserted += 1
             if user and item.anonymous_id:
-                self._link_identity(db, item.anonymous_id, user.id)
+                identity_key = (item.anonymous_id, user.id)
+                if identity_key not in linked_identities:
+                    self._link_identity(db, item.anonymous_id, user.id)
+                    linked_identities.add(identity_key)
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            return self._record_client_events_without_identity_links(db, items, user)
+        return inserted, skipped
+
+    def _record_client_events_without_identity_links(
+        self,
+        db: Session,
+        items: list[AnalyticsEventInput],
+        user: User | None = None,
+    ) -> tuple[int, int]:
+        inserted = 0
+        skipped = 0
+        for item in items:
+            existing = db.scalar(select(AnalyticsEvent.id).where(AnalyticsEvent.event_id == item.event_id))
+            if existing:
+                skipped += 1
+                continue
+            db.add(
+                AnalyticsEvent(
+                    event_id=item.event_id,
+                    event_name=item.event_name,
+                    anonymous_id=item.anonymous_id,
+                    user_id=user.id if user else None,
+                    session_id=item.session_id,
+                    style_id=item.style_id,
+                    tryon_job_id=item.tryon_job_id,
+                    booking_id=item.booking_id,
+                    shop_id=item.shop_id,
+                    source=item.source,
+                    screen=item.screen,
+                    amount_cents=item.amount_cents,
+                    properties_json=item.properties,
+                    occurred_at=item.occurred_at or self._now(),
+                )
+            )
+            inserted += 1
         db.commit()
         return inserted, skipped
 
@@ -130,6 +173,8 @@ class AnalyticsService:
                 .order_by(AnalyticsEvent.occurred_at.asc())
             )
         )
+        if not events and start_date is None and end_date is None and get_settings().ops_demo_metrics_enabled:
+            return self._demo_overview(start_day, end_day)
         anonymous_to_user = dict(db.execute(select(AnalyticsIdentityLink.anonymous_id, AnalyticsIdentityLink.user_id)).all())
 
         def actor_id(event: AnalyticsEvent) -> str:
@@ -225,6 +270,128 @@ class AnalyticsService:
 
     def _rate(self, numerator: int, denominator: int) -> float:
         return round(numerator / denominator, 4) if denominator else 0.0
+
+    def _demo_overview(self, start_day: date, end_day: date) -> OpsAnalyticsOverviewResponse:
+        impressions = 42860
+        clicks = 8230
+        tryon_started = 3120
+        tryon_completed = 2468
+        booking_submits = 612
+        completed_orders = 486
+        revenue_cents = 11862800
+        active_users = 2860
+        kpis = OpsAnalyticsKpis(
+            dau=active_users,
+            new_users=426,
+            recommendation_impressions=impressions,
+            recommendation_clicks=clicks,
+            recommendation_ctr=self._rate(clicks, impressions),
+            tryon_started=tryon_started,
+            tryon_completed=tryon_completed,
+            tryon_completion_rate=self._rate(tryon_completed, tryon_started),
+            booking_submits=booking_submits,
+            completed_orders=completed_orders,
+            revenue_cents=revenue_cents,
+            average_order_value_cents=revenue_cents // completed_orders,
+            click_to_tryon_rate=self._rate(tryon_started, clicks),
+            tryon_to_booking_rate=self._rate(booking_submits, tryon_completed),
+            booking_to_order_rate=self._rate(completed_orders, booking_submits),
+            click_to_order_rate=self._rate(completed_orders, clicks),
+            arpu_cents=revenue_cents // active_users,
+            revenue_conversion_rate=self._rate(completed_orders, booking_submits),
+        )
+        funnel_counts = {
+            "ai_recommendation_shown": impressions,
+            "ai_recommendation_click": clicks,
+            "tryon_started": tryon_started,
+            "tryon_completed": tryon_completed,
+            "booking_start_clicked": 980,
+            "booking_submit_clicked": booking_submits,
+            "booking_completed": completed_orders,
+        }
+        previous = 0
+        funnel: list[OpsAnalyticsFunnelStep] = []
+        for index, (key, label) in enumerate(FUNNEL_STEPS):
+            count = funnel_counts[key]
+            base = impressions if index else count
+            funnel.append(
+                OpsAnalyticsFunnelStep(
+                    key=key,
+                    label=label,
+                    count=count,
+                    conversion_rate=1.0 if index == 0 else self._rate(count, base),
+                    step_rate=1.0 if index == 0 else self._rate(count, previous),
+                    dropoff_rate=0.0 if index == 0 else max(0.0, 1.0 - self._rate(count, previous)),
+                    dropoff_count=0 if index == 0 else max(previous - count, 0),
+                )
+            )
+            previous = count
+
+        trend_start = end_day - timedelta(days=6)
+        trends = [
+            OpsAnalyticsTrendPoint(
+                date=trend_start + timedelta(days=index),
+                recommendation_clicks=value,
+                tryon_started=int(value * 0.38),
+                tryons=int(value * 0.38),
+                tryon_completed=int(value * 0.3),
+                booking_submits=int(value * 0.08),
+                bookings=int(value * 0.08),
+                completed_orders=int(value * 0.065),
+                revenue_cents=int(value * 0.065 * 24400),
+            )
+            for index, value in enumerate([760, 920, 1060, 1180, 1320, 1450, 1540])
+        ]
+        top_styles = [
+            self._demo_rank_item("demo-style-1", "春夏清透猫眼", 9200, 1780, 682, 138, 112, 2732800, 0.2304),
+            self._demo_rank_item("demo-style-2", "裸粉通勤法式", 7600, 1426, 538, 112, 86, 2098400, 0.1769),
+            self._demo_rank_item("demo-style-3", "显白碎钻渐变", 6480, 1180, 456, 94, 76, 1854400, 0.1563),
+            self._demo_rank_item("demo-style-4", "甜酷黑银线条", 5360, 960, 348, 78, 61, 1488400, 0.1255),
+        ]
+        top_shops = [
+            self._demo_rank_item("demo-shop-1", "焕甲美学 静安店", 13200, 2460, 884, 186, 148, 3611200, 0.3044),
+            self._demo_rank_item("demo-shop-2", "Nail Lab 天河店", 9800, 1810, 692, 138, 112, 2732800, 0.2304),
+            self._demo_rank_item("demo-shop-3", "指尖研究所 西湖店", 8200, 1490, 534, 106, 84, 2049600, 0.1728),
+        ]
+        return OpsAnalyticsOverviewResponse(
+            start_date=start_day,
+            end_date=end_day,
+            generated_at=self._now(),
+            kpis=kpis,
+            funnel=funnel,
+            trends=trends,
+            top_styles=top_styles,
+            top_shops=top_shops,
+        )
+
+    def _demo_rank_item(
+        self,
+        item_id: str,
+        name: str,
+        impressions: int,
+        clicks: int,
+        tryons: int,
+        bookings: int,
+        completed: int,
+        revenue_cents: int,
+        revenue_share: float,
+    ) -> OpsAnalyticsRankItem:
+        return OpsAnalyticsRankItem(
+            id=item_id,
+            name=name,
+            image_url=None,
+            impressions=impressions,
+            clicks=clicks,
+            ctr=self._rate(clicks, impressions),
+            tryons=tryons,
+            tryon_rate=self._rate(tryons, clicks),
+            bookings=bookings,
+            booking_rate=self._rate(bookings, tryons),
+            completed_orders=completed,
+            completion_rate=self._rate(completed, bookings),
+            revenue_cents=revenue_cents,
+            revenue_share=revenue_share,
+        )
 
     def _trends(self, events: list[AnalyticsEvent]) -> list[OpsAnalyticsTrendPoint]:
         buckets: dict[date, dict[str, int]] = defaultdict(lambda: defaultdict(int))

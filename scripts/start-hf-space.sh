@@ -29,4 +29,4 @@ openclaw gateway --allow-unconfigured --bind loopback --port 18798 --auth none r
   > /workspace/.openclaw/logs/gateway.log \
   2> /workspace/.openclaw/logs/gateway.err.log &
 
-exec uvicorn app.main:app --host 0.0.0.0 --port 7860
+exec uvicorn app.main:app --host 0.0.0.0 --port 7860 --ws websockets

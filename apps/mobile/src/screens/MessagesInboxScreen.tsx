@@ -112,13 +112,12 @@ export function MessagesInboxScreen({
   };
 
   const socialCards = [
-    { key: "likes", title: "点赞", icon: "heart", color: "#ff7a8a" },
-    { key: "follows", title: "新增关注", icon: "person", color: "#4f8bff" },
+    { key: "likes", title: "点赞", icon: "heart" },
+    { key: "follows", title: "新增关注", icon: "person" },
     {
       key: "comments",
       title: "评论和@",
       icon: "chatbubble-ellipses",
-      color: "#36c98f",
     },
   ] as const;
 
@@ -187,10 +186,10 @@ export function MessagesInboxScreen({
                     <View
                       style={[
                         styles.socialIconWrap,
-                        { backgroundColor: `${item.color}22` },
+                        { backgroundColor: colors.accentSoft },
                       ]}
                     >
-                      <Ionicons name={item.icon} size={24} color={item.color} />
+                      <Ionicons name={item.icon} size={24} color={colors.accent} />
                     </View>
                     <Text style={[styles.socialTitle, { color: colors.text }]}>
                       {item.title}

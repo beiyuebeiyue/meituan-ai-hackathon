@@ -35,9 +35,15 @@ def app_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("XHS_DAILY_REPORT_ASSETS_DIR", str(xhs_report_assets_dir))
     monkeypatch.setenv("XHS_CRAWLER_ASSETS_DIR", str(xhs_crawler_assets_dir))
     monkeypatch.setenv("SEED_XLSX_PATH", str(ROOT / "命题三美甲评测数据（对外版）.xlsx"))
+    monkeypatch.setenv("ENABLE_PACKAGED_SEED_STYLES", "false")
     monkeypatch.setenv("OPENAI_API_KEY", "")
     monkeypatch.setenv("LONGCAT_API_KEY", "")
     monkeypatch.setenv("OPS_AI_PROVIDER", "local")
+    monkeypatch.setenv("R2_ENABLED", "false")
+    monkeypatch.setenv("R2_ACCOUNT_ID", "")
+    monkeypatch.setenv("R2_BUCKET_NAME", "")
+    monkeypatch.setenv("R2_API_TOKEN", "")
+    monkeypatch.setenv("R2_PUBLIC_BASE_URL", "")
 
     from app.core.config import get_settings
     from app.core.db import Base, database

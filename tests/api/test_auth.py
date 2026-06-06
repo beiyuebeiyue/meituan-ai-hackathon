@@ -13,7 +13,7 @@ def test_default_admin_can_login_with_phone(client):
     assert response.status_code == 200
     payload = response.json()
     assert payload["user"]["uid"] == 0
-    assert payload["user"]["username"] == "keke"
+    assert payload["user"]["username"] == "焕甲测试美甲店"
     assert payload["user"]["avatar_url"] == "/files/uploads/avatars/0/p0.png"
     assert payload["user"]["phone"] == "13886722666"
     assert payload["user"]["role"] == "merchant"
@@ -23,7 +23,7 @@ def test_default_admin_can_login_with_phone(client):
         headers={"Authorization": f"Bearer {payload['access_token']}"},
     )
     assert shop_response.status_code == 200
-    assert shop_response.json()["items"][0]["name"] == "keke"
+    assert shop_response.json()["items"][0]["name"] == "焕甲测试美甲店"
 
 
 def test_default_demo_credentials_can_login_as_consumer_or_merchant(client):

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from app.core.config import get_settings
 from app.core.security import get_password_hash
 from app.models.booking import Booking
 from app.models.analytics_event import AnalyticsIdentityLink
@@ -12,7 +13,11 @@ from app.services.analytics_service import AnalyticsService
 
 
 def _ops_headers(client) -> dict[str, str]:
-    response = client.post("/api/v1/ops/auth/login", json={"username": "admin", "password": "admin"})
+    settings = get_settings()
+    response = client.post(
+        "/api/v1/ops/auth/login",
+        json={"username": settings.ops_admin_username, "password": settings.ops_admin_password},
+    )
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
@@ -103,6 +108,35 @@ def test_analytics_events_support_anonymous_login_and_idempotency(client, db_ses
     assert user["id"] in {row.user_id for row in db_session.query(AnalyticsIdentityLink).all()}
 
 
+def test_analytics_identity_link_is_idempotent_within_same_batch(client, db_session, image_factory):
+    style = _style(db_session, image_factory)
+    token, user = _create_consumer(client, phone="13900009992")
+
+    response = client.post(
+        "/api/v1/events/analytics",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "items": [
+                {
+                    "event_id": f"evt-batch-{index}",
+                    "event_name": "style_impression",
+                    "anonymous_id": "anon-same-batch",
+                    "session_id": "sess-same-batch",
+                    "style_id": style.id,
+                    "source": "browse",
+                    "screen": "browse",
+                }
+                for index in range(3)
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"inserted": 3, "skipped": 0}
+    links = db_session.query(AnalyticsIdentityLink).filter_by(anonymous_id="anon-same-batch", user_id=user["id"]).all()
+    assert len(links) == 1
+
+
 def test_ops_analytics_overview_counts_server_revenue_and_rankings(client, db_session, image_factory):
     shop = db_session.query(MerchantShop).first()
     assert shop is not None
@@ -186,3 +220,14 @@ def test_ops_analytics_overview_empty_window_returns_zeroes(client):
     assert data["trends"] == []
     assert data["top_styles"] == []
     assert data["top_shops"] == []
+
+
+def test_ops_analytics_overview_uses_demo_metrics_for_default_empty_window(client):
+    response = client.get("/api/v1/ops/analytics/overview", headers=_ops_headers(client))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["kpis"]["revenue_cents"] > 0
+    assert data["kpis"]["completed_orders"] > 0
+    assert data["trends"]
+    assert data["top_styles"]
+    assert data["top_shops"]

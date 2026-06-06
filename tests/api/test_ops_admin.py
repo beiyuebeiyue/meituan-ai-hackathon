@@ -19,7 +19,11 @@ from app.services.ops_admin_service import OpsAdminService
 
 
 def _ops_headers(client) -> dict[str, str]:
-    response = client.post("/api/v1/ops/auth/login", json={"username": "admin", "password": "admin"})
+    settings = get_settings()
+    response = client.post(
+        "/api/v1/ops/auth/login",
+        json={"username": settings.ops_admin_username, "password": settings.ops_admin_password},
+    )
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
 
@@ -40,12 +44,16 @@ def _consumer(uid: int, username: str, created_at: datetime | None = None) -> Us
 
 
 def test_ops_login_success_and_failure(client):
-    success = client.post("/api/v1/ops/auth/login", json={"username": "admin", "password": "admin"})
+    settings = get_settings()
+    success = client.post(
+        "/api/v1/ops/auth/login",
+        json={"username": settings.ops_admin_username, "password": settings.ops_admin_password},
+    )
     assert success.status_code == 200
     assert success.json()["token_type"] == "bearer"
     assert success.json()["access_token"]
 
-    failure = client.post("/api/v1/ops/auth/login", json={"username": "admin", "password": "wrong"})
+    failure = client.post("/api/v1/ops/auth/login", json={"username": settings.ops_admin_username, "password": "wrong"})
     assert failure.status_code == 401
 
 
@@ -145,6 +153,16 @@ def test_ops_dashboard_metrics_and_popular_nails(client, db_session, image_facto
     assert metrics["completed_bookings"] == {"total": 1, "today": 1}
     assert metrics["revenue"] == {"total": 188, "today": 188}
     assert isinstance(data["popular_nails"], list)
+
+
+def test_ops_dashboard_uses_demo_metrics_when_empty(client):
+    response = client.get("/api/v1/ops/dashboard", headers=_ops_headers(client))
+    assert response.status_code == 200
+    metrics = response.json()["metrics"]
+    assert metrics["users"]["total"] > 0
+    assert metrics["bookings"]["total"] > 0
+    assert metrics["completed_bookings"]["today"] > 0
+    assert metrics["revenue"]["total"] > 0
 
 
 def test_ops_popular_nails_missing_digest_returns_empty(app_env):
@@ -255,6 +273,9 @@ def test_ops_user_merchant_lists_and_coupon_grants(client, db_session):
     )
     assert user_coupon.status_code == 200
     assert user_coupon.json()["target_name"] == "coupon_consumer"
+    assert user_coupon.json()["expiry_date"] is not None
+    assert "valid_from" not in user_coupon.json()
+    assert "valid_until" not in user_coupon.json()
 
     merchant_coupon = client.post(
         "/api/v1/ops/coupons/grants",

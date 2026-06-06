@@ -41,10 +41,10 @@ class Settings(BaseSettings):
     gaode_api_key: str = ""
     default_admin_enabled: bool = True
     default_admin_phone: str = "13886722666"
-    default_admin_username: str = "keke"
+    default_admin_username: str = "焕甲测试美甲店"
     default_admin_password: str = "admin@123456"
     ops_admin_username: str = "admin"
-    ops_admin_password: str = "admin"
+    ops_admin_password: str = "JRLoZdHl8pFXIJ3gJuXu"
     default_admin_bio: str = (
         "谢谢关注!\n"
         "大家有对我不满的地方都可以提出来，尽情发言，一会就给你们全删了。"
@@ -57,7 +57,10 @@ class Settings(BaseSettings):
     tryon_result_dir: str = "./data/tryon_results"
     tryon_artifact_dir: str = "./data/tryon_artifacts"
     seed_dir: str = "./data/seed"
+    packaged_seed_dir: str = "./data/seed"
+    enable_packaged_seed_styles: bool = True
     report_dir: str = "./data/reports"
+    xhs_weekly_report_path_value: str = "./xhs_weekly_nail_report.html"
     xhs_crawler_assets_dir: str = ".openclaw/skills/xhs-popular-nail-posts-crawler/assets"
     xhs_daily_report_assets_dir: str = ".openclaw/skills/xhs-daily-nail-report/assets"
     xhs_embedding_gradio_space_id: str = "dongli/nail_embedder"
@@ -71,12 +74,22 @@ class Settings(BaseSettings):
     r2_public_base_url: str = ""
     r2_cache_control: str = "public, max-age=31536000, immutable"
 
+    ip_geolocation_enabled: bool = True
+    ip_geolocation_provider: str = "ip-api"
+    ip_geolocation_timeout_seconds: float = 2.0
+
     openclaw_enabled: bool = True
     openclaw_skill_name: str = "xhs-daily-nail-report"
     openclaw_base_url: str = "http://host.docker.internal:18789"
     openclaw_model: str = "openclaw/default"
     openclaw_gateway_token: str = ""
     ops_report_timezone: str = "Asia/Shanghai"
+    ops_demo_metrics_enabled: bool = True
+    auto_trend_campaign_enabled: bool = True
+    auto_trend_campaign_run_on_startup: bool = True
+    auto_trend_campaign_startup_delay_seconds: int = 120
+    auto_trend_campaign_hour: int = 9
+    auto_trend_campaign_limit: int = 12
 
     hot_keywords: list[str] = Field(default_factory=lambda: ["热门", "流行", "当季", "最近", "爆款", "trend"])
 
@@ -107,8 +120,16 @@ class Settings(BaseSettings):
         return self.resolve_path(self.seed_dir)
 
     @property
+    def packaged_seed_path(self) -> Path:
+        return self.resolve_path(self.packaged_seed_dir)
+
+    @property
     def report_path(self) -> Path:
         return self.resolve_path(self.report_dir)
+
+    @property
+    def xhs_weekly_report_path(self) -> Path:
+        return self.resolve_path(self.xhs_weekly_report_path_value)
 
     @property
     def xhs_crawler_assets_path(self) -> Path:

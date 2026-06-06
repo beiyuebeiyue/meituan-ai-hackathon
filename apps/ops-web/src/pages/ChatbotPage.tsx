@@ -283,8 +283,6 @@ export function ChatbotPage() {
           }}
         />
         <div className="chatbot-input-actions">
-          <span className="chatbot-tool-chip">✦</span>
-          <span className="chatbot-tool-chip">G</span>
           <Button type="primary" shape="circle" icon={<SendOutlined />} disabled={!input.trim()} onClick={sendMessage} />
         </div>
       </div>

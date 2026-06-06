@@ -4,11 +4,12 @@ from pathlib import Path
 import re
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.nail_style import NailStyle
+from app.models.merchant_shop import MerchantShop
 from app.models.style_comment import StyleComment
 from app.models.user_favorite import UserFavorite
 from app.models.user_style_like import UserStyleLike
@@ -43,9 +44,10 @@ class StyleService:
             NailStyle.popularity_score.desc(),
             NailStyle.created_at.desc(),
         )
-        total = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
+        matched = self.filter_visible_styles(db, list(db.scalars(statement)), viewer, include_xhs_posts=include_xhs_posts)
+        total = len(matched)
         offset = (page - 1) * page_size
-        items = list(db.scalars(statement.offset(offset).limit(page_size)))
+        items = matched[offset : offset + page_size]
         return items, total
 
     def list_latest(
@@ -58,9 +60,10 @@ class StyleService:
     ) -> tuple[list[NailStyle], int]:
         self.ensure_xhs_styles(db, include_xhs_posts)
         statement = self._visible_list_statement(include_xhs_posts).order_by(NailStyle.created_at.desc())
-        total = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
+        matched = self.filter_visible_styles(db, list(db.scalars(statement)), viewer, include_xhs_posts=include_xhs_posts)
+        total = len(matched)
         offset = (page - 1) * page_size
-        items = list(db.scalars(statement.offset(offset).limit(page_size)))
+        items = matched[offset : offset + page_size]
         return items, total
 
     def list_following(
@@ -127,9 +130,10 @@ class StyleService:
             .where(NailStyle.shop_id == shop_id)
             .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
         )
-        total = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
+        matched = self.filter_visible_styles(db, list(db.scalars(statement)), viewer, include_xhs_posts=include_xhs_posts)
+        total = len(matched)
         offset = (page - 1) * page_size
-        items = list(db.scalars(statement.offset(offset).limit(page_size)))
+        items = matched[offset : offset + page_size]
         return items, total
 
     def _visible_list_statement(self, include_xhs_posts: bool):
@@ -280,10 +284,49 @@ class StyleService:
             return author.username, author.avatar_url
         return "焕甲图库", None
 
-    def list_styles_for_author(self, db: Session, author: User, viewer: User | None = None) -> list[NailStyle]:
-        styles = list(db.scalars(select(NailStyle).order_by(NailStyle.created_at.desc())))
-        authored = [style for style in styles if (resolved := self.resolve_style_author_user(db, style)) and resolved.id == author.id]
-        return self.filter_visible_styles(db, authored, viewer)
+    def _author_style_conditions(self, author: User):
+        author_user_id = NailStyle.style_metadata_json["author_user_id"].as_string()
+        conditions = [author_user_id == author.id]
+        if author.role == "merchant":
+            merchant_shop_ids = select(MerchantShop.id).where(MerchantShop.merchant_user_id == author.id)
+            conditions.append(NailStyle.shop_id.in_(merchant_shop_ids))
+
+        settings = get_settings()
+        if author.phone == settings.default_admin_phone:
+            conditions.append(
+                (author_user_id.is_(None) | (author_user_id == ""))
+                & NailStyle.shop_id.is_(None)
+            )
+        return conditions
+
+    def count_styles_for_author(self, db: Session, author: User) -> int:
+        conditions = self._author_style_conditions(author)
+        return (
+            db.scalar(
+                select(func.count())
+                .select_from(NailStyle)
+                .where(or_(*conditions))
+            )
+            or 0
+        )
+
+    def list_styles_for_author(
+        self,
+        db: Session,
+        author: User,
+        viewer: User | None = None,
+        limit: int = 60,
+    ) -> list[NailStyle]:
+        conditions = self._author_style_conditions(author)
+        styles = list(
+            db.scalars(
+                select(NailStyle)
+                .where(or_(*conditions))
+                .order_by(NailStyle.created_at.desc())
+                .limit(limit)
+            )
+        )
+        return self.filter_visible_styles(db, styles, viewer)
 
     def get_post_for_style(self, db: Session, style: NailStyle) -> UserPost | None:
         post_id = style.style_metadata_json.get("from_post_id") if isinstance(style.style_metadata_json, dict) else None

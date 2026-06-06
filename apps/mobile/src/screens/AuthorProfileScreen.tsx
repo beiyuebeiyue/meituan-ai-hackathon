@@ -51,8 +51,6 @@ import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 const defaultAvatar = require("../../assets/profile/default_avatar.png");
 const profileBgDefault = require("../../assets/profile/profile_bg_default.png");
-const FEED_HEART_ACTIVE_COLOR = "#ff7a8a";
-const FEED_HEART_INACTIVE_COLOR = "#d0d0d5";
 const PROFILE_HEADER_HEIGHT = Math.min(
   330,
   Math.max(300, Math.round(Dimensions.get("window").height * 0.34)),
@@ -1582,11 +1580,7 @@ export function AuthorProfileScreen({
                         <Ionicons
                           name={item.is_liked ? "heart" : "heart-outline"}
                           size={18}
-                          color={
-                            item.is_liked
-                              ? FEED_HEART_ACTIVE_COLOR
-                              : FEED_HEART_INACTIVE_COLOR
-                          }
+                          color={item.is_liked ? colors.accent : colors.subtext}
                         />
                         <Text
                           style={[styles.likedCount, { color: colors.subtext }]}
@@ -1682,11 +1676,7 @@ export function AuthorProfileScreen({
                       <Ionicons
                         name={item.is_liked ? "heart" : "heart-outline"}
                         size={18}
-                        color={
-                          item.is_liked
-                            ? FEED_HEART_ACTIVE_COLOR
-                            : FEED_HEART_INACTIVE_COLOR
-                        }
+                        color={item.is_liked ? colors.accent : colors.subtext}
                       />
                       <Text
                         style={[styles.likedCount, { color: colors.subtext }]}

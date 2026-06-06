@@ -220,6 +220,13 @@ export type UserPost = {
   verified_shop_name?: string | null;
 };
 
+export type GeneratedPostMetadata = {
+  title: string;
+  description: string;
+  tags: string[];
+  model: string;
+};
+
 export type AuthorPost = {
   id: string;
   manage_post_id?: string | null;

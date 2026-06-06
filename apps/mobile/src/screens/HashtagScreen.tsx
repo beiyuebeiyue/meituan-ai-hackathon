@@ -40,7 +40,7 @@ function HashtagCard({
   const cardBg = isDark ? "#202026" : colors.surface;
   const imageBg = isDark ? "#2a2a30" : colors.surfaceAlt;
   const subtleText = isDark ? "#a4a4ad" : colors.subtext;
-  const likeColor = item.is_liked ? "#ff4f7f" : isDark ? "#d9d9df" : "#b9aca5";
+  const likeColor = item.is_liked ? colors.accent : isDark ? "#d9d9df" : colors.subtext;
 
   return (
     <Pressable style={[styles.card, { backgroundColor: cardBg, borderColor: isDark ? "transparent" : colors.border }]} onPress={() => onPress(item)}>
@@ -105,8 +105,8 @@ export function HashtagScreen() {
   const likeTotal = items.reduce((sum, item) => sum + item.like_count, 0);
   const viewTotal = Math.max(total * 2700 + likeTotal * 11, total);
   const pageBg = isDark ? "#15151b" : colors.background;
-  const stickyBg = isDark ? "rgba(21,21,27,0.98)" : "rgba(255,247,242,0.98)";
-  const heroShadeBg = isDark ? "rgba(14,14,18,0.74)" : "rgba(255,247,242,0.82)";
+  const stickyBg = isDark ? "rgba(15,15,15,0.98)" : "rgba(247,247,247,0.98)";
+  const heroShadeBg = isDark ? "rgba(15,15,15,0.74)" : "rgba(247,247,247,0.82)";
   const activeSortColor = colors.text;
   const inactiveSortColor = isDark ? "#7f7f89" : colors.subtext;
   const stickyHeaderHeight = 118 + insets.top;
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   },
   followButton: {
     borderWidth: 1,
-    borderColor: "#ff3d68",
+    borderColor: "#111111",
     borderRadius: 999,
     paddingHorizontal: 22,
     paddingVertical: 10,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
   },
   followText: {
-    color: "#ff3d68",
+    color: "#111111",
     fontSize: 16,
     fontWeight: "800",
   },
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   sortUnderlineActive: {
-    backgroundColor: "#ff3d68",
+    backgroundColor: "#111111",
   },
   filterButton: {
     marginLeft: "auto",
@@ -489,8 +489,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#ff2456",
-    shadowColor: "#ff2456",
+    backgroundColor: "#111111",
+    shadowColor: "#000000",
     shadowOpacity: 0.32,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },

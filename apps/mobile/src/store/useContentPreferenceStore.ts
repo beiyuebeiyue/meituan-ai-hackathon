@@ -10,7 +10,7 @@ type ContentPreferenceState = {
 };
 
 export const useContentPreferenceStore = create<ContentPreferenceState>((set) => ({
-  includeXhsPosts: true,
+  includeXhsPosts: false,
   hydrated: false,
   setIncludeXhsPosts: async (includeXhsPosts) => {
     await setStoredValue(CONTENT_PREFERENCE_STORAGE_KEY, JSON.stringify({ includeXhsPosts }));
@@ -20,13 +20,13 @@ export const useContentPreferenceStore = create<ContentPreferenceState>((set) =>
 
 export async function bootstrapContentPreferences() {
   const storedValue = await getStoredValue(CONTENT_PREFERENCE_STORAGE_KEY);
-  let includeXhsPosts = true;
+  let includeXhsPosts = false;
   if (storedValue) {
     try {
       const parsed = JSON.parse(storedValue) as { includeXhsPosts?: unknown };
-      includeXhsPosts = parsed.includeXhsPosts !== false;
+      includeXhsPosts = parsed.includeXhsPosts === true;
     } catch {
-      includeXhsPosts = true;
+      includeXhsPosts = false;
     }
   }
   useContentPreferenceStore.setState({ includeXhsPosts, hydrated: true });

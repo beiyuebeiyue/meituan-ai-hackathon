@@ -1,0 +1,10 @@
+export ASSETS_ROOT="$PWD/assets"
+export RUN_DATE="$(date +%Y%m%d)"
+export RUN_ROOT="$ASSETS_ROOT/$RUN_DATE"
+export SEARCH_DIR="$RUN_ROOT/search"
+export READ_DIR="$RUN_ROOT/read"
+export IMAGES_DIR="$RUN_ROOT/images"
+export SUMMARY_PATH="$RUN_ROOT/xhs_search_summary.json"
+export REGISTRY_PATH="$ASSETS_ROOT/xhs_note_registry.json"
+
+mkdir -p "$SEARCH_DIR" "$READ_DIR" "$IMAGES_DIR"

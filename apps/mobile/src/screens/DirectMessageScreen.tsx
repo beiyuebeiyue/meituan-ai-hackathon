@@ -505,9 +505,9 @@ export function DirectMessageScreen() {
                     styles.messageBubble,
                     {
                       backgroundColor: item.is_mine
-                        ? "#2d82ff"
+                        ? colors.accent
                         : colors.surface,
-                      borderColor: item.is_mine ? "#2d82ff" : bubbleBorderColor,
+                      borderColor: item.is_mine ? colors.accent : bubbleBorderColor,
                     },
                   ]}
                 >

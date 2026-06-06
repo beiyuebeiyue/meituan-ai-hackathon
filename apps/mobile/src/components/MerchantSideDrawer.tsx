@@ -6,6 +6,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -15,6 +16,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useThemeColors } from "../utils/theme";
+
+const brandLogo = require("../../assets/app/logo.png");
 
 export type MerchantDrawerActionKey =
   | "market-data"
@@ -285,11 +288,7 @@ function AppSideDrawer<Key extends string>({
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.drawerHeader}>
-                <View
-                  style={[styles.brandMark, { backgroundColor: colors.accent }]}
-                >
-                  <Text style={styles.brandMarkText}>焕</Text>
-                </View>
+                <Image source={brandLogo} style={[styles.brandMark, { borderColor: colors.border }]} resizeMode="contain" />
                 <View style={styles.drawerHeaderText}>
                   <Text style={[styles.drawerTitle, { color: colors.text }]}>
                     快捷入口
@@ -433,13 +432,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  brandMarkText: {
-    color: "#ffffff",
-    fontSize: 22,
-    fontWeight: "900",
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: "#ffffff",
   },
   drawerHeaderText: {
     flex: 1,

@@ -59,10 +59,13 @@ RUN useradd -m -u 1000 user
 WORKDIR /workspace
 
 COPY services/api /workspace/services/api
+COPY xhs_weekly_nail_report.html /workspace/xhs_weekly_nail_report.html
+COPY data/seed /workspace/data/seed
 COPY --from=ops-web-builder /workspace/apps/ops-web/dist /workspace/apps/ops-web/dist
 COPY --from=mobile-web-builder /workspace/apps/mobile/dist /workspace/apps/mobile/dist
 COPY deploy/hf-openclaw/openclaw.json /workspace/.openclaw/openclaw.json
 COPY deploy/hf-openclaw/workspace /workspace/.openclaw/workspace
+COPY deploy/hf-openclaw/skills /workspace/.openclaw/workspace/skills
 COPY scripts/start-hf-space.sh /workspace/start-hf-space.sh
 
 RUN mkdir -p /data/uploads /data/tryon_results /data/tryon_artifacts /data/seed /data/reports /data/xhs-popular-nail-posts-crawler/assets /data/xhs-daily-nail-report/assets /workspace/data /workspace/.openclaw/state /workspace/.openclaw/logs \

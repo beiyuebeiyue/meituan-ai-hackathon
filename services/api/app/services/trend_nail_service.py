@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
+
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.models.merchant_trend import MerchantNotification, MerchantTrendClaim
 from app.models.nail_style import NailStyle
 from app.models.trend_nail_campaign import TrendNailCampaign, TrendNailCampaignStyle
@@ -17,13 +21,20 @@ from app.schemas.trends import (
     TrendNailStyleRead,
 )
 from app.services.merchant_service import MerchantShopService, require_merchant
+from app.services.xhs_style_materialization_service import XhsStyleMaterializationService
+
+
+AUTO_TREND_CAMPAIGN_CREATED_BY = "auto-weekly-trend"
 
 
 class TrendNailService:
     def __init__(self) -> None:
         self.shop_service = MerchantShopService()
+        self.xhs_styles = XhsStyleMaterializationService()
 
-    def list_candidates(self, db: Session, *, limit: int = 20) -> list[TrendNailStyleRead]:
+    def list_candidates(self, db: Session, *, limit: int = 20, refresh_xhs: bool = True) -> list[TrendNailStyleRead]:
+        if refresh_xhs:
+            self.xhs_styles.ensure_top_styles(db, limit=max(limit, 100))
         styles = list(
             db.scalars(
                 select(NailStyle)
@@ -33,6 +44,78 @@ class TrendNailService:
             )
         )
         return [self._style_read(db, style) for style in styles]
+
+    def create_weekly_auto_campaign(
+        self,
+        db: Session,
+        *,
+        limit: int | None = None,
+        force: bool = False,
+    ) -> OpsTrendCampaignRead | None:
+        settings = get_settings()
+        shanghai = ZoneInfo(settings.ops_report_timezone)
+        now = datetime.now(shanghai)
+        week_start = datetime.combine((now - timedelta(days=now.weekday())).date(), time.min, tzinfo=shanghai)
+        week_start_utc = week_start.astimezone(timezone.utc)
+
+        if not force:
+            existing = db.scalar(
+                select(TrendNailCampaign)
+                .where(
+                    TrendNailCampaign.created_by == AUTO_TREND_CAMPAIGN_CREATED_BY,
+                    TrendNailCampaign.created_at >= week_start_utc,
+                )
+                .order_by(TrendNailCampaign.created_at.desc())
+            )
+            if existing is not None:
+                return self.get_campaign(db, existing.id)
+
+        self.xhs_styles.ensure_top_styles(db, limit=200)
+        campaign_limit = max(1, min(limit or settings.auto_trend_campaign_limit, 30))
+        candidate_styles = self._weekly_candidate_styles(
+            db,
+            limit=campaign_limit,
+            previous_week_start=week_start - timedelta(days=7),
+            current_week_start=week_start,
+        )
+        if not candidate_styles:
+            return None
+
+        week_label = f"{week_start.date().isoformat()} 周热门手工甲"
+        payload = OpsTrendCampaignCreateRequest(
+            title=week_label,
+            description="系统自动整理上周热门美甲款式。商家点击“我也能做”后，用户焕甲选店时该门店会被优先展示。",
+            style_ids=[item.id for item in candidate_styles],
+            merchant_user_ids=None,
+        )
+        return self.create_campaign(db, payload, created_by=AUTO_TREND_CAMPAIGN_CREATED_BY)
+
+    def _weekly_candidate_styles(
+        self,
+        db: Session,
+        *,
+        limit: int,
+        previous_week_start: datetime,
+        current_week_start: datetime,
+    ) -> list[NailStyle]:
+        styles = list(
+            db.scalars(
+                select(NailStyle)
+                .where(NailStyle.nail_type == "handmade")
+                .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
+                .limit(200)
+            )
+        )
+        previous_week_date_keys = {
+            (previous_week_start + timedelta(days=day_index)).strftime("%Y%m%d")
+            for day_index in range((current_week_start.date() - previous_week_start.date()).days)
+        }
+        weekly_styles = [
+            style
+            for style in styles
+            if str((style.style_metadata_json or {}).get("xhs_digest_date") or "") in previous_week_date_keys
+        ]
+        return (weekly_styles or styles)[:limit]
 
     def create_campaign(self, db: Session, payload: OpsTrendCampaignCreateRequest, *, created_by: str) -> OpsTrendCampaignRead:
         style_ids = list(dict.fromkeys(payload.style_ids))

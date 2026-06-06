@@ -84,6 +84,10 @@ export function ProfileScreen() {
     );
   }
 
+  if (token && user?.id && user.role !== "merchant") {
+    return <ConsumerProfileScreen />;
+  }
+
   if (token && user?.id) {
     return <AuthorProfileScreen authorId={user.id} asProfileTab />;
   }
@@ -103,7 +107,7 @@ export function ProfileScreen() {
   }
 
   const loggedOutBackground = isDark ? colors.background : "#ffffff";
-  const primaryRed = isDark ? colors.accent : "#ef3d4f";
+  const primaryActionColor = colors.accent;
   const mutedButton = isDark ? colors.input : "#f5f5f5";
 
   return (
@@ -140,7 +144,7 @@ export function ProfileScreen() {
             resizeMode="contain"
           />
           <Text style={[styles.quickBrandSubtitle, { color: colors.text }]}>
-            登录后展示自己
+            欢迎使用焕甲
           </Text>
         </View>
 
@@ -152,7 +156,7 @@ export function ProfileScreen() {
             style={[
               styles.quickPrimaryButton,
               {
-                backgroundColor: primaryRed,
+                backgroundColor: primaryActionColor,
                 opacity: quickLoginMutation.isPending ? 0.72 : 1,
               },
             ]}
@@ -171,7 +175,7 @@ export function ProfileScreen() {
             <Text
               style={[
                 styles.otherLoginText,
-                { color: isDark ? colors.text : "#3b6f9f" },
+                { color: colors.text },
               ]}
             >
               其他登录方式
@@ -179,7 +183,7 @@ export function ProfileScreen() {
             <Ionicons
               name="chevron-forward"
               size={16}
-              color={isDark ? colors.subtext : "#b7c2cc"}
+              color={colors.subtext}
             />
           </Pressable>
 
@@ -190,7 +194,7 @@ export function ProfileScreen() {
             <Ionicons
               name={agreed ? "checkmark-circle" : "ellipse-outline"}
               size={22}
-              color={agreed ? primaryRed : isDark ? colors.subtext : "#9a9a9a"}
+              color={agreed ? primaryActionColor : isDark ? colors.subtext : "#9a9a9a"}
             />
             <Text
               style={[
@@ -202,7 +206,7 @@ export function ProfileScreen() {
               <Text
                 style={[
                   styles.quickAgreementLink,
-                  { color: isDark ? "#7ab5ff" : "#9eb2c0" },
+                  { color: colors.text },
                 ]}
               >
                 《用户协议》
@@ -210,7 +214,7 @@ export function ProfileScreen() {
               <Text
                 style={[
                   styles.quickAgreementLink,
-                  { color: isDark ? "#7ab5ff" : "#9eb2c0" },
+                  { color: colors.text },
                 ]}
               >
                 《隐私政策》
@@ -218,7 +222,7 @@ export function ProfileScreen() {
               <Text
                 style={[
                   styles.quickAgreementLink,
-                  { color: isDark ? "#7ab5ff" : "#9eb2c0" },
+                  { color: colors.text },
                 ]}
               >
                 《未成年人个人信息保护规则》
@@ -234,6 +238,7 @@ export function ProfileScreen() {
 function ConsumerProfileScreen() {
   const navigation = useNavigation<any>();
   const colors = useThemeColors();
+  const isDark = useIsDarkMode();
   const user = useAuthStore((state) => state.user);
   const bookingsQuery = useQuery({
     queryKey: ["my-bookings"],
@@ -245,7 +250,7 @@ function ConsumerProfileScreen() {
       key: "bookings",
       icon: "receipt-outline",
       title: "我的订单",
-      subtitle: "查看预约与历史订单",
+      subtitle: "预约与历史订单",
     },
     {
       key: "browse-history",
@@ -257,7 +262,7 @@ function ConsumerProfileScreen() {
       key: "following",
       icon: "storefront-outline",
       title: "我的关注",
-      subtitle: "管理关注的商家",
+      subtitle: "关注的作者和商家",
     },
     {
       key: "likes",
@@ -269,7 +274,7 @@ function ConsumerProfileScreen() {
       key: "tryon",
       icon: "sparkles-outline",
       title: "AI 焕甲记录",
-      subtitle: "查看试戴结果",
+      subtitle: "试戴结果",
     },
     {
       key: "hands",
@@ -278,6 +283,18 @@ function ConsumerProfileScreen() {
       subtitle: "管理本地手图",
     },
   ] as const;
+  const quickActions = menuItems.slice(0, 4);
+  const toolActions = menuItems.slice(4);
+  const recentBookings = bookingsQuery.data?.items.slice(0, 2) ?? [];
+  const createdAtTime = user?.created_at
+    ? new Date(user.created_at).getTime()
+    : Number.NaN;
+  const joinDays = Number.isFinite(createdAtTime)
+    ? Math.max(
+        1,
+        Math.ceil((Date.now() - createdAtTime) / (1000 * 60 * 60 * 24)),
+      )
+    : "--";
 
   const openItem = (key: (typeof menuItems)[number]["key"]) => {
     if (key === "bookings") navigation.navigate("ConsumerOrders");
@@ -297,47 +314,164 @@ function ConsumerProfileScreen() {
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
     >
-      <ScrollView contentContainerStyle={styles.consumerContent}>
-        <View
-          style={[styles.consumerHero, { backgroundColor: colors.surface }]}
-        >
-          <Image
-            source={
-              user?.avatar_url
-                ? { uri: resolveAssetUrl(user.avatar_url) }
-                : defaultAvatar
-            }
-            style={[
-              styles.consumerAvatar,
-              { backgroundColor: colors.surfaceAlt },
-            ]}
-          />
-          <View style={styles.consumerHeroText}>
-            <Text style={[styles.consumerName, { color: colors.text }]}>
-              {user?.username ?? "焕甲用户"}
+      <ScrollView
+        contentContainerStyle={styles.consumerContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.consumerTopBar}>
+          <View>
+            <Text style={[styles.consumerPageEyebrow, { color: colors.subtext }]}>
+              我的
             </Text>
-            <Text style={[styles.consumerMeta, { color: colors.subtext }]}>
-              焕甲号：{user?.uid ?? "--"}
+            <Text style={[styles.consumerPageTitle, { color: colors.text }]}>
+              欢迎使用焕甲
             </Text>
           </View>
           <Pressable
             style={[
-              styles.consumerSettingsButton,
-              { backgroundColor: colors.surfaceAlt },
+              styles.consumerTopIcon,
+              { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
             onPress={() => navigation.navigate("ProfileSettings")}
           >
-            <Ionicons name="settings-outline" size={20} color={colors.accent} />
+            <Ionicons name="settings-outline" size={21} color={colors.text} />
           </Pressable>
         </View>
 
         <View
-          style={[styles.consumerCard, { backgroundColor: colors.surface }]}
+          style={[
+            styles.consumerHero,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
         >
-          <Text style={[styles.consumerSectionTitle, { color: colors.text }]}>
-            预约订单
-          </Text>
-          {bookingsQuery.data?.items.slice(0, 3).map((item) => (
+          <View style={styles.consumerHeroMain}>
+            <Image
+              source={
+                user?.avatar_url
+                  ? { uri: resolveAssetUrl(user.avatar_url) }
+                  : defaultAvatar
+              }
+              style={[
+                styles.consumerAvatar,
+                { backgroundColor: colors.surfaceAlt },
+              ]}
+            />
+            <View style={styles.consumerHeroText}>
+              <Text style={[styles.consumerName, { color: colors.text }]} numberOfLines={1}>
+                {user?.username ?? "焕甲用户"}
+              </Text>
+              <Text style={[styles.consumerMeta, { color: colors.subtext }]}>
+                焕甲号 {user?.uid ?? "--"}
+              </Text>
+              {user?.bio ? (
+                <Text style={[styles.consumerBio, { color: colors.subtext }]} numberOfLines={1}>
+                  {user.bio}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          <View style={styles.consumerHeroActions}>
+            <Pressable
+              style={[styles.consumerEditButton, { backgroundColor: colors.accent }]}
+              onPress={() => navigation.navigate("ProfileEdit")}
+            >
+              <Text style={[styles.consumerEditText, { color: isDark ? "#111111" : "#ffffff" }]}>
+                编辑资料
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.consumerGhostButton, { borderColor: colors.border }]}
+              onPress={() =>
+                user?.id &&
+                navigation.navigate("AuthorProfile", {
+                  authorId: user.id,
+                  entryEdge: "right",
+                })
+              }
+            >
+              <Text style={[styles.consumerGhostText, { color: colors.text }]}>
+                个人主页
+              </Text>
+            </Pressable>
+          </View>
+          <View style={[styles.consumerStats, { borderTopColor: colors.border }]}>
+            <View style={styles.consumerStatItem}>
+              <Text style={[styles.consumerStatValue, { color: colors.text }]}>
+                {recentBookings.length}
+              </Text>
+              <Text style={[styles.consumerStatLabel, { color: colors.subtext }]}>
+                近期预约
+              </Text>
+            </View>
+            <View style={styles.consumerStatItem}>
+              <Text style={[styles.consumerStatValue, { color: colors.text }]}>
+                {joinDays}
+              </Text>
+              <Text style={[styles.consumerStatLabel, { color: colors.subtext }]}>
+                使用天数
+              </Text>
+            </View>
+            <View style={styles.consumerStatItem}>
+              <Text style={[styles.consumerStatValue, { color: colors.text }]}>
+                {user?.last_login_ip_location ?? "未知"}
+              </Text>
+              <Text style={[styles.consumerStatLabel, { color: colors.subtext }]}>
+                登录地区
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.consumerCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.consumerSectionHeader}>
+            <Text style={[styles.consumerSectionTitle, { color: colors.text }]}>
+              常用功能
+            </Text>
+            <Text style={[styles.consumerSectionMeta, { color: colors.subtext }]}>
+              快速进入
+            </Text>
+          </View>
+          <View style={styles.consumerQuickGrid}>
+            {quickActions.map((item) => (
+              <Pressable
+                key={item.key}
+                style={[
+                  styles.consumerQuickAction,
+                  { backgroundColor: colors.surfaceAlt },
+                ]}
+                onPress={() => openItem(item.key)}
+              >
+                <Ionicons name={item.icon} size={22} color={colors.text} />
+                <Text style={[styles.consumerQuickTitle, { color: colors.text }]}>
+                  {item.title}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.consumerCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.consumerSectionHeader}>
+            <Text style={[styles.consumerSectionTitle, { color: colors.text }]}>
+              最近预约
+            </Text>
+            <Pressable onPress={() => navigation.navigate("ConsumerOrders")}>
+              <Text style={[styles.consumerSectionLink, { color: colors.text }]}>
+                全部
+              </Text>
+            </Pressable>
+          </View>
+          {recentBookings.map((item) => (
             <Pressable
               key={item.id}
               style={[styles.bookingRow, { borderBottomColor: colors.border }]}
@@ -369,33 +503,62 @@ function ConsumerProfileScreen() {
               </Text>
             </Pressable>
           ))}
-          {!bookingsQuery.data?.items.length ? (
-            <Text style={[styles.emptyBooking, { color: colors.subtext }]}>
-              还没有预约，焕甲成功后可以继续预约门店。
-            </Text>
+          {!recentBookings.length ? (
+            <Pressable
+              style={[styles.emptyBookingPanel, { backgroundColor: colors.surfaceAlt }]}
+              onPress={() => navigation.navigate("Market")}
+            >
+              <Ionicons name="storefront-outline" size={22} color={colors.text} />
+              <View style={styles.emptyBookingTextBlock}>
+                <Text style={[styles.emptyBookingTitle, { color: colors.text }]}>
+                  还没有预约
+                </Text>
+                <Text style={[styles.emptyBooking, { color: colors.subtext }]}>
+                  去市场看看附近的美甲店。
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
+            </Pressable>
           ) : null}
         </View>
 
-        <View style={styles.consumerGrid}>
-          {menuItems.map((item) => (
+        <View
+          style={[
+            styles.consumerCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.consumerSectionHeader}>
+            <Text style={[styles.consumerSectionTitle, { color: colors.text }]}>
+              工具与设置
+            </Text>
+          </View>
+          {toolActions.map((item, index) => (
             <Pressable
               key={item.key}
               style={[
-                styles.consumerMenuCard,
-                { backgroundColor: colors.surface },
+                styles.consumerListRow,
+                {
+                  borderTopColor: index === 0 ? "transparent" : colors.border,
+                },
               ]}
               onPress={() => openItem(item.key)}
             >
-              <Ionicons name={item.icon} size={22} color={colors.accent} />
-              <Text style={[styles.consumerMenuTitle, { color: colors.text }]}>
-                {item.title}
-              </Text>
-              <Text
-                style={[styles.consumerMenuSubtitle, { color: colors.subtext }]}
-                numberOfLines={1}
-              >
-                {item.subtitle}
-              </Text>
+              <View style={[styles.consumerListIcon, { backgroundColor: colors.surfaceAlt }]}>
+                <Ionicons name={item.icon} size={20} color={colors.text} />
+              </View>
+              <View style={styles.consumerListText}>
+                <Text style={[styles.consumerMenuTitle, { color: colors.text }]}>
+                  {item.title}
+                </Text>
+                <Text
+                  style={[styles.consumerMenuSubtitle, { color: colors.subtext }]}
+                  numberOfLines={1}
+                >
+                  {item.subtitle}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
             </Pressable>
           ))}
         </View>
@@ -608,27 +771,106 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: "center",
   },
-  consumerContent: { padding: 16, paddingBottom: 120, gap: 14 },
+  consumerContent: { padding: 16, paddingTop: 10, paddingBottom: 120, gap: 14 },
+  consumerTopBar: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 2,
+  },
+  consumerPageEyebrow: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  consumerPageTitle: {
+    marginTop: 2,
+    fontSize: 25,
+    lineHeight: 31,
+    fontWeight: "900",
+  },
+  consumerTopIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   consumerHero: {
-    borderRadius: 24,
+    borderRadius: 26,
     padding: 18,
+    gap: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  consumerHeroMain: {
     flexDirection: "row",
     gap: 14,
     alignItems: "center",
   },
-  consumerAvatar: { width: 72, height: 72, borderRadius: 36 },
-  consumerHeroText: { flex: 1, gap: 5 },
-  consumerSettingsButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  consumerAvatar: { width: 76, height: 76, borderRadius: 38 },
+  consumerHeroText: { flex: 1, gap: 4 },
+  consumerHeroActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  consumerEditButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
   },
-  consumerName: { fontSize: 24, fontWeight: "900" },
+  consumerGhostButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  consumerEditText: { fontSize: 14, fontWeight: "900" },
+  consumerGhostText: { fontSize: 14, fontWeight: "900" },
+  consumerStats: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 14,
+    flexDirection: "row",
+    gap: 10,
+  },
+  consumerStatItem: { flex: 1, gap: 4 },
+  consumerStatValue: { fontSize: 16, fontWeight: "900" },
+  consumerStatLabel: { fontSize: 11, fontWeight: "700" },
+  consumerName: { fontSize: 24, lineHeight: 30, fontWeight: "900" },
   consumerMeta: { fontSize: 13, lineHeight: 18 },
-  consumerCard: { borderRadius: 22, padding: 16, gap: 10 },
+  consumerBio: { fontSize: 13, lineHeight: 18 },
+  consumerCard: {
+    borderRadius: 24,
+    padding: 16,
+    gap: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  consumerSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   consumerSectionTitle: { fontSize: 18, fontWeight: "900" },
+  consumerSectionMeta: { fontSize: 12, fontWeight: "700" },
+  consumerSectionLink: { fontSize: 13, fontWeight: "900" },
+  consumerQuickGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  consumerQuickAction: {
+    flexGrow: 1,
+    flexBasis: "46%",
+    minHeight: 86,
+    borderRadius: 18,
+    padding: 14,
+    justifyContent: "space-between",
+  },
+  consumerQuickTitle: { fontSize: 15, fontWeight: "900" },
   bookingRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -641,8 +883,32 @@ const styles = StyleSheet.create({
   bookingMeta: { fontSize: 12 },
   bookingStatus: { fontSize: 12, fontWeight: "800" },
   emptyBooking: { fontSize: 13, lineHeight: 20 },
-  consumerGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  consumerMenuCard: { width: "48%", borderRadius: 20, padding: 16, gap: 8 },
+  emptyBookingPanel: {
+    minHeight: 72,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  emptyBookingTextBlock: { flex: 1, gap: 2 },
+  emptyBookingTitle: { fontSize: 15, fontWeight: "900" },
+  consumerListRow: {
+    minHeight: 64,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  consumerListIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  consumerListText: { flex: 1, gap: 3 },
   consumerMenuTitle: { fontSize: 16, fontWeight: "800" },
   consumerMenuSubtitle: { fontSize: 12 },
 });

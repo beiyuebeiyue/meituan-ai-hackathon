@@ -1,5 +1,5 @@
 import { App as AntdApp, Button, Card, Checkbox, Col, Empty, Input, Row, Space, Spin, Statistic, Tag, Typography } from "antd";
-import { FireOutlined, SendOutlined } from "@ant-design/icons";
+import { FireOutlined, RobotOutlined, SendOutlined } from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api, resolveAssetUrl, TrendNailStyle } from "../api/client";
@@ -54,7 +54,7 @@ function CandidateCard({
 export function TrendNailsPage() {
   const { message } = AntdApp.useApp();
   const [title, setTitle] = useState("本周热门手工甲");
-  const [description, setDescription] = useState("这些是近期适合推给商家的热门手工甲，商家可一键登记“我能做”。");
+  const [description, setDescription] = useState("这些是近期适合推给商家的热门手工甲，商家可一键登记“我也能做”。");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [lastCampaignId, setLastCampaignId] = useState<string | null>(null);
   const query = useQuery({
@@ -97,6 +97,28 @@ export function TrendNailsPage() {
     },
   });
 
+  const autoCreateMutation = useMutation({
+    mutationFn: () => api.createAutoTrendNailCampaign(false, 12),
+    onSuccess: (campaign) => {
+      if (!campaign) {
+        message.warning("暂无可自动推送的热门手工甲款式");
+        return;
+      }
+      setLastCampaignId(campaign.id);
+      message.success(`本周自动推送已就绪，覆盖 ${campaign.merchant_count} 个商家账号`);
+      query.refetch();
+    },
+    onError: (error: Error) => {
+      let detail = error.message;
+      try {
+        detail = (JSON.parse(error.message) as { detail?: string }).detail ?? detail;
+      } catch {
+        // keep response text
+      }
+      message.error(detail);
+    },
+  });
+
   const toggleSelection = (styleId: string) => {
     setSelectedIds((current) => (current.includes(styleId) ? current.filter((id) => id !== styleId) : [...current, styleId]));
   };
@@ -107,7 +129,7 @@ export function TrendNailsPage() {
         <div>
           <Title level={2}>热门手工甲推送</Title>
           <Paragraph type="secondary">
-            运营选择手工甲候选款并推送给商家。商家点击“我能做”后，用户焕甲选店时对应门店会优先展示。
+            运营选择手工甲候选款并推送给商家。商家点击“我也能做”后，用户焕甲选店时对应门店会优先展示。
           </Paragraph>
         </div>
       </div>
@@ -144,6 +166,14 @@ export function TrendNailsPage() {
                 onClick={() => createMutation.mutate()}
               >
                 推送给全部商家
+              </Button>
+              <Button
+                icon={<RobotOutlined />}
+                block
+                loading={autoCreateMutation.isPending}
+                onClick={() => autoCreateMutation.mutate()}
+              >
+                自动生成本周推送
               </Button>
             </Space>
           </Card>

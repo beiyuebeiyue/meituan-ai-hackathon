@@ -42,6 +42,13 @@ class UserPostListResponse(BaseModel):
     items: list[UserPostRead]
 
 
+class GeneratedPostMetadataRead(BaseModel):
+    title: str
+    description: str
+    tags: list[str] = Field(default_factory=list)
+    model: str
+
+
 class UserPostUpdateRequest(BaseModel):
     title: str | None = None
     description: str | None = None

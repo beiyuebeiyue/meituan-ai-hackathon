@@ -1,0 +1,1205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>焕甲小红书美甲运营周报 2026-W21</title>
+  <style>
+    :root {
+      --bg: #f4f4f4;
+      --panel: #ffffff;
+      --ink: #0b0b0b;
+      --text: #202020;
+      --muted: #6c6c6c;
+      --soft: #eeeeee;
+      --line: #dedede;
+      --line-dark: #2c2c2c;
+      --shadow: 0 18px 48px rgba(0, 0, 0, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .page {
+      width: min(1280px, calc(100vw - 42px));
+      margin: 0 auto;
+      padding: 32px 0 54px;
+    }
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1.24fr) minmax(320px, .76fr);
+      gap: 36px;
+      overflow: hidden;
+      padding: 30px 32px 28px;
+      border: 1px solid #cfcfca;
+      border-radius: 10px;
+      background:
+        linear-gradient(#e4e4df 1px, transparent 1px),
+        linear-gradient(90deg, #e4e4df 1px, transparent 1px),
+        #fbfbf8;
+      background-size: 28px 28px;
+      color: var(--ink);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, .05);
+    }
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 6px;
+      height: 100%;
+      background: var(--ink);
+    }
+    .hero::after {
+      content: "WEEKLY / TREND INTELLIGENCE";
+      position: absolute;
+      right: 18px;
+      bottom: 12px;
+      color: #a0a09a;
+      font: 11px/1.2 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+    }
+    .hero-topline {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 34px;
+    }
+    .report-chip,
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border: 1px solid var(--ink);
+      border-radius: 2px;
+      background: var(--ink);
+      color: #fff;
+      font: 11px/1 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .status-chip {
+      gap: 7px;
+      border-color: #c9c9c4;
+      background: rgba(255, 255, 255, .72);
+      color: #444;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #111;
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, .08);
+    }
+    .eyebrow {
+      margin: 0;
+      color: #70706b;
+      font: 11px/1.4 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      max-width: 680px;
+      font-family: Georgia, "Times New Roman", "Songti SC", serif;
+      font-size: 38px;
+      line-height: 1.16;
+      font-weight: 500;
+    }
+    h2 {
+      margin: 0;
+      font-size: 19px;
+      line-height: 1.35;
+    }
+    p { margin: 0; }
+    .period {
+      margin-top: 14px;
+      color: #555;
+      font: 12px/1.55 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .judgement {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      align-content: space-between;
+      min-height: 206px;
+      padding: 18px 18px 20px;
+      border: 1px solid #bebeb8;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, .86);
+      box-shadow: 8px 8px 0 rgba(0, 0, 0, .065);
+    }
+    .judgement-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: #6b6b66;
+      font: 11px/1.3 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .judgement-index {
+      color: #aaa9a4;
+    }
+    .judgement p {
+      margin-top: 28px;
+      color: #1a1a1a;
+      font-size: 17px;
+      line-height: 1.65;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .metric {
+      position: relative;
+      min-width: 0;
+      min-height: 106px;
+      padding: 14px 15px 16px;
+      border: 1px solid #d3d3ce;
+      border-radius: 6px;
+      background: var(--panel);
+      box-shadow: 0 7px 18px rgba(0, 0, 0, .025);
+    }
+    .metric::before {
+      content: "";
+      position: absolute;
+      top: -1px;
+      left: -1px;
+      width: 18px;
+      height: 3px;
+      background: #111;
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .metric strong {
+      display: block;
+      margin-top: 18px;
+      color: var(--ink);
+      font: 500 28px/1 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      line-height: 1;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .panel {
+      margin-top: 20px;
+      padding: 22px 24px 24px;
+      border: 1px solid #d5d5d0;
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, .035);
+    }
+    .section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 15px;
+    }
+    .section-head p {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+    .keyword-line {
+      max-width: 720px;
+      margin-top: 18px;
+      color: #595954;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .insight-list {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .insight-list li {
+      margin: 10px 0;
+      padding-left: 4px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+    }
+    table {
+      width: 100%;
+      min-width: 920px;
+      border-collapse: collapse;
+      background: #fff;
+    }
+    .compact table {
+      min-width: 560px;
+    }
+    th, td {
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+      text-align: left;
+    }
+    th {
+      background: #f3f3f0;
+      color: #4f4f4f;
+      font: 11px/1.3 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .rank {
+      width: 58px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .num {
+      text-align: right;
+      white-space: nowrap;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .score {
+      color: var(--ink);
+      font-weight: 800;
+    }
+    .main-cell {
+      min-width: 360px;
+      max-width: 520px;
+    }
+    .note-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--ink);
+      font-weight: 700;
+    }
+    .note-meta {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .note-desc {
+      margin-top: 6px;
+      color: #555;
+      font-size: 12px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 9px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      max-width: 160px;
+      min-height: 24px;
+      padding: 0 9px;
+      border: 1px solid #d6d6d6;
+      border-radius: 2px;
+      background: #fff;
+      color: #303030;
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .chip-dark {
+      border-color: var(--ink);
+      background: var(--ink);
+      color: #fff;
+    }
+    .chip-more {
+      background: #efefef;
+      color: var(--muted);
+    }
+    .thumb-wrap, .thumb {
+      width: 72px;
+      height: 72px;
+    }
+    .thumb-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 4px;
+      background: #efefef;
+    }
+    .thumb {
+      display: block;
+      object-fit: cover;
+    }
+    .thumb-fallback, .placeholder {
+      display: none;
+      position: absolute;
+      inset: 0;
+      place-items: center;
+      color: #777;
+      font-size: 12px;
+      background: repeating-linear-gradient(135deg, #ededed, #ededed 8px, #f8f8f8 8px, #f8f8f8 16px);
+    }
+    .thumb-wrap.is-missing img { display: none; }
+    .thumb-wrap.is-missing .thumb-fallback { display: grid; }
+    .placeholder {
+      position: static;
+      display: grid;
+      border-radius: 4px;
+    }
+    .tag-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr);
+      gap: 16px;
+    }
+    .tag-subgrid {
+      display: grid;
+      gap: 16px;
+    }
+    .category-grid {
+      display: grid;
+      gap: 10px;
+    }
+    .category-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #fafafa;
+    }
+    .category-card span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .category-card strong {
+      display: block;
+      margin: 4px 0 10px;
+      color: var(--ink);
+      font-size: 24px;
+      text-align: right;
+    }
+    .bar {
+      height: 5px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #dedede;
+    }
+    .bar i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: #111;
+    }
+    .recommend-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .recommend-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      background: #f9f9f7;
+      box-shadow: 4px 4px 0 rgba(0, 0, 0, .045);
+    }
+    .recommend-card span {
+      color: var(--ink);
+      font-weight: 800;
+    }
+    .recommend-card p {
+      margin-top: 8px;
+      color: #4a4a4a;
+      font-size: 13px;
+    }
+    .empty {
+      display: grid;
+      min-height: 120px;
+      place-items: center;
+      padding: 20px;
+      border: 1px dashed #cfcfcf;
+      border-radius: 5px;
+      color: var(--muted);
+      background: #fafafa;
+      text-align: center;
+    }
+    .muted { color: var(--muted); }
+    .footer {
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+    @media (max-width: 980px) {
+      .hero, .tag-layout { grid-template-columns: 1fr; }
+      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .recommend-grid { grid-template-columns: 1fr; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+      .section-head p { text-align: left; }
+    }
+    @media (max-width: 640px) {
+      .page { width: calc(100vw - 20px); padding-top: 12px; }
+      .hero, .panel { padding: 16px; border-radius: 14px; }
+      h1 { font-size: 24px; }
+      .metrics { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="hero-copy">
+        <div class="hero-topline">
+          <span class="report-chip">2026-W21</span>
+          <p class="eyebrow">HUANJIA XHS NAIL OPERATIONS</p>
+          <span class="status-chip"><i class="status-dot"></i> AI ASSISTED</span>
+        </div>
+        <h1>焕甲小红书美甲运营周报</h1>
+        <p class="period">周期：2026-05-18 至 2026-05-24 · 2026-W21</p>
+        <p class="keyword-line">本周核心关键词：氛围感美甲、夏天美甲、亮晶晶美甲、手上有璀璨星河、夏季美甲、清透感、醋酸美甲、渐变美甲</p>
+      </div>
+      <div class="judgement">
+        <div class="judgement-label">
+          <span>ALGORITHM INSIGHT</span>
+          <span class="judgement-index">NO. 01</span>
+        </div>
+        <p>本周“氛围感美甲、夏天美甲、亮晶晶美甲”更偏收藏决策型内容，适合沉淀为 AI 试戴模板与商家可承接款式。</p>
+      </div>
+    </header>
+
+    <section class="metrics" aria-label="本周概览">
+      <div class="metric"><span>本周采集笔记数</span><strong>4</strong></div>
+      <div class="metric"><span>本周总点赞数</span><strong>8,957</strong></div>
+      <div class="metric"><span>本周总收藏数</span><strong>6,392</strong></div>
+      <div class="metric"><span>本周总转发数</span><strong>542</strong></div>
+      <div class="metric"><span>平均点赞</span><strong>2239.2</strong></div>
+      <div class="metric"><span>平均收藏</span><strong>1598.0</strong></div>
+      <div class="metric"><span>平均转发</span><strong>135.5</strong></div>
+      <div class="metric"><span>无有效日期笔记</span><strong>0</strong></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>本周核心结论</h2>
+        <p>基于本周笔记互动、标签频次和榜单表现自动生成</p>
+      </div>
+      <ul class="insight-list"><li>本周高频标签集中在“氛围感美甲、夏天美甲、亮晶晶美甲、手上有璀璨星河、夏季美甲”，适合进入下周标题和话题词库。</li><li>标签结构中“场景类”占比最高，共命中 4 个高频标签，内容规划应优先围绕该方向展开。</li><li>收藏占总互动 40%，转发占总互动 3%；高收藏款更适合沉淀模板，高转发款更适合做传播内容。</li><li>收藏榜首为“太闪了！！每天低头看10086➕遍！”，可优先进入 AI 试戴模板候选池。</li></ul>
+    </section>
+
+    
+    <section class="panel">
+      <div class="section-head">
+        <h2>综合热度榜</h2>
+        <p>排名基于本周发布笔记，图片优先取 standard_nail_image。</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="rank">排名</th>
+              <th>缩略图</th>
+              <th>笔记</th>
+              <th class="num">点赞</th>
+              <th class="num">收藏</th>
+              <th class="num">分享</th>
+              <th class="num">综合热度</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="rank">1</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0aab43000000000802676c/6a0aab43000000000802676c_03.webp" alt="太闪了！！每天低头看10086➕遍！" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">太闪了！！每天低头看10086➕遍！</div>
+                <div class="note-meta">煎饼果子配美式 · 2026-05-18</div>
+                <div class="note-desc">#亮晶晶美甲[话题]# #手上有璀璨星河[话题]# #夏季美甲[话题]# #清透感[话题]#</div>
+                <div class="tag-row"><span class="chip">亮晶晶美甲</span><span class="chip">手上有璀璨星河</span><span class="chip">夏季美甲</span><span class="chip">清透感</span></div>
+              </td>
+              <td class="num">5,386</td>
+              <td class="num">3,921</td>
+              <td class="num">319</td>
+              <td class="num score">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">2</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0abc370000000007021df1/6a0abc370000000007021df1_08.webp" alt="薄荷沁夏🧼清爽感醋酸猫眼一秒入夏" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">薄荷沁夏🧼清爽感醋酸猫眼一秒入夏</div>
+                <div class="note-meta">天线宝宝说hello · 2026-05-18</div>
+                <div class="note-desc">我真的不会放弃做醋酸美甲的！！ 这次做了清爽的蓝绿色醋酸🩵 搭配薄荷绿渐变猫眼🫧指尖点缀泡泡珠 上手清透又降温 妥妥的夏日专属款式😙 已经迫不及待想搭个清爽眼妆出门晃悠了 但手残党选睫毛膏总翻车 要么苍蝇腿要么晕成熊猫眼 最近挖到原色波塔…</div>
+                <div class="tag-row"><span class="chip">氛围感美甲</span><span class="chip">醋酸美甲</span><span class="chip">渐变美甲</span><span class="chip">夏天美甲</span><span class="chip">猫眼美甲</span><span class="chip">气质美甲</span><span class="chip">薄荷绿美甲</span><span class="chip">ins美甲</span><span class="chip chip-more">+3</span></div>
+              </td>
+              <td class="num">1,758</td>
+              <td class="num">1,030</td>
+              <td class="num">85</td>
+              <td class="num score">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">3</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0a895f000000003603178d/6a0a895f000000003603178d_03.webp" alt="nail 💛淡人夏日嫩黄美甲 ‧₊˚" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">nail 💛淡人夏日嫩黄美甲 ‧₊˚</div>
+                <div class="note-meta">卡布小达 · 2026-05-18</div>
+                <div class="note-desc">喜欢黄色or粉色系美甲的姐妹看这款！ 这款真的很夏天很少女的配色呀～ 谁能拒绝一款小黄油蜜桃美甲！ 尤其这个颜色一点都不显黑！素素的又特别有氛围感～ 手控真的接受不了手变黑一丢丢的可能性 但是我又是常年美甲的人 做前擦一层高倍防晒真的有用…</div>
+                <div class="tag-row"><span class="chip">美甲款式</span><span class="chip">简约美甲</span><span class="chip">夏天美甲</span><span class="chip">黄色美甲</span><span class="chip">氛围感美甲</span><span class="chip">骆驼防晒霜</span><span class="chip">防晒推荐</span><span class="chip">骆驼户外光护美白防晒乳</span><span class="chip chip-more">+1</span></div>
+              </td>
+              <td class="num">1,038</td>
+              <td class="num">631</td>
+              <td class="num">41</td>
+              <td class="num score">675.8</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">4</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0acba1000000003701e3aa/6a0acba1000000003701e3aa_01.webp" alt="春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨</div>
+                <div class="note-meta">指尖轻语 · 2026-05-18</div>
+                <div class="note-desc">这种低饱和跳色美甲真的太适合春夏了🍃 奶fufu的马卡龙色系，温柔又显白，黄皮姐妹直接冲！ 跳色设计不单调，裸色带细闪的款式还超显手细，日常通勤、约会都能hold住～ 短甲姐妹也能完美驾驭，清清爽爽的，一整个温柔住了！ #春夏美甲[话题]…</div>
+                <div class="tag-row"><span class="chip">春夏美甲</span><span class="chip">跳色美甲</span><span class="chip">温柔风美甲</span><span class="chip">显白美甲</span><span class="chip">短甲美甲</span><span class="chip">通勤美甲</span><span class="chip">广州美甲</span><span class="chip">北京路美甲</span></div>
+              </td>
+              <td class="num">775</td>
+              <td class="num">810</td>
+              <td class="num">97</td>
+              <td class="num score">653.4</td>
+            </tr>
+            </tbody>
+        </table>
+      </div>
+    </section>
+    
+    <section class="panel">
+      <div class="section-head">
+        <h2>点赞榜</h2>
+        <p>排名基于本周发布笔记，图片优先取 standard_nail_image。</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="rank">排名</th>
+              <th>缩略图</th>
+              <th>笔记</th>
+              <th class="num">点赞</th>
+              <th class="num">收藏</th>
+              <th class="num">分享</th>
+              <th class="num">综合热度</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="rank">1</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0aab43000000000802676c/6a0aab43000000000802676c_03.webp" alt="太闪了！！每天低头看10086➕遍！" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">太闪了！！每天低头看10086➕遍！</div>
+                <div class="note-meta">煎饼果子配美式 · 2026-05-18</div>
+                <div class="note-desc">#亮晶晶美甲[话题]# #手上有璀璨星河[话题]# #夏季美甲[话题]# #清透感[话题]#</div>
+                <div class="tag-row"><span class="chip">亮晶晶美甲</span><span class="chip">手上有璀璨星河</span><span class="chip">夏季美甲</span><span class="chip">清透感</span></div>
+              </td>
+              <td class="num">5,386</td>
+              <td class="num">3,921</td>
+              <td class="num">319</td>
+              <td class="num score">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">2</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0abc370000000007021df1/6a0abc370000000007021df1_08.webp" alt="薄荷沁夏🧼清爽感醋酸猫眼一秒入夏" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">薄荷沁夏🧼清爽感醋酸猫眼一秒入夏</div>
+                <div class="note-meta">天线宝宝说hello · 2026-05-18</div>
+                <div class="note-desc">我真的不会放弃做醋酸美甲的！！ 这次做了清爽的蓝绿色醋酸🩵 搭配薄荷绿渐变猫眼🫧指尖点缀泡泡珠 上手清透又降温 妥妥的夏日专属款式😙 已经迫不及待想搭个清爽眼妆出门晃悠了 但手残党选睫毛膏总翻车 要么苍蝇腿要么晕成熊猫眼 最近挖到原色波塔…</div>
+                <div class="tag-row"><span class="chip">氛围感美甲</span><span class="chip">醋酸美甲</span><span class="chip">渐变美甲</span><span class="chip">夏天美甲</span><span class="chip">猫眼美甲</span><span class="chip">气质美甲</span><span class="chip">薄荷绿美甲</span><span class="chip">ins美甲</span><span class="chip chip-more">+3</span></div>
+              </td>
+              <td class="num">1,758</td>
+              <td class="num">1,030</td>
+              <td class="num">85</td>
+              <td class="num score">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">3</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0a895f000000003603178d/6a0a895f000000003603178d_03.webp" alt="nail 💛淡人夏日嫩黄美甲 ‧₊˚" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">nail 💛淡人夏日嫩黄美甲 ‧₊˚</div>
+                <div class="note-meta">卡布小达 · 2026-05-18</div>
+                <div class="note-desc">喜欢黄色or粉色系美甲的姐妹看这款！ 这款真的很夏天很少女的配色呀～ 谁能拒绝一款小黄油蜜桃美甲！ 尤其这个颜色一点都不显黑！素素的又特别有氛围感～ 手控真的接受不了手变黑一丢丢的可能性 但是我又是常年美甲的人 做前擦一层高倍防晒真的有用…</div>
+                <div class="tag-row"><span class="chip">美甲款式</span><span class="chip">简约美甲</span><span class="chip">夏天美甲</span><span class="chip">黄色美甲</span><span class="chip">氛围感美甲</span><span class="chip">骆驼防晒霜</span><span class="chip">防晒推荐</span><span class="chip">骆驼户外光护美白防晒乳</span><span class="chip chip-more">+1</span></div>
+              </td>
+              <td class="num">1,038</td>
+              <td class="num">631</td>
+              <td class="num">41</td>
+              <td class="num score">675.8</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">4</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0acba1000000003701e3aa/6a0acba1000000003701e3aa_01.webp" alt="春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨</div>
+                <div class="note-meta">指尖轻语 · 2026-05-18</div>
+                <div class="note-desc">这种低饱和跳色美甲真的太适合春夏了🍃 奶fufu的马卡龙色系，温柔又显白，黄皮姐妹直接冲！ 跳色设计不单调，裸色带细闪的款式还超显手细，日常通勤、约会都能hold住～ 短甲姐妹也能完美驾驭，清清爽爽的，一整个温柔住了！ #春夏美甲[话题]…</div>
+                <div class="tag-row"><span class="chip">春夏美甲</span><span class="chip">跳色美甲</span><span class="chip">温柔风美甲</span><span class="chip">显白美甲</span><span class="chip">短甲美甲</span><span class="chip">通勤美甲</span><span class="chip">广州美甲</span><span class="chip">北京路美甲</span></div>
+              </td>
+              <td class="num">775</td>
+              <td class="num">810</td>
+              <td class="num">97</td>
+              <td class="num score">653.4</td>
+            </tr>
+            </tbody>
+        </table>
+      </div>
+    </section>
+    
+    <section class="panel">
+      <div class="section-head">
+        <h2>收藏榜</h2>
+        <p>排名基于本周发布笔记，图片优先取 standard_nail_image。</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="rank">排名</th>
+              <th>缩略图</th>
+              <th>笔记</th>
+              <th class="num">点赞</th>
+              <th class="num">收藏</th>
+              <th class="num">分享</th>
+              <th class="num">综合热度</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="rank">1</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0aab43000000000802676c/6a0aab43000000000802676c_03.webp" alt="太闪了！！每天低头看10086➕遍！" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">太闪了！！每天低头看10086➕遍！</div>
+                <div class="note-meta">煎饼果子配美式 · 2026-05-18</div>
+                <div class="note-desc">#亮晶晶美甲[话题]# #手上有璀璨星河[话题]# #夏季美甲[话题]# #清透感[话题]#</div>
+                <div class="tag-row"><span class="chip">亮晶晶美甲</span><span class="chip">手上有璀璨星河</span><span class="chip">夏季美甲</span><span class="chip">清透感</span></div>
+              </td>
+              <td class="num">5,386</td>
+              <td class="num">3,921</td>
+              <td class="num">319</td>
+              <td class="num score">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">2</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0abc370000000007021df1/6a0abc370000000007021df1_08.webp" alt="薄荷沁夏🧼清爽感醋酸猫眼一秒入夏" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">薄荷沁夏🧼清爽感醋酸猫眼一秒入夏</div>
+                <div class="note-meta">天线宝宝说hello · 2026-05-18</div>
+                <div class="note-desc">我真的不会放弃做醋酸美甲的！！ 这次做了清爽的蓝绿色醋酸🩵 搭配薄荷绿渐变猫眼🫧指尖点缀泡泡珠 上手清透又降温 妥妥的夏日专属款式😙 已经迫不及待想搭个清爽眼妆出门晃悠了 但手残党选睫毛膏总翻车 要么苍蝇腿要么晕成熊猫眼 最近挖到原色波塔…</div>
+                <div class="tag-row"><span class="chip">氛围感美甲</span><span class="chip">醋酸美甲</span><span class="chip">渐变美甲</span><span class="chip">夏天美甲</span><span class="chip">猫眼美甲</span><span class="chip">气质美甲</span><span class="chip">薄荷绿美甲</span><span class="chip">ins美甲</span><span class="chip chip-more">+3</span></div>
+              </td>
+              <td class="num">1,758</td>
+              <td class="num">1,030</td>
+              <td class="num">85</td>
+              <td class="num score">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">3</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0acba1000000003701e3aa/6a0acba1000000003701e3aa_01.webp" alt="春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨</div>
+                <div class="note-meta">指尖轻语 · 2026-05-18</div>
+                <div class="note-desc">这种低饱和跳色美甲真的太适合春夏了🍃 奶fufu的马卡龙色系，温柔又显白，黄皮姐妹直接冲！ 跳色设计不单调，裸色带细闪的款式还超显手细，日常通勤、约会都能hold住～ 短甲姐妹也能完美驾驭，清清爽爽的，一整个温柔住了！ #春夏美甲[话题]…</div>
+                <div class="tag-row"><span class="chip">春夏美甲</span><span class="chip">跳色美甲</span><span class="chip">温柔风美甲</span><span class="chip">显白美甲</span><span class="chip">短甲美甲</span><span class="chip">通勤美甲</span><span class="chip">广州美甲</span><span class="chip">北京路美甲</span></div>
+              </td>
+              <td class="num">775</td>
+              <td class="num">810</td>
+              <td class="num">97</td>
+              <td class="num score">653.4</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">4</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0a895f000000003603178d/6a0a895f000000003603178d_03.webp" alt="nail 💛淡人夏日嫩黄美甲 ‧₊˚" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">nail 💛淡人夏日嫩黄美甲 ‧₊˚</div>
+                <div class="note-meta">卡布小达 · 2026-05-18</div>
+                <div class="note-desc">喜欢黄色or粉色系美甲的姐妹看这款！ 这款真的很夏天很少女的配色呀～ 谁能拒绝一款小黄油蜜桃美甲！ 尤其这个颜色一点都不显黑！素素的又特别有氛围感～ 手控真的接受不了手变黑一丢丢的可能性 但是我又是常年美甲的人 做前擦一层高倍防晒真的有用…</div>
+                <div class="tag-row"><span class="chip">美甲款式</span><span class="chip">简约美甲</span><span class="chip">夏天美甲</span><span class="chip">黄色美甲</span><span class="chip">氛围感美甲</span><span class="chip">骆驼防晒霜</span><span class="chip">防晒推荐</span><span class="chip">骆驼户外光护美白防晒乳</span><span class="chip chip-more">+1</span></div>
+              </td>
+              <td class="num">1,038</td>
+              <td class="num">631</td>
+              <td class="num">41</td>
+              <td class="num score">675.8</td>
+            </tr>
+            </tbody>
+        </table>
+      </div>
+    </section>
+    
+    <section class="panel">
+      <div class="section-head">
+        <h2>转发榜</h2>
+        <p>排名基于本周发布笔记，图片优先取 standard_nail_image。</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="rank">排名</th>
+              <th>缩略图</th>
+              <th>笔记</th>
+              <th class="num">点赞</th>
+              <th class="num">收藏</th>
+              <th class="num">分享</th>
+              <th class="num">综合热度</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="rank">1</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0aab43000000000802676c/6a0aab43000000000802676c_03.webp" alt="太闪了！！每天低头看10086➕遍！" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">太闪了！！每天低头看10086➕遍！</div>
+                <div class="note-meta">煎饼果子配美式 · 2026-05-18</div>
+                <div class="note-desc">#亮晶晶美甲[话题]# #手上有璀璨星河[话题]# #夏季美甲[话题]# #清透感[话题]#</div>
+                <div class="tag-row"><span class="chip">亮晶晶美甲</span><span class="chip">手上有璀璨星河</span><span class="chip">夏季美甲</span><span class="chip">清透感</span></div>
+              </td>
+              <td class="num">5,386</td>
+              <td class="num">3,921</td>
+              <td class="num">319</td>
+              <td class="num score">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">2</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0acba1000000003701e3aa/6a0acba1000000003701e3aa_01.webp" alt="春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨</div>
+                <div class="note-meta">指尖轻语 · 2026-05-18</div>
+                <div class="note-desc">这种低饱和跳色美甲真的太适合春夏了🍃 奶fufu的马卡龙色系，温柔又显白，黄皮姐妹直接冲！ 跳色设计不单调，裸色带细闪的款式还超显手细，日常通勤、约会都能hold住～ 短甲姐妹也能完美驾驭，清清爽爽的，一整个温柔住了！ #春夏美甲[话题]…</div>
+                <div class="tag-row"><span class="chip">春夏美甲</span><span class="chip">跳色美甲</span><span class="chip">温柔风美甲</span><span class="chip">显白美甲</span><span class="chip">短甲美甲</span><span class="chip">通勤美甲</span><span class="chip">广州美甲</span><span class="chip">北京路美甲</span></div>
+              </td>
+              <td class="num">775</td>
+              <td class="num">810</td>
+              <td class="num">97</td>
+              <td class="num score">653.4</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">3</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0abc370000000007021df1/6a0abc370000000007021df1_08.webp" alt="薄荷沁夏🧼清爽感醋酸猫眼一秒入夏" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">薄荷沁夏🧼清爽感醋酸猫眼一秒入夏</div>
+                <div class="note-meta">天线宝宝说hello · 2026-05-18</div>
+                <div class="note-desc">我真的不会放弃做醋酸美甲的！！ 这次做了清爽的蓝绿色醋酸🩵 搭配薄荷绿渐变猫眼🫧指尖点缀泡泡珠 上手清透又降温 妥妥的夏日专属款式😙 已经迫不及待想搭个清爽眼妆出门晃悠了 但手残党选睫毛膏总翻车 要么苍蝇腿要么晕成熊猫眼 最近挖到原色波塔…</div>
+                <div class="tag-row"><span class="chip">氛围感美甲</span><span class="chip">醋酸美甲</span><span class="chip">渐变美甲</span><span class="chip">夏天美甲</span><span class="chip">猫眼美甲</span><span class="chip">气质美甲</span><span class="chip">薄荷绿美甲</span><span class="chip">ins美甲</span><span class="chip chip-more">+3</span></div>
+              </td>
+              <td class="num">1,758</td>
+              <td class="num">1,030</td>
+              <td class="num">85</td>
+              <td class="num score">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">4</td>
+              <td><div class="thumb-wrap"><img class="thumb" src="/openclaw-assets/20260520/images/6a0a895f000000003603178d/6a0a895f000000003603178d_03.webp" alt="nail 💛淡人夏日嫩黄美甲 ‧₊˚" loading="lazy" onerror="this.parentElement.classList.add('is-missing')" /><span class="thumb-fallback">无图</span></div></td>
+              <td class="main-cell">
+                <div class="note-title">nail 💛淡人夏日嫩黄美甲 ‧₊˚</div>
+                <div class="note-meta">卡布小达 · 2026-05-18</div>
+                <div class="note-desc">喜欢黄色or粉色系美甲的姐妹看这款！ 这款真的很夏天很少女的配色呀～ 谁能拒绝一款小黄油蜜桃美甲！ 尤其这个颜色一点都不显黑！素素的又特别有氛围感～ 手控真的接受不了手变黑一丢丢的可能性 但是我又是常年美甲的人 做前擦一层高倍防晒真的有用…</div>
+                <div class="tag-row"><span class="chip">美甲款式</span><span class="chip">简约美甲</span><span class="chip">夏天美甲</span><span class="chip">黄色美甲</span><span class="chip">氛围感美甲</span><span class="chip">骆驼防晒霜</span><span class="chip">防晒推荐</span><span class="chip">骆驼户外光护美白防晒乳</span><span class="chip chip-more">+1</span></div>
+              </td>
+              <td class="num">1,038</td>
+              <td class="num">631</td>
+              <td class="num">41</td>
+              <td class="num score">675.8</td>
+            </tr>
+            </tbody>
+        </table>
+      </div>
+    </section>
+    
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>标签趋势分析</h2>
+        <p>高频标签 Top 20 · 高互动标签 Top 10</p>
+      </div>
+      <div class="tag-layout">
+        <div class="tag-subgrid">
+          <div>
+            <h3>高频标签 TOP 20</h3>
+            
+    <div class="table-wrap compact">
+      <table>
+        <thead>
+          <tr>
+            <th class="rank">排名</th>
+            <th>标签</th>
+            <th>分类</th>
+            <th class="num">出现次数</th>
+            <th class="num">平均热度</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td class="rank">1</td>
+              <td><span class="chip chip-dark">氛围感美甲</span></td>
+              <td>风格类</td>
+              <td class="num">2</td>
+              <td class="num">904.0</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">2</td>
+              <td><span class="chip chip-dark">夏天美甲</span></td>
+              <td>场景类</td>
+              <td class="num">2</td>
+              <td class="num">904.0</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">3</td>
+              <td><span class="chip chip-dark">亮晶晶美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">4</td>
+              <td><span class="chip chip-dark">手上有璀璨星河</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">5</td>
+              <td><span class="chip chip-dark">夏季美甲</span></td>
+              <td>场景类</td>
+              <td class="num">1</td>
+              <td class="num">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">6</td>
+              <td><span class="chip chip-dark">清透感</span></td>
+              <td>风格类</td>
+              <td class="num">1</td>
+              <td class="num">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">7</td>
+              <td><span class="chip chip-dark">醋酸美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">8</td>
+              <td><span class="chip chip-dark">渐变美甲</span></td>
+              <td>工艺类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">9</td>
+              <td><span class="chip chip-dark">猫眼美甲</span></td>
+              <td>工艺类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">10</td>
+              <td><span class="chip chip-dark">气质美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">11</td>
+              <td><span class="chip chip-dark">薄荷绿美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">12</td>
+              <td><span class="chip chip-dark">ins美甲</span></td>
+              <td>风格类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">13</td>
+              <td><span class="chip chip-dark">彩妆好物</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">14</td>
+              <td><span class="chip chip-dark">原色波塔睫毛膏</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">15</td>
+              <td><span class="chip chip-dark">睫毛膏推荐</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">16</td>
+              <td><span class="chip chip-dark">美甲款式</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">675.8</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">17</td>
+              <td><span class="chip chip-dark">简约美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">675.8</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">18</td>
+              <td><span class="chip chip-dark">黄色美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">675.8</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">19</td>
+              <td><span class="chip chip-dark">骆驼防晒霜</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">675.8</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">20</td>
+              <td><span class="chip chip-dark">防晒推荐</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">675.8</td>
+            </tr>
+            </tbody>
+      </table>
+    </div>
+    
+          </div>
+          <div>
+            <h3>高互动标签 TOP 10</h3>
+            
+    <div class="table-wrap compact">
+      <table>
+        <thead>
+          <tr>
+            <th class="rank">排名</th>
+            <th>标签</th>
+            <th>分类</th>
+            <th class="num">出现次数</th>
+            <th class="num">平均热度</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td class="rank">1</td>
+              <td><span class="chip chip-dark">亮晶晶美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">2</td>
+              <td><span class="chip chip-dark">手上有璀璨星河</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">3</td>
+              <td><span class="chip chip-dark">夏季美甲</span></td>
+              <td>场景类</td>
+              <td class="num">1</td>
+              <td class="num">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">4</td>
+              <td><span class="chip chip-dark">清透感</span></td>
+              <td>风格类</td>
+              <td class="num">1</td>
+              <td class="num">3786.6</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">5</td>
+              <td><span class="chip chip-dark">醋酸美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">6</td>
+              <td><span class="chip chip-dark">渐变美甲</span></td>
+              <td>工艺类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">7</td>
+              <td><span class="chip chip-dark">猫眼美甲</span></td>
+              <td>工艺类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">8</td>
+              <td><span class="chip chip-dark">气质美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">9</td>
+              <td><span class="chip chip-dark">薄荷绿美甲</span></td>
+              <td>未分类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            
+            <tr>
+              <td class="rank">10</td>
+              <td><span class="chip chip-dark">ins美甲</span></td>
+              <td>风格类</td>
+              <td class="num">1</td>
+              <td class="num">1132.2</td>
+            </tr>
+            </tbody>
+      </table>
+    </div>
+    
+          </div>
+        </div>
+        <div>
+          <h3>标签分类</h3>
+          <div class="category-grid">
+            <div class="category-card">
+              <span>场景类</span>
+              <strong>4</strong>
+              <div class="bar"><i style="width: 33%"></i></div>
+            </div>
+            
+            <div class="category-card">
+              <span>风格类</span>
+              <strong>4</strong>
+              <div class="bar"><i style="width: 33%"></i></div>
+            </div>
+            
+            <div class="category-card">
+              <span>工艺类</span>
+              <strong>2</strong>
+              <div class="bar"><i style="width: 17%"></i></div>
+            </div>
+            
+            <div class="category-card">
+              <span>功能类</span>
+              <strong>1</strong>
+              <div class="bar"><i style="width: 8%"></i></div>
+            </div>
+            
+            <div class="category-card">
+              <span>甲型类</span>
+              <strong>1</strong>
+              <div class="bar"><i style="width: 8%"></i></div>
+            </div>
+            </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>内容运营建议</h2>
+        <p>面向下周内容、模板和商家承接动作</p>
+      </div>
+      <div class="recommend-grid">
+        <article class="recommend-card">
+          <span>下周优先内容</span>
+          <p>围绕“氛围感美甲 + 渐变美甲 + 夏天美甲”制作 3-5 条款式内容，主打可参考、可试戴、可到店复刻。</p>
+        </article>
+        
+        <article class="recommend-card">
+          <span>小红书标题关键词</span>
+          <p>标题中继续使用“氛围感美甲、夏天美甲、亮晶晶美甲、手上有璀璨星河、夏季美甲、清透感、醋酸美甲、渐变美甲”，并与“6 款 / 适合 / 显白 / 通勤”等决策词组合。</p>
+        </article>
+        
+        <article class="recommend-card">
+          <span>AI 试戴模板</span>
+          <p>优先把收藏榜中的“太闪了！！每天低头看10086➕遍！；薄荷沁夏🧼清爽感醋酸猫眼一秒入夏；春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨”加入模板候选库，用于试戴入口承接。</p>
+        </article>
+        
+        <article class="recommend-card">
+          <span>商家上架方向</span>
+          <p>给商家端推荐“亮晶晶美甲、手上有璀璨星河、夏季美甲、清透感、醋酸美甲”相关款式，要求上传真实顾客图和可预约价格。</p>
+        </article>
+        
+        <article class="recommend-card">
+          <span>合集与互动内容</span>
+          <p>将“太闪了！！每天低头看10086➕遍！；春夏跳色美甲｜低饱和马卡龙，温柔到骨子里✨；薄荷沁夏🧼清爽感醋酸猫眼一秒入夏”拆成多款合集、二选一投票或避坑攻略，放大转发优势。</p>
+        </article>
+        
+        <article class="recommend-card">
+          <span>不建议优先投入</span>
+          <p>低频且未进入互动榜的零散标签暂不单独投入，先跟随高频高互动方向。</p>
+        </article>
+        </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>下周行动清单</h2>
+        <p>可直接拆分给运营、内容和商家侧执行</p>
+      </div>
+      <ol class="insight-list"><li>选取本周收藏数最高的 4 个款式，进入 AI 试戴模板候选库。</li><li>用“氛围感美甲 + 夏天美甲 + 亮晶晶美甲”方向制作 3 条小红书内容，标题突出显白、通勤或短甲适配。</li><li>对转发榜前 3 条内容做二次仿写，优先改造成合集、测评或投票。</li><li>给商家端推荐 4 个高收藏/高热度款式方向，并要求上传实拍案例。</li><li>设计一个“本周最适合上班族的 6 款美甲”专题，优先使用“氛围感美甲 + 夏天美甲 + 亮晶晶美甲”相关款式。</li></ol>
+    </section>
+
+    <p class="footer">生成时间：2026-06-02 09:52 · 数据源日期：2026-05-20 · 静态文件：xhs_weekly_nail_report.html</p>
+  </main>
+</body>
+</html>

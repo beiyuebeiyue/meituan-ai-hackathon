@@ -94,7 +94,7 @@ export function DrawerModulePill({
   const isDarkMode = useIsDarkMode();
   const toneStyle =
     tone === "success"
-      ? { backgroundColor: isDarkMode ? "rgba(94, 214, 139, 0.16)" : "#e8f6ee", color: isDarkMode ? "#7bd99e" : "#2d8a52" }
+      ? { backgroundColor: colors.accentSoft, color: colors.accent }
       : tone === "danger"
         ? { backgroundColor: colors.dangerSoft, color: colors.dangerText }
         : tone === "muted"

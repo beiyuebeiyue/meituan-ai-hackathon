@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from "react-native";
-import { useThemeColors } from "../utils/theme";
+import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 type PrimaryButtonProps = {
   label: string;
@@ -12,6 +12,8 @@ type PrimaryButtonProps = {
 
 export function PrimaryButton({ label, onPress, disabled, loading, variant = "filled", style }: PrimaryButtonProps) {
   const colors = useThemeColors();
+  const isDark = useIsDarkMode();
+  const filledContentColor = isDark ? "#111111" : "#ffffff";
 
   return (
     <Pressable
@@ -25,9 +27,9 @@ export function PrimaryButton({ label, onPress, disabled, loading, variant = "fi
       disabled={disabled || loading}
     >
       {loading ? (
-        <ActivityIndicator color={variant === "ghost" ? colors.accent : "white"} />
+        <ActivityIndicator color={variant === "ghost" ? colors.accent : filledContentColor} />
       ) : (
-        <Text style={[styles.label, { color: variant === "ghost" ? colors.accent : "white" }]}>{label}</Text>
+        <Text style={[styles.label, { color: variant === "ghost" ? colors.accent : filledContentColor }]}>{label}</Text>
       )}
     </Pressable>
   );

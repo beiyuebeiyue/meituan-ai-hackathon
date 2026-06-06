@@ -698,18 +698,16 @@ export function StylePreviewScreen() {
                     style={[
                       styles.verifiedBadge,
                       {
-                        backgroundColor: isDark
-                          ? "rgba(56, 189, 122, 0.16)"
-                          : "#e9f8ef",
+                        backgroundColor: colors.accentSoft,
                       },
                     ]}
                   >
                     <Ionicons
                       name="shield-checkmark"
                       size={13}
-                      color="#28a45f"
+                      color={colors.accent}
                     />
-                    <Text style={styles.verifiedBadgeText}>真实消费</Text>
+                    <Text style={[styles.verifiedBadgeText, { color: colors.accent }]}>真实消费</Text>
                   </View>
                 ) : null}
                 <Text style={[styles.publishMeta, { color: colors.subtext }]}>
@@ -807,9 +805,7 @@ export function StylePreviewScreen() {
                               style={[
                                 styles.merchantCommentBadge,
                                 {
-                                  backgroundColor: isDark
-                                    ? "rgba(240, 139, 109, 0.14)"
-                                    : "#ffe5da",
+                                  backgroundColor: colors.accentSoft,
                                   color: colors.accent,
                                 },
                               ]}
@@ -822,9 +818,7 @@ export function StylePreviewScreen() {
                               style={[
                                 styles.mineBadge,
                                 {
-                                  backgroundColor: isDark
-                                    ? "rgba(240, 139, 109, 0.12)"
-                                    : colors.accentSoft,
+                                  backgroundColor: colors.accentSoft,
                                   color: colors.accent,
                                 },
                               ]}
@@ -837,10 +831,8 @@ export function StylePreviewScreen() {
                               style={[
                                 styles.authorBadge,
                                 {
-                                  backgroundColor: isDark
-                                    ? "rgba(255, 87, 87, 0.12)"
-                                    : "#ffe8e3",
-                                  color: "#ff7e7e",
+                                  backgroundColor: colors.accentSoft,
+                                  color: colors.accent,
                                 },
                               ]}
                             >
@@ -1418,7 +1410,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   verifiedBadgeText: {
-    color: "#28a45f",
     fontSize: 12,
     fontWeight: "900",
   },

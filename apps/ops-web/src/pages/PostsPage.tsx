@@ -4,7 +4,32 @@ import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
 import { api, OpsPost, resolveAssetUrl } from "../api/client";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
+const POSTS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type PostsCacheEntry = {
+  items: OpsPost[];
+  total: number;
+  cachedAt: number;
+};
+
+const postsPageCache = new Map<string, PostsCacheEntry>();
+const preloadedPostImages = new Set<string>();
+
+function postsCacheKey(query: string, page: number) {
+  return JSON.stringify({ query, page, pageSize: PAGE_SIZE });
+}
+
+function preloadPostImages(items: OpsPost[]) {
+  items.forEach((item) => {
+    const url = resolveAssetUrl(item.image_url);
+    if (!url || preloadedPostImages.has(url)) return;
+    preloadedPostImages.add(url);
+    const image = new window.Image();
+    image.decoding = "async";
+    image.src = url;
+  });
+}
 
 export function PostsPage() {
   const { message } = App.useApp();
@@ -16,18 +41,31 @@ export function PostsPage() {
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<OpsPost | null>(null);
 
-  const loadPosts = useCallback(async () => {
+  const applyPosts = useCallback((items: OpsPost[], totalCount: number) => {
+    setPosts(items);
+    setTotal(totalCount);
+    preloadPostImages(items);
+  }, []);
+
+  const loadPosts = useCallback(async (forceRefresh = false) => {
+    const key = postsCacheKey(query, page);
+    const cached = postsPageCache.get(key);
+    if (!forceRefresh && cached && Date.now() - cached.cachedAt < POSTS_CACHE_TTL_MS) {
+      applyPosts(cached.items, cached.total);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await api.getPosts(query, PAGE_SIZE, (page - 1) * PAGE_SIZE);
-      setPosts(data.items);
-      setTotal(data.total);
+      postsPageCache.set(key, { items: data.items, total: data.total, cachedAt: Date.now() });
+      applyPosts(data.items, data.total);
     } catch (error) {
       message.error(error instanceof Error ? error.message : "加载失败");
     } finally {
       setLoading(false);
     }
-  }, [message, page, query]);
+  }, [applyPosts, message, page, query]);
 
   useEffect(() => {
     loadPosts();
@@ -64,7 +102,7 @@ export function PostsPage() {
       title: "类型",
       dataIndex: "author_role",
       width: 100,
-      render: (value: string) => (value === "merchant" ? "商家用户" : "用户"),
+      render: (value: string) => (value === "merchant" ? "商家" : "用户"),
     },
     {
       title: "门店",
@@ -117,7 +155,7 @@ export function PostsPage() {
           <Button type="primary" onClick={runSearch}>
             搜索
           </Button>
-          <Button icon={<ReloadOutlined />} onClick={loadPosts}>
+          <Button icon={<ReloadOutlined />} onClick={() => loadPosts(true)}>
             刷新
           </Button>
         </Space.Compact>
@@ -150,7 +188,7 @@ export function PostsPage() {
               <Descriptions.Item label="作者">
                 {selected.author_name}（UID {selected.author_uid}）
               </Descriptions.Item>
-              <Descriptions.Item label="作者类型">{selected.author_role === "merchant" ? "商家用户" : "用户"}</Descriptions.Item>
+              <Descriptions.Item label="作者类型">{selected.author_role === "merchant" ? "商家" : "用户"}</Descriptions.Item>
               <Descriptions.Item label="门店">{selected.shop_name || "-"}</Descriptions.Item>
               <Descriptions.Item label="城市">{selected.shop_city || "-"}</Descriptions.Item>
               <Descriptions.Item label="状态">{selected.is_hidden ? "隐藏" : "公开"}</Descriptions.Item>

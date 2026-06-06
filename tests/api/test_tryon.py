@@ -37,6 +37,9 @@ def test_tryon_job_success_and_failure(client, db_session, image_factory, app_en
     db_session.refresh(style)
 
     from app.routers.tryon import tryon_service
+    import app.tasks.tryon_tasks as tryon_tasks
+
+    monkeypatch.setattr(tryon_tasks, "TryOnService", lambda: tryon_service)
 
     detect_calls = []
 
@@ -119,7 +122,12 @@ def test_tryon_job_success_and_failure(client, db_session, image_factory, app_en
         "generate_tryon",
         lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("mock failure")),
     )
-    with image_factory("hand-fail.png").open("rb") as hand_file:
+    monkeypatch.setattr(
+        tryon_service,
+        "_generate_preview_fallback",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("fallback failure")),
+    )
+    with image_factory("hand-fail.png", color=(180, 120, 120)).open("rb") as hand_file:
         failed_response = client.post(
             "/api/v1/tryon/jobs",
             headers={"Authorization": f"Bearer {token}"},
@@ -130,7 +138,7 @@ def test_tryon_job_success_and_failure(client, db_session, image_factory, app_en
     failed_status = client.get(f"/api/v1/tryon/jobs/{failed_job_id}", headers={"Authorization": f"Bearer {token}"})
     assert failed_status.status_code == 200
     assert failed_status.json()["status"] == "failed"
-    assert "mock failure" in failed_status.json()["error_message"]
+    assert "fallback failure" in failed_status.json()["error_message"]
 
 
 def test_remote_gpu_tryon_receives_cached_artifacts(client, db_session, image_factory, app_env, monkeypatch):

@@ -430,8 +430,8 @@ export function MarketShopDetailScreen() {
           <View style={styles.infoTopRow}>
             {rating ? (
               <View style={styles.ratingWrap}>
-                <Ionicons name="star" size={15} color="#ff6b26" />
-                <Text style={styles.ratingText}>{rating}</Text>
+                <Ionicons name="star" size={15} color={colors.text} />
+                <Text style={[styles.ratingText, { color: colors.text }]}>{rating}</Text>
               </View>
             ) : null}
             <Text style={[styles.distanceText, { color: colors.subtext }]}>
@@ -696,7 +696,7 @@ export function MarketShopDetailScreen() {
                           <Ionicons
                             name="heart"
                             size={14}
-                            color={item.is_liked ? "#ff6b8a" : colors.subtext}
+                            color={item.is_liked ? colors.accent : colors.subtext}
                           />
                           <Text
                             style={[
@@ -762,14 +762,14 @@ export function MarketShopDetailScreen() {
           <Pressable
             style={[
               styles.bottomBookButton,
-              { backgroundColor: canBookShop ? "#596047" : colors.surfaceAlt },
+              { backgroundColor: canBookShop ? colors.accent : colors.surfaceAlt },
             ]}
             onPress={openBooking}
           >
             <Text
               style={[
                 styles.bottomBookText,
-                { color: canBookShop ? "#ffe5df" : colors.subtext },
+                { color: canBookShop ? (isDark ? "#111111" : "#ffffff") : colors.subtext },
               ]}
             >
               立即预约
@@ -971,8 +971,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 9,
     paddingVertical: 4,
-    color: "#ff6b26",
-    backgroundColor: "rgba(255,107,38,0.12)",
+    color: "#111111",
+    backgroundColor: "#eeeeee",
     fontSize: 12,
     fontWeight: "900",
   },
@@ -981,8 +981,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 9,
     paddingVertical: 4,
-    color: "#a66b21",
-    backgroundColor: "rgba(245,188,77,0.18)",
+    color: "#111111",
+    backgroundColor: "#eeeeee",
     fontSize: 12,
     fontWeight: "900",
   },
@@ -992,7 +992,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingText: {
-    color: "#ff6b26",
     fontSize: 16,
     fontWeight: "900",
   },
@@ -1141,7 +1140,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(255,105,75,0.12)",
+    backgroundColor: "#eeeeee",
   },
   verifiedBadgeText: {
     fontSize: 11,

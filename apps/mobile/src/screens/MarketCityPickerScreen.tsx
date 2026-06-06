@@ -84,7 +84,7 @@ export function MarketCityPickerScreen() {
                 { backgroundColor: colors.surface },
               ]}
             >
-              <Ionicons name="location" size={22} color="#1687ff" />
+              <Ionicons name="location" size={22} color={colors.text} />
               <Text style={[styles.mapPickText, { color: colors.text }]}>
                 地图选点
               </Text>
@@ -105,7 +105,7 @@ export function MarketCityPickerScreen() {
               >
                 国内城市
               </Text>
-              <View style={styles.yellowUnderline} />
+              <View style={[styles.yellowUnderline, { backgroundColor: colors.accent }]} />
             </View>
             <Text style={[styles.topTab, { color: colors.text }]}>
               海外地区
@@ -260,7 +260,6 @@ const styles = StyleSheet.create({
     width: 72,
     height: 7,
     borderRadius: 999,
-    backgroundColor: "#ffe447",
     zIndex: -1,
   },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 80 },

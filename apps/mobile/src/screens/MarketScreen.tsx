@@ -128,8 +128,8 @@ export function MarketScreen() {
           <View style={styles.ratingRow}>
             {rating ? (
               <>
-                <Ionicons name="star" size={14} color="#ff6b26" />
-                <Text style={styles.ratingText}>{rating}</Text>
+                <Ionicons name="star" size={14} color={colors.text} />
+                <Text style={[styles.ratingText, { color: colors.text }]}>{rating}</Text>
               </>
             ) : null}
             {priceAndTime ? (
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
-  ratingText: { color: "#ff6b26", fontSize: 15, fontWeight: "900" },
+  ratingText: { fontSize: 15, fontWeight: "900" },
   claimBadge: {
     alignSelf: "flex-start",
     flexDirection: "row",

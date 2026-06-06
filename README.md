@@ -1,3 +1,13 @@
+---
+title: Meituan AI Hackathon
+emoji: 💅
+colorFrom: pink
+colorTo: yellow
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 焕甲
 
 焕甲是一个面向美团 AI 黑客松的美甲试戴 MVP，当前包含用户端、商家端、FastAPI 后端、运营后台和数据脚本。

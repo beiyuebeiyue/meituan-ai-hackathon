@@ -113,7 +113,7 @@ export function MerchantTrendNotificationsScreen() {
                 },
               ]}
             >
-              {item.can_do_style ? "已登记可做" : "我能做"}
+              {item.can_do_style ? "已登记可做" : "我也能做"}
             </Text>
           </Pressable>
         </View>
@@ -134,7 +134,7 @@ export function MerchantTrendNotificationsScreen() {
         <View style={styles.headerCopy}>
           <Text style={[styles.title, { color: colors.text }]}>运营推送</Text>
           <Text style={[styles.subtitle, { color: colors.subtext }]}>
-            选择你能做的手工甲。用户焕甲后选店时，已登记门店会优先展示。
+            选择你也能做的手工甲。用户焕甲后选店时，已登记门店会优先展示。
           </Text>
         </View>
         {query.isLoading ? (

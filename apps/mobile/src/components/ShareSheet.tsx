@@ -8,9 +8,9 @@ type ShareSheetProps = {
 };
 
 const SHARE_TARGETS = [
-  { key: "wechat", label: "微信", mark: "微", background: "#1aad19" },
+  { key: "wechat", label: "微信", mark: "微", background: "#111111" },
   { key: "douyin", label: "抖音", mark: "抖", background: "#111216" },
-  { key: "xiaohongshu", label: "小红书", mark: "书", background: "#ff2442" },
+  { key: "xiaohongshu", label: "小红书", mark: "书", background: "#111111" },
 ] as const;
 
 export function ShareSheet({ visible, onClose }: ShareSheetProps) {

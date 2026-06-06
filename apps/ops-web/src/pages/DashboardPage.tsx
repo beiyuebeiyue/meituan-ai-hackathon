@@ -14,6 +14,39 @@ import {
 import { api, OpsAnalyticsOverview, OpsAnalyticsRankItem, resolveAssetUrl } from "../api/client";
 
 type TrendMetric = "recommendation_clicks" | "tryon_completed" | "booking_submits" | "completed_orders" | "revenue";
+const ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type AnalyticsCacheEntry = {
+  data: OpsAnalyticsOverview;
+  cachedAt: number;
+};
+
+const analyticsOverviewCache = new Map<string, AnalyticsCacheEntry>();
+const analyticsOverviewRequests = new Map<string, Promise<OpsAnalyticsOverview>>();
+
+function analyticsCacheKey(range: [string, string] | undefined) {
+  return range ? `${range[0]}:${range[1]}` : "default";
+}
+
+function isFresh(cachedAt: number) {
+  return Date.now() - cachedAt < ANALYTICS_CACHE_TTL_MS;
+}
+
+function loadAnalyticsOverview(startDate: string | undefined, endDate: string | undefined, key: string) {
+  const existingRequest = analyticsOverviewRequests.get(key);
+  if (existingRequest) return existingRequest;
+  const request = api
+    .getAnalyticsOverview(startDate, endDate)
+    .then((data) => {
+      analyticsOverviewCache.set(key, { data, cachedAt: Date.now() });
+      return data;
+    })
+    .finally(() => {
+      analyticsOverviewRequests.delete(key);
+    });
+  analyticsOverviewRequests.set(key, request);
+  return request;
+}
 
 const trendOptions = [
   { label: "推荐点击", value: "recommendation_clicks" },
@@ -227,17 +260,40 @@ function RankingTables({ analytics }: { analytics: OpsAnalyticsOverview }) {
 
 export function DashboardPage() {
   const { message } = App.useApp();
-  const [analytics, setAnalytics] = useState<OpsAnalyticsOverview | null>(null);
   const [analyticsRange, setAnalyticsRange] = useState<[string, string] | undefined>();
-  const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState<OpsAnalyticsOverview | null>(() => {
+    const cached = analyticsOverviewCache.get(analyticsCacheKey(undefined));
+    return cached?.data ?? null;
+  });
+  const [loading, setLoading] = useState(() => !analyticsOverviewCache.get(analyticsCacheKey(undefined)));
 
   useEffect(() => {
-    setLoading(true);
-    api
-      .getAnalyticsOverview(analyticsRange?.[0], analyticsRange?.[1])
-      .then(setAnalytics)
-      .catch((error) => message.error(error instanceof Error ? error.message : "加载失败"))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    const key = analyticsCacheKey(analyticsRange);
+    const cached = analyticsOverviewCache.get(key);
+    if (cached && isFresh(cached.cachedAt)) {
+      setAnalytics(cached.data);
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoading(!cached);
+    if (cached) setAnalytics(cached.data);
+    loadAnalyticsOverview(analyticsRange?.[0], analyticsRange?.[1], key)
+      .then((data) => {
+        if (!cancelled) setAnalytics(data);
+      })
+      .catch((error) => {
+        if (!cancelled) message.error(error instanceof Error ? error.message : "加载失败");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [analyticsRange, message]);
 
   if (loading) return <Spin />;
@@ -245,28 +301,22 @@ export function DashboardPage() {
 
   return (
     <Space direction="vertical" size={20} className="page-stack analysis-page ops-command-page">
-      <div className="ops-command-hero">
-        <div>
-          <Typography.Title level={3} style={{ margin: 0 }}>
-            焕甲核心转化战情页
-          </Typography.Title>
-          <Typography.Text type="secondary">
-            跟踪 AI 推荐、试戴、预约与成交链路。曝光/点击数据从埋点启用后统计。
-          </Typography.Text>
-        </div>
-        <Space wrap>
+      <div className="ops-command-toolbar">
+        <Space wrap size={[8, 8]} className="ops-command-toolbar-meta">
+          <Tag>
+            统计区间 {analytics.start_date} 至 {analytics.end_date}
+          </Tag>
+          <Tag icon={<ClockCircleOutlined />} color="default">
+            更新 {formatDateTime(analytics.generated_at)}
+          </Tag>
+        </Space>
+        <Space wrap className="ops-command-toolbar-actions">
           <DatePicker.RangePicker
             suffixIcon={<CalendarOutlined />}
             onChange={(_, dateStrings) => {
               setAnalyticsRange(dateStrings[0] && dateStrings[1] ? [dateStrings[0], dateStrings[1]] : undefined);
             }}
           />
-          <Tag>
-            {analytics.start_date} 至 {analytics.end_date}
-          </Tag>
-          <Tag icon={<ClockCircleOutlined />} color="default">
-            更新 {formatDateTime(analytics.generated_at)}
-          </Tag>
         </Space>
       </div>
 

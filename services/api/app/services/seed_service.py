@@ -60,6 +60,82 @@ class SeedService:
         self.settings = get_settings()
         self.job_logs = JobLogService()
 
+    def ensure_packaged_seed_styles(self, db: Session, author_user_id: str | None = None) -> dict[str, object]:
+        nails_dir = self.settings.packaged_seed_path / "nails"
+        if not nails_dir.exists():
+            return {"created_count": 0, "updated_count": 0, "missing_dir": str(nails_dir)}
+
+        created = 0
+        updated = 0
+        image_paths = sorted(
+            path
+            for path in nails_dir.iterdir()
+            if path.is_file() and path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+        )
+        for index, image_path in enumerate(image_paths, start=1):
+            local_path = relative_to_base(image_path)
+            image_url = self._packaged_seed_public_url(local_path)
+            style = db.scalar(
+                select(NailStyle).where(
+                    (NailStyle.local_image_path == local_path) | (NailStyle.image_url == image_url)
+                )
+            )
+            preset = STYLE_PRESETS[(index - 1) % len(STYLE_PRESETS)]
+            dominant_colors = self._extract_dominant_colors(image_path)
+            color_tags = self._color_tags(dominant_colors)
+            tags = list(dict.fromkeys([*preset["tags"], *color_tags]))
+            metadata = {
+                "seed_file": image_path.name,
+                "color_tags": color_tags,
+                "occasion_tags": [preset["scene"]],
+                "length": preset["length"],
+                "finish": preset["tags"][0],
+            }
+            if author_user_id:
+                metadata["author_user_id"] = author_user_id
+
+            if style is None:
+                style = NailStyle(
+                    title=self._build_natural_title(index, preset, tags, color_tags),
+                    description=self._build_natural_description(index, preset, tags),
+                    image_url=image_url,
+                    local_image_path=local_path,
+                    original_image_url=None,
+                    enhanced_image_url=None,
+                    source_type="seed_local",
+                    nail_type="press_on",
+                    tags_json=tags,
+                    dominant_colors_json=dominant_colors,
+                    style_metadata_json=metadata,
+                    popularity_score=max(8.0, 36.0 - index),
+                    is_trending=index <= 6,
+                )
+                created += 1
+            else:
+                existing_metadata = style.style_metadata_json if isinstance(style.style_metadata_json, dict) else {}
+                existing_metadata.update(metadata)
+                style.image_url = image_url
+                style.local_image_path = local_path
+                style.source_type = style.source_type or "seed_local"
+                style.nail_type = "press_on"
+                style.style_metadata_json = existing_metadata
+                if not style.tags_json:
+                    style.tags_json = tags
+                if not style.dominant_colors_json:
+                    style.dominant_colors_json = dominant_colors
+                updated += 1
+            db.add(style)
+
+        if created or updated:
+            db.commit()
+        return {"created_count": created, "updated_count": updated, "seed_dir": str(nails_dir)}
+
+    def _packaged_seed_public_url(self, local_path: str) -> str:
+        normalized = local_path.replace("\\", "/")
+        if normalized.startswith("data/"):
+            return f"{self.settings.public_files_prefix}/{normalized.removeprefix('data/')}"
+        return public_url_for_path(Path(local_path))
+
     def import_seed_data(self, db: Session, xlsx_path: Path | None = None) -> dict[str, object]:
         workbook_path = xlsx_path or self.settings.seed_xlsx
         workbook = load_workbook(workbook_path, read_only=True, data_only=True)

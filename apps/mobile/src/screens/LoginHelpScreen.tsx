@@ -135,7 +135,7 @@ export function LoginHelpScreen() {
           <Text
             style={[
               styles.footerLink,
-              { color: isDark ? "#7ab5ff" : "#4a93df" },
+              { color: colors.text },
             ]}
           >
             联系在线客服小美
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "#ff4d37",
+    backgroundColor: "#111111",
     color: "#ffffff",
     fontSize: 12,
     fontWeight: "700",

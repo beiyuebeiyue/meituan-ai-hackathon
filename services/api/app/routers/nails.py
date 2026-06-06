@@ -60,7 +60,7 @@ def build_style_payloads(db: Session, items: list, user: User | None) -> list[Na
 def list_hot(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=30),
-    include_xhs_posts: bool = Query(default=True),
+    include_xhs_posts: bool = Query(default=False),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
@@ -77,7 +77,7 @@ def list_hot(
 def list_discover(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=30),
-    include_xhs_posts: bool = Query(default=True),
+    include_xhs_posts: bool = Query(default=False),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
@@ -95,7 +95,7 @@ def search_styles(
     query: str = Query(min_length=1, max_length=100),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
-    include_xhs_posts: bool = Query(default=True),
+    include_xhs_posts: bool = Query(default=False),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
@@ -112,7 +112,7 @@ def search_styles(
 def list_latest(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=30),
-    include_xhs_posts: bool = Query(default=True),
+    include_xhs_posts: bool = Query(default=False),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
@@ -123,7 +123,7 @@ def list_latest(
 def list_following(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=10, ge=1, le=30),
-    include_xhs_posts: bool = Query(default=True),
+    include_xhs_posts: bool = Query(default=False),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> NailStyleListResponse:
@@ -142,7 +142,7 @@ def list_local(
     city: str = Query(default="深圳", min_length=1, max_length=80),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=50),
-    include_xhs_posts: bool = Query(default=True),
+    include_xhs_posts: bool = Query(default=False),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:

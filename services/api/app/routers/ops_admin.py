@@ -100,6 +100,16 @@ def create_trend_nail_campaign(
     return trend_nail_service.create_campaign(db, payload, created_by=ops_admin)
 
 
+@router.post("/trend-nail-campaigns/auto", response_model=OpsTrendCampaignRead | None)
+def create_auto_trend_nail_campaign(
+    force: bool = Query(default=False),
+    limit: int = Query(default=12, ge=1, le=30),
+    _ops_admin: str = Depends(require_ops_admin),
+    db: Session = Depends(get_db),
+) -> OpsTrendCampaignRead | None:
+    return trend_nail_service.create_weekly_auto_campaign(db, limit=limit, force=force)
+
+
 @router.get("/trend-nail-campaigns/{campaign_id}", response_model=OpsTrendCampaignRead)
 def get_trend_nail_campaign(
     campaign_id: str,
@@ -172,7 +182,7 @@ def get_ops_performance_metrics(
 @router.get("/users", response_model=OpsUserListResponse)
 def list_ops_users(
     query: str = Query(default=""),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=10, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _ops_admin: str = Depends(require_ops_admin),
     db: Session = Depends(get_db),
@@ -193,7 +203,7 @@ def get_ops_user(
 def list_ops_merchants(
     query: str = Query(default=""),
     city: str = Query(default=""),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=10, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _ops_admin: str = Depends(require_ops_admin),
     db: Session = Depends(get_db),

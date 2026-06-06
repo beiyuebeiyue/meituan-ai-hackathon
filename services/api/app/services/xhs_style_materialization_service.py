@@ -17,25 +17,47 @@ class XhsStyleMaterializationService:
         if not notes:
             return 0
 
-        existing_note_ids = {
-            str(metadata.get("xhs_note_id"))
-            for metadata in (
-                style.style_metadata_json if isinstance(style.style_metadata_json, dict) else {}
-                for style in db.scalars(select(NailStyle).where(NailStyle.source_type == "xhs_note"))
-            )
-            if metadata.get("xhs_note_id")
-        }
+        existing_by_note_id: dict[str, NailStyle] = {}
+        for style in db.scalars(select(NailStyle).where(NailStyle.source_type == "xhs_note")):
+            metadata = style.style_metadata_json if isinstance(style.style_metadata_json, dict) else {}
+            note_id = str(metadata.get("xhs_note_id") or "").strip()
+            if note_id:
+                existing_by_note_id[note_id] = style
 
         created = 0
+        updated = 0
         for note in notes:
             note_id = str(note.get("note_id") or "").strip()
             image_url = str(note.get("image_url") or "").strip()
-            if not note_id or not image_url or note_id in existing_note_ids:
+            if not note_id or not image_url:
                 continue
 
             liked_count = int(note.get("liked_count") or 0)
             collected_count = int(note.get("collected_count") or 0)
             share_count = int(note.get("share_count") or 0)
+            metadata = {
+                "xhs_note_id": note_id,
+                "xhs_digest_date": str(note.get("_digest_date") or ""),
+                "liked_count": liked_count,
+                "collected_count": collected_count,
+                "share_count": share_count,
+            }
+            existing = existing_by_note_id.get(note_id)
+            if existing is not None:
+                next_metadata = {**(existing.style_metadata_json or {}), **metadata}
+                next_score = float(note.get("score") or existing.popularity_score or 0.0)
+                if (
+                    existing.style_metadata_json != next_metadata
+                    or existing.popularity_score != next_score
+                    or not existing.is_trending
+                ):
+                    existing.style_metadata_json = next_metadata
+                    existing.popularity_score = next_score
+                    existing.is_trending = True
+                    db.add(existing)
+                    updated += 1
+                continue
+
             style = NailStyle(
                 title=str(note.get("title") or "热门美甲"),
                 description="来自小红书热门美甲数据",
@@ -47,20 +69,15 @@ class XhsStyleMaterializationService:
                 nail_type="handmade",
                 tags_json=list(note.get("tags") or []),
                 dominant_colors_json=[],
-                style_metadata_json={
-                    "xhs_note_id": note_id,
-                    "liked_count": liked_count,
-                    "collected_count": collected_count,
-                    "share_count": share_count,
-                },
+                style_metadata_json=metadata,
                 popularity_score=float(note.get("score") or 0.0),
                 is_trending=True,
             )
             db.add(style)
-            existing_note_ids.add(note_id)
+            existing_by_note_id[note_id] = style
             created += 1
 
-        if created:
+        if created or updated:
             db.commit()
         return created
 

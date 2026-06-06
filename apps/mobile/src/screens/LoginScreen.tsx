@@ -221,17 +221,17 @@ export function LoginScreen() {
   const primaryBackground = actionDisabled
     ? isDark
       ? colors.border
-      : "#fff2a9"
+      : colors.accentSoft
     : isDark
       ? colors.accent
-      : "#ffec88";
+      : colors.accent;
   const primaryLabelColor = actionDisabled
     ? isDark
       ? "#8f8983"
-      : "#c8bb78"
+      : colors.subtext
     : isDark
-      ? "#ffffff"
-      : "#6b5f2c";
+      ? "#111111"
+      : "#ffffff";
 
   return (
     <SafeAreaView
@@ -392,7 +392,7 @@ export function LoginScreen() {
               <Text
                 style={[
                   styles.agreementLink,
-                  { color: isDark ? "#7ab5ff" : "#4d93de" },
+                  { color: colors.text },
                 ]}
               >
                 《用户协议》
@@ -401,7 +401,7 @@ export function LoginScreen() {
               <Text
                 style={[
                   styles.agreementLink,
-                  { color: isDark ? "#7ab5ff" : "#4d93de" },
+                  { color: colors.text },
                 ]}
               >
                 《隐私政策》
