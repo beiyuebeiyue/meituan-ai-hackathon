@@ -14,6 +14,8 @@ import {
 import { api, OpsAnalyticsOverview, OpsAnalyticsRankItem, resolveAssetUrl } from "../api/client";
 
 type TrendMetric = "recommendation_clicks" | "tryon_completed" | "booking_submits" | "completed_orders" | "revenue";
+type AnalyticsDataSource = "demo" | "real";
+
 const ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 type AnalyticsCacheEntry = {
@@ -83,6 +85,180 @@ function funnelColor(index: number) {
 
 function kpiTone(index: number) {
   return ["is-revenue", "is-order", "is-recommend", "is-tryon", "is-conversion", "is-aov"][index % 6];
+}
+
+function toDateString(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function defaultAnalyticsRange(): [string, string] {
+  const end = new Date();
+  const start = new Date(end);
+  start.setDate(end.getDate() - 13);
+  return [toDateString(start), toDateString(end)];
+}
+
+function resolveAnalyticsRange(range: [string, string] | undefined): [string, string] {
+  return range ?? defaultAnalyticsRange();
+}
+
+function eachDate(startDate: string, endDate: string) {
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+    return [toDateString(new Date())];
+  }
+  const dates: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end && dates.length < 62) {
+    dates.push(toDateString(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+function rate(numerator: number, denominator: number) {
+  return denominator > 0 ? numerator / denominator : 0;
+}
+
+function buildFunnel(steps: Array<{ key: string; label: string; count: number }>): OpsAnalyticsOverview["funnel"] {
+  const firstCount = steps[0]?.count ?? 0;
+  return steps.map((step, index) => {
+    const previousCount = index === 0 ? step.count : steps[index - 1].count;
+    const dropoffCount = Math.max(previousCount - step.count, 0);
+    const stepRate = index === 0 ? 1 : rate(step.count, previousCount);
+    return {
+      ...step,
+      conversion_rate: index === 0 ? 1 : rate(step.count, firstCount),
+      step_rate: stepRate,
+      dropoff_rate: index === 0 ? 0 : 1 - stepRate,
+      dropoff_count: index === 0 ? 0 : dropoffCount,
+    };
+  });
+}
+
+const demoStyleImages = [
+  "/openclaw-assets/20260520/images/6a0aab43000000000802676c/6a0aab43000000000802676c_03.webp",
+  "/openclaw-assets/20260520/images/6a0abc370000000007021df1/6a0abc370000000007021df1_08.webp",
+  "/openclaw-assets/20260520/images/6a0a895f000000003603178d/6a0a895f000000003603178d_03.webp",
+  "/openclaw-assets/20260520/images/6a0acba1000000003701e3aa/6a0acba1000000003701e3aa_01.webp",
+];
+
+function demoRankItem(
+  id: string,
+  name: string,
+  imageUrl: string | null,
+  impressions: number,
+  clicks: number,
+  tryons: number,
+  bookings: number,
+  completedOrders: number,
+  revenueCents: number,
+  totalRevenueCents: number,
+): OpsAnalyticsRankItem {
+  return {
+    id,
+    name,
+    image_url: imageUrl,
+    impressions,
+    clicks,
+    ctr: rate(clicks, impressions),
+    tryons,
+    tryon_rate: rate(tryons, clicks),
+    bookings,
+    booking_rate: rate(bookings, tryons),
+    completed_orders: completedOrders,
+    completion_rate: rate(completedOrders, bookings),
+    revenue_cents: revenueCents,
+    revenue_share: rate(revenueCents, totalRevenueCents),
+  };
+}
+
+function buildDemoAnalyticsOverview(range: [string, string] | undefined): OpsAnalyticsOverview {
+  const [startDate, endDate] = resolveAnalyticsRange(range);
+  const dates = eachDate(startDate, endDate);
+  const trends = dates.map((date, index) => {
+    const wave = Math.sin(index / 1.7) * 16;
+    const weekendBoost = [5, 6].includes(new Date(`${date}T00:00:00`).getDay()) ? 24 : 0;
+    const recommendationClicks = Math.max(92, Math.round(132 + index * 5.5 + wave + weekendBoost));
+    const tryonStarted = Math.round(recommendationClicks * (0.46 + (index % 3) * 0.015));
+    const tryonCompleted = Math.round(tryonStarted * (0.72 + (index % 4) * 0.018));
+    const bookingSubmits = Math.round(tryonCompleted * (0.28 + (index % 2) * 0.035));
+    const completedOrders = Math.max(8, Math.round(bookingSubmits * (0.42 + (index % 5) * 0.018)));
+    return {
+      date,
+      recommendation_clicks: recommendationClicks,
+      tryon_started: tryonStarted,
+      tryons: tryonStarted,
+      tryon_completed: tryonCompleted,
+      booking_submits: bookingSubmits,
+      bookings: bookingSubmits,
+      completed_orders: completedOrders,
+      revenue_cents: completedOrders * (15800 + (index % 4) * 1200),
+    };
+  });
+
+  const recommendationClicks = trends.reduce((sum, item) => sum + item.recommendation_clicks, 0);
+  const tryonStarted = trends.reduce((sum, item) => sum + item.tryon_started, 0);
+  const tryonCompleted = trends.reduce((sum, item) => sum + item.tryon_completed, 0);
+  const bookingSubmits = trends.reduce((sum, item) => sum + item.booking_submits, 0);
+  const completedOrders = trends.reduce((sum, item) => sum + item.completed_orders, 0);
+  const revenueCents = trends.reduce((sum, item) => sum + item.revenue_cents, 0);
+  const recommendationImpressions = Math.round(recommendationClicks / 0.128);
+  const dau = Math.max(280, Math.round(recommendationImpressions / Math.max(dates.length, 1) / 3.7));
+
+  const topStyleRevenue = Math.round(revenueCents * 0.72);
+  const topShopRevenue = Math.round(revenueCents * 0.86);
+
+  return {
+    start_date: startDate,
+    end_date: endDate,
+    generated_at: new Date().toISOString(),
+    kpis: {
+      dau,
+      new_users: Math.round(dau * 0.18),
+      recommendation_impressions: recommendationImpressions,
+      recommendation_clicks: recommendationClicks,
+      recommendation_ctr: rate(recommendationClicks, recommendationImpressions),
+      tryon_started: tryonStarted,
+      tryon_completed: tryonCompleted,
+      tryon_completion_rate: rate(tryonCompleted, tryonStarted),
+      booking_submits: bookingSubmits,
+      completed_orders: completedOrders,
+      revenue_cents: revenueCents,
+      average_order_value_cents: Math.round(rate(revenueCents, completedOrders)),
+      click_to_tryon_rate: rate(tryonStarted, recommendationClicks),
+      tryon_to_booking_rate: rate(bookingSubmits, tryonCompleted),
+      booking_to_order_rate: rate(completedOrders, bookingSubmits),
+      click_to_order_rate: rate(completedOrders, recommendationClicks),
+      arpu_cents: Math.round(rate(revenueCents, dau * Math.max(dates.length, 1))),
+      revenue_conversion_rate: rate(revenueCents, recommendationImpressions * 16800),
+    },
+    funnel: buildFunnel([
+      { key: "impression", label: "推荐曝光", count: recommendationImpressions },
+      { key: "click", label: "推荐点击", count: recommendationClicks },
+      { key: "tryon_start", label: "开始焕甲", count: tryonStarted },
+      { key: "tryon_complete", label: "完成焕甲", count: tryonCompleted },
+      { key: "booking_submit", label: "提交预约", count: bookingSubmits },
+      { key: "completed_order", label: "完成订单", count: completedOrders },
+    ]),
+    trends,
+    top_styles: [
+      demoRankItem("demo-style-1", "星河猫眼通勤款", demoStyleImages[0], 18420, 2368, 1126, 326, 148, Math.round(topStyleRevenue * 0.34), revenueCents),
+      demoRankItem("demo-style-2", "薄荷沁夏短甲", demoStyleImages[1], 15680, 2042, 964, 278, 121, Math.round(topStyleRevenue * 0.26), revenueCents),
+      demoRankItem("demo-style-3", "裸粉法式微闪", demoStyleImages[2], 13940, 1716, 806, 231, 96, Math.round(topStyleRevenue * 0.21), revenueCents),
+      demoRankItem("demo-style-4", "显白蝴蝶结甜酷款", demoStyleImages[3], 11820, 1424, 662, 188, 78, Math.round(topStyleRevenue * 0.19), revenueCents),
+    ],
+    top_shops: [
+      demoRankItem("demo-shop-1", "焕甲测试美甲店", null, 24600, 0, 1492, 438, 196, Math.round(topShopRevenue * 0.36), revenueCents),
+      demoRankItem("demo-shop-2", "福田中心猫眼美甲", null, 21380, 0, 1270, 372, 168, Math.round(topShopRevenue * 0.29), revenueCents),
+      demoRankItem("demo-shop-3", "南山通勤美甲工作室", null, 17640, 0, 984, 304, 136, Math.round(topShopRevenue * 0.21), revenueCents),
+      demoRankItem("demo-shop-4", "车公庙轻奢甲社", null, 14280, 0, 812, 246, 104, Math.round(topShopRevenue * 0.14), revenueCents),
+    ],
+  };
 }
 
 function AnalyticsKpiGrid({ analytics }: { analytics: OpsAnalyticsOverview }) {
@@ -261,14 +437,22 @@ function RankingTables({ analytics }: { analytics: OpsAnalyticsOverview }) {
 export function DashboardPage() {
   const { message } = App.useApp();
   const [analyticsRange, setAnalyticsRange] = useState<[string, string] | undefined>();
+  const [dataSource, setDataSource] = useState<AnalyticsDataSource>("demo");
   const [analytics, setAnalytics] = useState<OpsAnalyticsOverview | null>(() => {
-    const cached = analyticsOverviewCache.get(analyticsCacheKey(undefined));
-    return cached?.data ?? null;
+    return buildDemoAnalyticsOverview(undefined);
   });
-  const [loading, setLoading] = useState(() => !analyticsOverviewCache.get(analyticsCacheKey(undefined)));
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    if (dataSource === "demo") {
+      setAnalytics(buildDemoAnalyticsOverview(analyticsRange));
+      setLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const key = analyticsCacheKey(analyticsRange);
     const cached = analyticsOverviewCache.get(key);
     if (cached && isFresh(cached.cachedAt)) {
@@ -294,7 +478,7 @@ export function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [analyticsRange, message]);
+  }, [analyticsRange, dataSource, message]);
 
   if (loading) return <Spin />;
   if (!analytics) return <Empty description="暂无运营数据" />;
@@ -303,6 +487,9 @@ export function DashboardPage() {
     <Space direction="vertical" size={20} className="page-stack analysis-page ops-command-page">
       <div className="ops-command-toolbar">
         <Space wrap size={[8, 8]} className="ops-command-toolbar-meta">
+          <Tag color={dataSource === "demo" ? "blue" : "default"}>
+            {dataSource === "demo" ? "Demo 数据" : "真实数据"}
+          </Tag>
           <Tag>
             统计区间 {analytics.start_date} 至 {analytics.end_date}
           </Tag>
@@ -311,6 +498,15 @@ export function DashboardPage() {
           </Tag>
         </Space>
         <Space wrap className="ops-command-toolbar-actions">
+          <Segmented
+            size="small"
+            value={dataSource}
+            options={[
+              { label: "Demo 数据", value: "demo" },
+              { label: "真实数据", value: "real" },
+            ]}
+            onChange={(value) => setDataSource(value as AnalyticsDataSource)}
+          />
           <DatePicker.RangePicker
             suffixIcon={<CalendarOutlined />}
             onChange={(_, dateStrings) => {
