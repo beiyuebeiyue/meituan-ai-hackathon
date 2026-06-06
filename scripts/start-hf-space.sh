@@ -19,11 +19,16 @@ sync_bucket_prefix() {
 }
 
 HF_BUCKET_URI="${HF_BUCKET_URI:-hf://buckets/dongli/meituan-ai-hackathon-storage}"
+XHS_WEEKLY_YEAR_DIR="/data/xhs-popular-nail-posts-crawler/assets/2026"
 
 {
   sync_bucket_prefix "${HF_BUCKET_URI}/xhs-popular-nail-posts-crawler/assets" /data/xhs-popular-nail-posts-crawler/assets
   sync_bucket_prefix "${HF_BUCKET_URI}/xhs-daily-nail-report/assets" /data/xhs-daily-nail-report/assets
 } > /workspace/.openclaw/logs/bucket-sync.log 2>&1 &
+
+mkdir -p "${XHS_WEEKLY_YEAR_DIR}"
+ln -sfn ../20260520 "${XHS_WEEKLY_YEAR_DIR}/w21"
+ln -sfn ../20260520 "${XHS_WEEKLY_YEAR_DIR}/w22"
 
 openclaw gateway --allow-unconfigured --bind loopback --port 18798 --auth none run \
   > /workspace/.openclaw/logs/gateway.log \

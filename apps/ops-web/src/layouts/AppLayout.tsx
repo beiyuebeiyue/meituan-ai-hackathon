@@ -3,7 +3,6 @@ import {
   FireOutlined,
   GlobalOutlined,
   DashboardOutlined,
-  MoonOutlined,
   RobotOutlined,
   MenuOutlined,
   LeftOutlined,
@@ -11,17 +10,17 @@ import {
   QuestionCircleOutlined,
   ReadOutlined,
   RightOutlined,
-  SunOutlined,
   TagsOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Avatar, Button, Drawer, Grid, Layout, Menu, Space, Typography } from "antd";
-import { useContext, useState } from "react";
+import { Avatar, Button, Drawer, Grid, Layout, Menu, Segmented, Space, Typography } from "antd";
+import { useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { clearOpsToken } from "../api/client";
 import brandLogo from "../assets/logo.png";
 import { OpsChatWidget } from "../components/OpsChatWidget";
-import { OpsThemeContext } from "../theme";
+import { getAnalyticsDataSource, setAnalyticsDataSource as setGlobalAnalyticsDataSource } from "../utils/analyticsDataSource";
+import type { AnalyticsDataSource } from "../utils/analyticsDataSource";
 
 const { Header, Sider, Content } = Layout;
 
@@ -81,11 +80,11 @@ const navItems = [
 export function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { mode, toggleMode } = useContext(OpsThemeContext);
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [analyticsDataSource, setAnalyticsDataSource] = useState<AnalyticsDataSource>(() => getAnalyticsDataSource());
   const showChatWidget = location.pathname !== "/chatbot";
   const currentPage =
     pageMeta.find((item) => location.pathname === item.path) ??
@@ -143,13 +142,22 @@ export function AppLayout() {
             </span>
           </Space>
           <Space className="ops-header-actions">
-            <Button
-              type="text"
-              icon={mode === "dark" ? <SunOutlined /> : <MoonOutlined />}
-              onClick={toggleMode}
-              aria-label={mode === "dark" ? "切换白天主题" : "切换黑夜主题"}
-              title={mode === "dark" ? "切换白天主题" : "切换黑夜主题"}
-            />
+            {location.pathname === "/dashboard" ? (
+              <Segmented
+                size="small"
+                className="ops-data-source-toggle"
+                value={analyticsDataSource}
+                options={[
+                  { label: "Demo", value: "demo" },
+                  { label: "真实", value: "real" },
+                ]}
+                onChange={(value) => {
+                  const nextDataSource = value as AnalyticsDataSource;
+                  setAnalyticsDataSource(nextDataSource);
+                  setGlobalAnalyticsDataSource(nextDataSource);
+                }}
+              />
+            ) : null}
             <Button type="text" icon={<QuestionCircleOutlined />} />
             <Button type="text" icon={<GlobalOutlined />} />
             <Button type="text" icon={<BellOutlined />} />

@@ -5,24 +5,21 @@ import {
 } from "@react-navigation/bottom-tabs";
 import { NavigatorScreenParams, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { useEffect, useRef, type ComponentType } from "react";
+import { useRef, type ComponentType } from "react";
 import {
   Animated,
-  Easing,
-  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { OverlayContent } from "../components/OverlayContent";
 import {
   SlideDirection,
   SlideOverlayScreen,
 } from "../components/SlideOverlayScreen";
 import { WeeklyHotNailsModal } from "../components/WeeklyHotNailsModal";
-import { AskAIScreen } from "../screens/AskAIScreen";
 import { AuthorProfileScreen } from "../screens/AuthorProfileScreen";
 import { BrowseHistoryScreen } from "../screens/BrowseHistoryScreen";
 import { BrowseSearchScreen } from "../screens/BrowseSearchScreen";
@@ -39,10 +36,8 @@ import { MarketCityPickerScreen } from "../screens/MarketCityPickerScreen";
 import { MarketMapScreen } from "../screens/MarketMapScreen";
 import { MarketScreen } from "../screens/MarketScreen";
 import { MarketShopDetailScreen } from "../screens/MarketShopDetailScreen";
-import { MerchantBookingsScreen } from "../screens/MerchantBookingsScreen";
 import { MerchantMarketDataScreen } from "../screens/MerchantMarketDataScreen";
 import { MerchantOrdersScreen } from "../screens/MerchantOrdersScreen";
-import { MerchantOverviewScreen } from "../screens/MerchantOverviewScreen";
 import { MerchantShopScreen } from "../screens/MerchantShopScreen";
 import { MerchantTrendNotificationsScreen } from "../screens/MerchantTrendNotificationsScreen";
 import { MessagesInboxScreen } from "../screens/MessagesInboxScreen";
@@ -73,6 +68,7 @@ export type MainTabParamList = {
   Publish: undefined;
   AskAI: undefined;
   MerchantOverview: undefined;
+  Messages: undefined;
   Profile: undefined;
 };
 
@@ -125,7 +121,10 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
-const brandLogo = require("../../assets/app/logo.png");
+const TAB_BG = "#111116";
+const TAB_TEXT = "#f2f2f4";
+const TAB_MUTED = "#8f8f98";
+const TAB_RED = "#ff2d55";
 
 const overlayOptions = {
   headerShown: false,
@@ -255,66 +254,8 @@ const MarketShopDetailOverlayScreen = createOverlayComponent(
   MarketShopDetailScreen,
 );
 
-function CenterTabButton({
-  props,
-  icon,
-  label,
-  colors,
-}: {
-  props: BottomTabBarButtonProps;
-  icon: keyof typeof Ionicons.glyphMap | "brand";
-  label: string;
-  colors: ReturnType<typeof useThemeColors>;
-}) {
-  const selected = Boolean(props.accessibilityState?.selected);
-  const iconColor = colors.accent === "#ffffff" ? "#111111" : "#ffffff";
+function CenterTabButton({ props }: { props: BottomTabBarButtonProps }) {
   const pressScale = useRef(new Animated.Value(1)).current;
-  const haloScale = useRef(new Animated.Value(1)).current;
-  const haloOpacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!selected) {
-      haloScale.stopAnimation();
-      haloOpacity.stopAnimation();
-      haloScale.setValue(1);
-      haloOpacity.setValue(0);
-      return;
-    }
-
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(haloScale, {
-            toValue: 1.32,
-            duration: 1100,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(haloOpacity, {
-            toValue: 0,
-            duration: 1100,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(haloScale, {
-            toValue: 1,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-          Animated.timing(haloOpacity, {
-            toValue: 0.28,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-    );
-    haloOpacity.setValue(0.28);
-    pulse.start();
-    return () => pulse.stop();
-  }, [haloOpacity, haloScale, selected]);
 
   const animatePress = (toValue: number) => {
     Animated.spring(pressScale, {
@@ -337,41 +278,25 @@ function CenterTabButton({
       style={styles.askButton}
     >
       <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.askHalo,
-          {
-            backgroundColor: colors.accent,
-            opacity: haloOpacity,
-            transform: [{ scale: haloScale }],
-          },
-        ]}
-      />
-      <Animated.View
         style={[
           styles.askButtonInner,
           {
-            backgroundColor: icon === "brand" ? "#ffffff" : colors.accent,
-            borderColor: colors.accent,
-            shadowColor: colors.accent,
+            backgroundColor: TAB_RED,
+            shadowColor: TAB_RED,
             transform: [{ scale: pressScale }],
           },
         ]}
       >
-        {icon === "brand" ? (
-          <Image source={brandLogo} style={styles.askButtonLogo} resizeMode="contain" />
-        ) : (
-          <Ionicons name={icon} size={icon === "add" ? 30 : 25} color={iconColor} />
-        )}
+        <Ionicons name="add" size={27} color="#ffffff" />
+        <Text style={styles.askButtonText}>发布</Text>
       </Animated.View>
-      <Text style={[styles.askLabel, { color: colors.accent }]}>{label}</Text>
     </Pressable>
   );
 }
 
 function MainTabs() {
-  const colors = useThemeColors();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const isMerchant = user?.role === "merchant";
 
@@ -383,85 +308,52 @@ function MainTabs() {
           headerShown: false,
           tabBarStyle: [
             styles.tabBar,
-            { backgroundColor: colors.navBackground },
+            {
+              height: 64 + insets.bottom,
+              paddingBottom: Math.max(insets.bottom, 8),
+            },
           ],
-          tabBarActiveTintColor: colors.accent,
-          tabBarInactiveTintColor: colors.navInactive,
+          tabBarActiveTintColor: TAB_TEXT,
+          tabBarInactiveTintColor: TAB_MUTED,
+          tabBarLabelStyle: styles.tabBarLabel,
+          tabBarItemStyle: styles.tabBarItem,
         }}
       >
         <Tab.Screen
           name="Browse"
           component={BrowseScreen}
           options={{
-            title: "浏览",
+            title: "首页",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="grid-outline" size={size} color={color} />
+              <Ionicons name="home-outline" size={size} color={color} />
             ),
           }}
         />
-        {isMerchant ? (
-          <Tab.Screen
-            name="MerchantBookings"
-            component={MerchantBookingsScreen}
-            options={{
-              title: "预约",
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="calendar-outline" size={size} color={color} />
-              ),
-            }}
-          />
-        ) : (
-          <Tab.Screen
-            name="Market"
-            component={MarketScreen}
-            options={{
-              title: "市场",
-              tabBarIcon: ({ color, size }) => (
-                <Ionicons name="storefront-outline" size={size} color={color} />
-              ),
-            }}
-          />
-        )}
-        {isMerchant ? (
-          <Tab.Screen
-            name="MerchantOverview"
-            component={MerchantOverviewScreen}
-            options={{
-              title: "后台",
-              tabBarButton: (props) => (
-                <CenterTabButton
-                  props={props}
-                  icon="brand"
-                  label="后台"
-                  colors={colors}
-                />
-              ),
-            }}
-          />
-        ) : (
-          <Tab.Screen
-            name="AskAI"
-            component={AskAIScreen}
-            options={{
-              title: "问问小嘉",
-              tabBarButton: (props) => (
-                <CenterTabButton
-                  props={props}
-                  icon="sparkles"
-                  label="问问小嘉"
-                  colors={colors}
-                />
-              ),
-            }}
-          />
-        )}
+        <Tab.Screen
+          name="Market"
+          component={MarketScreen}
+          options={{
+            title: "市集",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="storefront-outline" size={size} color={color} />
+            ),
+          }}
+        />
         <Tab.Screen
           name="Publish"
           component={PublishScreen}
           options={{
             title: "发布",
+            tabBarButton: (props) => <CenterTabButton props={props} />,
+          }}
+        />
+        <Tab.Screen
+          name="Messages"
+          component={MessagesInboxScreen}
+          options={{
+            title: "消息",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="add-circle-outline" size={size} color={color} />
+              <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />
             ),
           }}
         />
@@ -673,43 +565,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabBar: {
-    height: 88,
-    paddingBottom: 12,
-    paddingTop: 8,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    paddingTop: 6,
+    backgroundColor: TAB_BG,
     borderTopWidth: 0,
+  },
+  tabBarItem: {
+    paddingTop: 3,
+  },
+  tabBarLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 16,
   },
   askButton: {
     alignItems: "center",
-    marginTop: -18,
+    marginTop: -12,
     position: "relative",
-  },
-  askHalo: {
-    position: "absolute",
-    top: 0,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
   },
   askButtonInner: {
     width: 64,
-    height: 64,
-    borderRadius: 32,
-    borderWidth: 1,
+    height: 54,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
+    gap: 1,
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 8,
   },
-  askButtonLogo: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-  },
-  askLabel: {
-    marginTop: 6,
-    fontSize: 11,
-    fontWeight: "700",
+  askButtonText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "800",
+    lineHeight: 14,
   },
 });

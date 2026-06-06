@@ -1,4 +1,4 @@
-import { CalendarOutlined, ClockCircleOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { CalendarOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { App, Card, Col, DatePicker, Empty, Progress, Row, Segmented, Space, Spin, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useEffect, useMemo, useState } from "react";
@@ -12,9 +12,10 @@ import {
   YAxis,
 } from "recharts";
 import { api, OpsAnalyticsOverview, OpsAnalyticsRankItem, resolveAssetUrl } from "../api/client";
+import { ANALYTICS_DATA_SOURCE_CHANGED_EVENT, getAnalyticsDataSource } from "../utils/analyticsDataSource";
+import type { AnalyticsDataSource } from "../utils/analyticsDataSource";
 
 type TrendMetric = "recommendation_clicks" | "tryon_completed" | "booking_submits" | "completed_orders" | "revenue";
-type AnalyticsDataSource = "demo" | "real";
 
 const ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -437,11 +438,22 @@ function RankingTables({ analytics }: { analytics: OpsAnalyticsOverview }) {
 export function DashboardPage() {
   const { message } = App.useApp();
   const [analyticsRange, setAnalyticsRange] = useState<[string, string] | undefined>();
-  const [dataSource, setDataSource] = useState<AnalyticsDataSource>("demo");
+  const [dataSource, setDataSource] = useState<AnalyticsDataSource>(() => getAnalyticsDataSource());
   const [analytics, setAnalytics] = useState<OpsAnalyticsOverview | null>(() => {
-    return buildDemoAnalyticsOverview(undefined);
+    return getAnalyticsDataSource() === "demo" ? buildDemoAnalyticsOverview(undefined) : null;
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => getAnalyticsDataSource() === "real");
+
+  useEffect(() => {
+    const handleDataSourceChanged = (event: Event) => {
+      const nextDataSource = (event as CustomEvent<AnalyticsDataSource>).detail;
+      if (nextDataSource === "demo" || nextDataSource === "real") {
+        setDataSource(nextDataSource);
+      }
+    };
+    window.addEventListener(ANALYTICS_DATA_SOURCE_CHANGED_EVENT, handleDataSourceChanged);
+    return () => window.removeEventListener(ANALYTICS_DATA_SOURCE_CHANGED_EVENT, handleDataSourceChanged);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -487,9 +499,6 @@ export function DashboardPage() {
     <Space direction="vertical" size={20} className="page-stack analysis-page ops-command-page">
       <div className="ops-command-toolbar">
         <Space wrap size={[8, 8]} className="ops-command-toolbar-meta">
-          <Tag color={dataSource === "demo" ? "blue" : "default"}>
-            {dataSource === "demo" ? "Demo 数据" : "真实数据"}
-          </Tag>
           <Tag>
             统计区间 {analytics.start_date} 至 {analytics.end_date}
           </Tag>
@@ -498,15 +507,6 @@ export function DashboardPage() {
           </Tag>
         </Space>
         <Space wrap className="ops-command-toolbar-actions">
-          <Segmented
-            size="small"
-            value={dataSource}
-            options={[
-              { label: "Demo 数据", value: "demo" },
-              { label: "真实数据", value: "real" },
-            ]}
-            onChange={(value) => setDataSource(value as AnalyticsDataSource)}
-          />
           <DatePicker.RangePicker
             suffixIcon={<CalendarOutlined />}
             onChange={(_, dateStrings) => {
@@ -526,15 +526,6 @@ export function DashboardPage() {
           <TrendPanel analytics={analytics} />
         </Col>
       </Row>
-
-      <Card className="ops-command-note">
-        <Space>
-          <InfoCircleOutlined />
-          <Typography.Text type="secondary">
-            漏斗按统计窗口内事件数量聚合；服务端权威事件用于试戴和订单，客户端埋点用于推荐曝光、点击和预约入口行为。
-          </Typography.Text>
-        </Space>
-      </Card>
 
       <RankingTables analytics={analytics} />
     </Space>

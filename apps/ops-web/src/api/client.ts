@@ -292,6 +292,12 @@ export type TrendNailCampaign = {
 };
 
 const XHS_WEEKLY_REPORT_FILE = "xhs-weekly-nail-report.html";
+export const XHS_WEEKLY_REPORT_WEEKS = [
+  { year: 2026, week: 21, label: "2026 W21" },
+  { year: 2026, week: 22, label: "2026 W22" },
+] as const;
+
+export type XhsWeeklyReportWeek = (typeof XHS_WEEKLY_REPORT_WEEKS)[number];
 
 function shanghaiDateKey(value: Date): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -334,7 +340,7 @@ async function fetchXhsMarkdownReportHistory(fileName: string, limit = 30): Prom
   return reports.filter((item): item is OpsMarkdownReport => Boolean(item));
 }
 
-async function fetchXhsWeeklyHtmlReport(): Promise<OpsHtmlReport | null> {
+async function fetchXhsWeeklyHtmlReport(week: XhsWeeklyReportWeek = XHS_WEEKLY_REPORT_WEEKS[0]): Promise<OpsHtmlReport | null> {
   const url = `${API_ORIGIN}/${XHS_WEEKLY_REPORT_FILE}`;
   const response = await fetch(url, { cache: "no-store" });
   if (response.status === 404) return null;
@@ -343,18 +349,27 @@ async function fetchXhsWeeklyHtmlReport(): Promise<OpsHtmlReport | null> {
   const htmlContent = await response.text();
   return {
     report_date: dateKeyToReportDate(todayKey),
-    date_key: todayKey,
-    html_content: normalizeXhsWeeklyReportHtml(htmlContent),
+    date_key: `${week.year}-W${String(week.week).padStart(2, "0")}`,
+    html_content: normalizeXhsWeeklyReportHtml(htmlContent, week),
     local_file_path: url,
     created_at: response.headers.get("last-modified") ?? new Date().toISOString(),
   };
 }
 
-function normalizeXhsWeeklyReportHtml(html: string): string {
-  return html.replace(
-    /(["'])([^"']*xhs-popular-nail-posts-crawler\/assets\/([^"']+))\1/g,
-    (_match, quote: string, _src: string, assetPath: string) => `${quote}${API_ORIGIN}/openclaw-assets/${assetPath}${quote}`,
-  );
+function normalizeXhsWeeklyReportHtml(html: string, week: XhsWeeklyReportWeek): string {
+  const weekFolder = `${week.year}/w${week.week}`;
+  return html
+    .replace(
+      /(["'])([^"']*xhs-popular-nail-posts-crawler\/assets\/([^"']+))\1/g,
+      (_match, quote: string, _src: string, assetPath: string) => {
+        const normalizedAssetPath = assetPath.replace(/^\d{8}\//, `${weekFolder}/`);
+        return `${quote}${API_ORIGIN}/openclaw-assets/${normalizedAssetPath}${quote}`;
+      },
+    )
+    .replace(
+      /(["'])(?:https?:\/\/[^"']+)?\/openclaw-assets\/(?:\d{8}|2026\/w\d+)\/([^"']+)\1/g,
+      (_match, quote: string, assetPath: string) => `${quote}${API_ORIGIN}/openclaw-assets/${weekFolder}/${assetPath}${quote}`,
+    );
 }
 
 export const api = {
@@ -393,7 +408,7 @@ export const api = {
   saveReport: (payload: ReportGenerateResponse) =>
     request<OpsReport>("/ops/reports/save", { method: "POST", body: JSON.stringify(payload) }),
   getTodayReport: () => request<OpsReport | null>("/ops/reports/today"),
-  getTodayXhsNailReport: () => fetchXhsWeeklyHtmlReport(),
+  getTodayXhsNailReport: (week?: XhsWeeklyReportWeek) => fetchXhsWeeklyHtmlReport(week),
   getXhsNailReportHistory: () => Promise.resolve([] as OpsMarkdownReport[]),
   getPerformance: () => request<PerformanceMetrics>("/ops/metrics/performance"),
   getTrendNailCandidates: (limit = 20) => request<{ items: TrendNailStyle[] }>(`/ops/trend-nails/candidates?limit=${limit}`),

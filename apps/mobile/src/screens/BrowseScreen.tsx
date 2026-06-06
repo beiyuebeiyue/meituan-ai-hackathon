@@ -3,43 +3,121 @@ import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Location from "expo-location";
-import { ActivityIndicator, FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { api } from "../api/client";
-import { BrowseFeedCard } from "../components/BrowseFeedCard";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { api, resolveAssetUrl } from "../api/client";
 import { RequireLogin } from "../components/RequireLogin";
 import { NailStyle } from "../types/api";
 import { useAuthStore } from "../store/useAuthStore";
 import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
-import { useIsDarkMode, useThemeColors } from "../utils/theme";
 import { DEFAULT_MARKET_CITY, findMarketCity } from "../utils/marketCities";
 import { trackEvent } from "../utils/analytics";
 
 type FeedTab = "local" | "following" | "discover";
-type FilterableTab = "local" | "discover";
-type RoleFilterKey = "all" | "merchant" | "consumer";
 type LocalLocationStatus = "pending" | "granted" | "denied" | "unavailable";
-type BrowseFilterState = {
-  role: RoleFilterKey;
-  style: string;
+
+const DISCOVER_BG = "#111116";
+const DISCOVER_SURFACE = "#1a1a20";
+const DISCOVER_SURFACE_ALT = "#23232a";
+const DISCOVER_TEXT = "#f2f2f4";
+const DISCOVER_MUTED = "#9a9aa2";
+const DISCOVER_DIM = "#686872";
+const DISCOVER_BORDER = "#24242b";
+const DISCOVER_RED = "#ff2d55";
+const categoryTabs = ["推荐", "视频", "直播", "短剧", "美食", "穿搭", "旅行"] as const;
+const cardAspectPattern = [1.3, 0.75, 1.05, 1.35, 0.88, 1.18, 0.8] as const;
+
+type MasonryItem = {
+  item: NailStyle;
+  imageHeight: number;
 };
 
-const defaultBrowseFilterState: BrowseFilterState = {
-  role: "all",
-  style: "all",
-};
+function avatarSource(item: NailStyle) {
+  const defaultAvatar = require("../../assets/profile/default_avatar.png");
+  return item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar;
+}
+
+function estimateTitleLines(item: NailStyle) {
+  return item.title.length > 18 ? 2 : 1;
+}
+
+function buildMasonryColumns(items: NailStyle[], columnWidth: number) {
+  const columns: [MasonryItem[], MasonryItem[]] = [[], []];
+  const heights = [0, 0];
+  items.forEach((item, index) => {
+    const aspect = cardAspectPattern[index % cardAspectPattern.length];
+    const imageHeight = Math.round(columnWidth * aspect);
+    const bodyHeight = 10 + estimateTitleLines(item) * 20 + 32 + 10;
+    const targetIndex = heights[0] <= heights[1] ? 0 : 1;
+    columns[targetIndex].push({ item, imageHeight });
+    heights[targetIndex] += imageHeight + bodyHeight + 7;
+  });
+  return columns;
+}
+
+function DiscoverFeedCard({
+  item,
+  width,
+  imageHeight,
+  showLike,
+  onToggleLike,
+  onPress,
+}: {
+  item: NailStyle;
+  width: number;
+  imageHeight: number;
+  showLike: boolean;
+  onToggleLike: (item: NailStyle) => void;
+  onPress: (item: NailStyle) => void;
+}) {
+  return (
+    <Pressable style={[styles.card, { width }]} onPress={() => onPress(item)}>
+      <Image
+        source={{ uri: resolveAssetUrl(item.image_url) }}
+        style={[styles.cardImage, { width, height: imageHeight }]}
+        resizeMode="cover"
+      />
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+        <View style={styles.cardFooter}>
+          <View style={styles.authorBlock}>
+            <Image source={avatarSource(item)} style={styles.authorAvatar} />
+            <Text style={styles.authorName} numberOfLines={1}>
+              {item.author_name}
+            </Text>
+          </View>
+          {showLike ? (
+            <Pressable style={styles.likeBlock} onPress={() => onToggleLike(item)} hitSlop={8}>
+              <Ionicons name={item.is_liked ? "heart" : "heart-outline"} size={15} color={item.is_liked ? DISCOVER_RED : "#8f8f98"} />
+              <Text style={styles.likeText}>{item.like_count}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
 export function BrowseScreen() {
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const lastAutoRefreshKey = useRef("");
   const [tab, setTab] = useState<FeedTab>("discover");
-  const [filterStates, setFilterStates] = useState<Record<FilterableTab, BrowseFilterState>>({
-    discover: defaultBrowseFilterState,
-    local: defaultBrowseFilterState,
-  });
-  const [sourceMenuOpen, setSourceMenuOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<(typeof categoryTabs)[number]>("推荐");
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [localCity, setLocalCity] = useState(DEFAULT_MARKET_CITY);
   const [localLocationStatus, setLocalLocationStatus] = useState<LocalLocationStatus>("pending");
@@ -52,29 +130,6 @@ export function BrowseScreen() {
   const hasToken = Boolean(token);
   const isMerchant = user?.role === "merchant";
   const authScope = !hydrated ? "booting" : hasToken ? "authed" : "anon";
-  const colors = useThemeColors();
-  const isDark = useIsDarkMode();
-  const discoverRoleFilters = useMemo(
-    () =>
-      [
-        { key: "all", label: "综合" },
-        { key: "merchant", label: "商家" },
-        { key: "consumer", label: "顾客" },
-      ] as const,
-    [],
-  );
-  const discoverStyleFilters = useMemo(
-    () => [
-      { key: "all", label: "全部类型" },
-      { key: "法式", label: "法式" },
-      { key: "猫眼", label: "猫眼" },
-      { key: "裸粉", label: "裸粉" },
-      { key: "通勤", label: "通勤" },
-      { key: "显白", label: "显白" },
-      { key: "渐变", label: "渐变" },
-    ],
-    [],
-  );
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -104,18 +159,12 @@ export function BrowseScreen() {
 
   const canUseLocalFeed = localLocationStatus === "granted";
   const localTabLabel = canUseLocalFeed ? localCity : "同城";
-
-  const topTabs = isMerchant
-    ? ([
-        { key: "following", label: "我的关注" },
-        { key: "discover", label: "发现" },
-        { key: "local", label: localTabLabel },
-      ] as const)
-    : ([
-        { key: "following", label: "关注" },
-        { key: "discover", label: "发现" },
-        { key: "local", label: localTabLabel },
-      ] as const);
+  const topTabs = [
+    { key: "following", label: "关注" },
+    { key: "discover", label: "发现" },
+    { key: "worldcup", label: "世界杯" },
+    { key: "local", label: localTabLabel === "同城" ? "深圳" : localTabLabel },
+  ] as const;
 
   const query = useQuery({
     queryKey: ["browse", tab, authScope, localCity, includeXhsPosts],
@@ -159,40 +208,7 @@ export function BrowseScreen() {
     likeMutation.mutate(item);
   };
 
-  const rawFeedItems = tab === "following" && !hasToken ? [] : tab === "local" && !canUseLocalFeed ? [] : query.data?.items ?? [];
-  const usesDiscoverFilters = tab === "discover" || tab === "local";
-  const showBrowseFilters = usesDiscoverFilters && (tab !== "local" || canUseLocalFeed);
-  const activeFilterState = usesDiscoverFilters ? filterStates[tab] : defaultBrowseFilterState;
-  const activeStyleFilter = discoverStyleFilters.find((item) => item.key === activeFilterState.style) ?? discoverStyleFilters[0];
-  const activeRoleFilter = discoverRoleFilters.find((item) => item.key === activeFilterState.role) ?? discoverRoleFilters[0];
-  const updateActiveFilter = (patch: Partial<BrowseFilterState>) => {
-    if (!usesDiscoverFilters) return;
-    setFilterStates((current) => ({
-      ...current,
-      [tab]: {
-        ...current[tab],
-        ...patch,
-      },
-    }));
-  };
-  const feedItems =
-    !usesDiscoverFilters
-      ? rawFeedItems
-      : rawFeedItems
-          .filter((item) => {
-            if (activeFilterState.role === "merchant") return item.author_is_shop;
-            if (activeFilterState.role === "consumer") return !item.author_is_shop;
-            return true;
-          })
-          .filter((item) => {
-            if (activeStyleFilter.key === "all") return true;
-            const keyword = activeStyleFilter.key;
-            return (
-              item.tags.some((tag) => tag.includes(keyword)) ||
-              item.title.includes(keyword) ||
-              item.description.includes(keyword)
-            );
-          });
+  const feedItems = tab === "following" && !hasToken ? [] : tab === "local" && !canUseLocalFeed ? [] : query.data?.items ?? [];
   useEffect(() => {
     if (!feedItems.length) return;
     void Promise.all(
@@ -215,9 +231,10 @@ export function BrowseScreen() {
     void query.refetch();
   }, [autoRefreshKey, canRefresh, isFocused, query.refetch]);
   const showInitialLoading = canRefresh && !query.data && (query.isLoading || query.isFetching);
-  const topBarPaddingTop = Math.max(insets.top, 10) + 10;
-  const sourceMenuTopOffset = topBarPaddingTop + 102;
-  const listPaddingBottom = 120 + insets.bottom;
+  const gap = Math.max(4, Math.round(screenWidth * 0.011));
+  const columnWidth = Math.floor((screenWidth - gap * 3) / 2);
+  const masonryColumns = useMemo(() => buildMasonryColumns(feedItems, columnWidth), [feedItems, columnWidth]);
+  const scrollPaddingBottom = 78 + insets.bottom;
   const handleRefresh = async () => {
     if (!canRefresh) return;
     setIsPullRefreshing(true);
@@ -229,36 +246,37 @@ export function BrowseScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? "#17171b" : colors.background }]}>
-      <View
-        style={[
-          styles.topBar,
-          {
-            backgroundColor: isDark ? "#17171b" : colors.background,
-            borderBottomColor: colors.border,
-            paddingTop: topBarPaddingTop,
-          },
-        ]}
-      >
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.topBar}>
         <Pressable
           style={styles.iconButton}
           onPress={() => navigation.navigate("MessagesInbox", { entryEdge: "left" })}
         >
-          <Ionicons name={hasUnreadMessages ? "chatbubble-ellipses-outline" : "chatbubble-outline"} size={24} color={colors.text} />
-          {hasStrangerUnread ? <View style={[styles.dotBadge, { backgroundColor: colors.accent }]} /> : null}
+          <Ionicons name={hasUnreadMessages ? "chatbubble-ellipses-outline" : "chatbubble-outline"} size={24} color={DISCOVER_TEXT} />
+          {hasStrangerUnread ? <View style={styles.dotBadge} /> : null}
           {!hasStrangerUnread && messageBadgeText ? (
-            <View style={[styles.countBadge, { backgroundColor: colors.accent }]}>
+            <View style={styles.countBadge}>
               <Text style={styles.countBadgeText}>{messageBadgeText}</Text>
             </View>
           ) : null}
         </Pressable>
         <View style={styles.topTabs}>
           {topTabs.map((item) => (
-            <Pressable key={item.key} onPress={() => setTab(item.key)} style={styles.topTabButton}>
+            <Pressable
+              key={item.key}
+              onPress={() => {
+                if (item.key === "worldcup") {
+                  setTab("discover");
+                  return;
+                }
+                setTab(item.key);
+              }}
+              style={styles.topTabButton}
+            >
               <Text
                 style={[
                   styles.topTabText,
-                  { color: tab === item.key ? colors.text : colors.subtext },
+                  { color: tab === item.key ? DISCOVER_TEXT : DISCOVER_MUTED },
                 ]}
                 numberOfLines={1}
               >
@@ -267,128 +285,68 @@ export function BrowseScreen() {
               <View
                 style={[
                   styles.topTabUnderline,
-                  { backgroundColor: tab === item.key ? colors.accent : "transparent" },
+                  { backgroundColor: tab === item.key ? DISCOVER_RED : "transparent" },
                 ]}
               />
             </Pressable>
           ))}
         </View>
         <Pressable style={styles.iconButton} onPress={() => navigation.navigate("BrowseSearch")}>
-          <Ionicons name="search-outline" size={22} color={colors.text} />
+          <Ionicons name="search-outline" size={23} color={DISCOVER_TEXT} />
         </Pressable>
       </View>
 
-      {showBrowseFilters ? (
-        <View style={[styles.filterWrap, { backgroundColor: isDark ? "#17171b" : colors.background, borderBottomColor: colors.border }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
-            <Pressable style={styles.sourceDropdownButton} onPress={() => setSourceMenuOpen(true)}>
-              <View style={styles.textFilterInner}>
-                <Text style={[styles.filterChipText, { color: colors.text }]}>{activeRoleFilter.label}</Text>
-                <Ionicons name="chevron-down" size={14} color={colors.text} />
-              </View>
-              <View style={[styles.filterUnderline, { backgroundColor: sourceMenuOpen ? colors.accent : "transparent" }]} />
-            </Pressable>
-            {discoverStyleFilters.map((item) => {
-              const active = activeFilterState.style === item.key;
-              return (
-                <Pressable
-                  key={item.key}
-                  style={styles.filterChip}
-                  onPress={() => updateActiveFilter({ style: item.key })}
-                >
-                  <Text style={[styles.filterChipText, { color: active ? colors.text : colors.subtext }]}>{item.label}</Text>
-                  <View style={[styles.filterUnderline, { backgroundColor: active ? colors.accent : "transparent" }]} />
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      ) : null}
-
-      <Modal transparent visible={sourceMenuOpen && showBrowseFilters} animationType="fade" onRequestClose={() => setSourceMenuOpen(false)}>
-        <Pressable style={[styles.sourceMenuBackdrop, { paddingTop: sourceMenuTopOffset }]} onPress={() => setSourceMenuOpen(false)}>
-          <View
-            style={[
-              styles.sourceMenu,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                shadowColor: "#000000",
-              },
-            ]}
-            onStartShouldSetResponder={() => true}
-          >
-            {discoverRoleFilters.map((item) => {
-              const active = activeFilterState.role === item.key;
-              return (
-                <Pressable
-                  key={item.key}
-                  style={[styles.sourceMenuItem, { borderBottomColor: colors.border }]}
-                  onPress={() => {
-                    updateActiveFilter({ role: item.key });
-                    setSourceMenuOpen(false);
-                  }}
-                >
-                  <Text style={[styles.sourceMenuText, { color: active ? colors.accent : colors.text }]}>{item.label}</Text>
-                  {active ? <Ionicons name="checkmark" size={18} color={colors.accent} /> : null}
-                </Pressable>
-              );
-            })}
-          </View>
-        </Pressable>
-      </Modal>
+      <View style={styles.categoryBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContent}>
+          {categoryTabs.map((item) => {
+            const active = activeCategory === item;
+            return (
+              <Pressable key={item} style={styles.categoryItem} onPress={() => setActiveCategory(item)}>
+                <Text style={[styles.categoryText, { color: active ? DISCOVER_TEXT : DISCOVER_MUTED }]}>{item}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {tab === "following" && !hasToken ? (
         <RequireLogin onLogin={() => navigation.navigate("Login")} message="登录后可查看已关注作者发布的新美甲图" />
       ) : (
-        <FlatList
-          data={feedItems}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
-          refreshing={isPullRefreshing}
-          onRefresh={handleRefresh}
-          progressViewOffset={8}
-          renderItem={({ item }) => (
-            <View style={styles.gridItem}>
-              <BrowseFeedCard
-                item={item}
-                onToggleLike={onToggleLike}
-                showLike={!isMerchant}
-                onPress={(selected) => {
-                  void trackEvent("style_click", {
-                    styleId: selected.id,
-                    source: tab,
-                    screen: "browse",
-                    properties: { role: selected.author_is_shop ? "merchant" : "consumer" },
-                  });
-                  navigation.navigate("StylePreview", { styleId: selected.id });
-                }}
-              />
-            </View>
-          )}
-          ListEmptyComponent={
-            showInitialLoading ? (
-              <View style={styles.emptyState}>
-                <ActivityIndicator size="small" color={colors.accent} />
-                <Text style={[styles.emptyTitle, { color: colors.text }]}>正在加载美甲</Text>
-                <Text style={[styles.emptyText, { color: colors.subtext }]}>请稍等，发现页会自动刷新。</Text>
-              </View>
-            ) : tab === "following" ? (
+        <ScrollView
+          style={styles.feedScroll}
+          contentContainerStyle={[styles.feedContent, { paddingHorizontal: gap, paddingBottom: scrollPaddingBottom }]}
+          refreshControl={
+            <RefreshControl
+              refreshing={isPullRefreshing}
+              onRefresh={handleRefresh}
+              tintColor={DISCOVER_RED}
+              colors={[DISCOVER_RED]}
+              progressBackgroundColor={DISCOVER_SURFACE}
+            />
+          }
+        >
+          {showInitialLoading ? (
             <View style={styles.emptyState}>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>你的关注页还是空的</Text>
-              <Text style={[styles.emptyText, { color: colors.subtext }]}>去任意美甲详情页关注作者后，这里会优先显示对方发布的新图片。</Text>
+              <ActivityIndicator size="small" color={DISCOVER_RED} />
+              <Text style={styles.emptyTitle}>正在加载美甲</Text>
+              <Text style={styles.emptyText}>请稍等，发现页会自动刷新。</Text>
+            </View>
+          ) : !feedItems.length ? (
+            tab === "following" ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>你的关注页还是空的</Text>
+              <Text style={styles.emptyText}>去任意美甲详情页关注作者后，这里会优先显示对方发布的新图片。</Text>
             </View>
           ) : tab === "local" ? (
             <View style={styles.emptyState}>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              <Text style={styles.emptyTitle}>
                 {canUseLocalFeed
                   ? "同城还没有商家作品"
                   : localLocationStatus === "pending"
                     ? "正在获取 GPS 定位"
                     : "开启 GPS 查看同城美甲"}
               </Text>
-              <Text style={[styles.emptyText, { color: colors.subtext }]}>
+              <Text style={styles.emptyText}>
                 {canUseLocalFeed
                   ? `当前城市：${localCity}。商家发布后会优先出现在这里。`
                   : localLocationStatus === "pending"
@@ -398,36 +356,65 @@ export function BrowseScreen() {
             </View>
           ) : tab === "discover" ? (
             <View style={styles.emptyState}>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>没有匹配的美甲</Text>
-              <Text style={[styles.emptyText, { color: colors.subtext }]}>换一个标签，或回到“全部”查看更多作品。</Text>
+              <Text style={styles.emptyTitle}>没有匹配的美甲</Text>
+              <Text style={styles.emptyText}>换一个频道，或稍后回来查看更多作品。</Text>
             </View>
-          ) : null
-          }
-          contentContainerStyle={[styles.list, { paddingBottom: listPaddingBottom }]}
-        />
+            ) : null
+          ) : (
+            <View style={[styles.masonry, { columnGap: gap }]}>
+              {masonryColumns.map((column, columnIndex) => (
+                <View key={columnIndex} style={[styles.masonryColumn, { width: columnWidth, gap: 7 }]}>
+                  {column.map(({ item, imageHeight }) => (
+                    <DiscoverFeedCard
+                      key={item.id}
+                      item={item}
+                      width={columnWidth}
+                      imageHeight={imageHeight}
+                      onToggleLike={onToggleLike}
+                      showLike={!isMerchant}
+                      onPress={(selected) => {
+                        void trackEvent("style_click", {
+                          styleId: selected.id,
+                          source: tab,
+                          screen: "browse",
+                          properties: { role: selected.author_is_shop ? "merchant" : "consumer" },
+                        });
+                        navigation.navigate("StylePreview", { styleId: selected.id });
+                      }}
+                    />
+                  ))}
+                </View>
+              ))}
+            </View>
+          )}
+        </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: DISCOVER_BG,
   },
   topBar: {
+    height: 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingBottom: 14,
+    paddingHorizontal: 6,
+    backgroundColor: DISCOVER_BG,
+    borderBottomColor: DISCOVER_BORDER,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconButton: {
-    width: 38,
-    height: 38,
+    width: "12%",
+    height: 42,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
+    borderRadius: 18,
   },
   dotBadge: {
     position: "absolute",
@@ -436,6 +423,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+    backgroundColor: DISCOVER_RED,
   },
   countBadge: {
     position: "absolute",
@@ -447,6 +435,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: DISCOVER_RED,
   },
   countBadgeText: {
     color: "#ffffff",
@@ -454,100 +443,122 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   topTabs: {
+    width: "65%",
     flexDirection: "row",
     alignItems: "center",
-    gap: 18,
+    justifyContent: "center",
+    gap: 14,
   },
   topTabButton: {
     alignItems: "center",
-    gap: 6,
-    minWidth: 56,
-    maxWidth: 76,
+    justifyContent: "center",
+    gap: 4,
+    minWidth: 42,
+    maxWidth: 58,
+    height: 42,
   },
   topTabText: {
-    fontSize: 17,
-    fontWeight: "700",
-    lineHeight: 22,
+    fontSize: 16,
+    fontWeight: "800",
+    lineHeight: 20,
   },
   topTabUnderline: {
-    width: 28,
+    width: 24,
     height: 3,
     borderRadius: 999,
   },
-  filterWrap: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  categoryBar: {
+    height: 40,
+    backgroundColor: DISCOVER_BG,
+    justifyContent: "center",
   },
-  filterContent: {
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 10,
-    gap: 24,
+  categoryContent: {
+    alignItems: "center",
+    paddingHorizontal: 12,
+    gap: 28,
   },
-  filterChip: {
-    minHeight: 34,
+  categoryItem: {
+    height: 38,
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
   },
-  sourceDropdownButton: {
-    minHeight: 34,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-  },
-  textFilterInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  filterUnderline: {
-    width: 22,
-    height: 3,
-    borderRadius: 999,
-  },
-  filterChipText: {
+  categoryText: {
     fontSize: 15,
-    fontWeight: "800",
+    fontWeight: "700",
+    lineHeight: 18,
   },
-  sourceMenuBackdrop: {
+  feedScroll: {
     flex: 1,
-    paddingHorizontal: 14,
-    backgroundColor: "rgba(0,0,0,0.08)",
+    backgroundColor: DISCOVER_BG,
   },
-  sourceMenu: {
-    width: 168,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
+  feedContent: {
+    paddingTop: 4,
+  },
+  masonry: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  masonryColumn: {
+    flexDirection: "column",
+  },
+  card: {
+    backgroundColor: DISCOVER_SURFACE,
+    borderRadius: 7,
     overflow: "hidden",
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
   },
-  sourceMenuItem: {
-    minHeight: 48,
-    paddingHorizontal: 16,
+  cardImage: {
+    backgroundColor: DISCOVER_SURFACE_ALT,
+  },
+  cardBody: {
+    paddingHorizontal: 10,
+    paddingTop: 9,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  cardTitle: {
+    color: DISCOVER_TEXT,
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+  cardFooter: {
+    minHeight: 28,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
   },
-  sourceMenuText: {
-    fontSize: 15,
-    fontWeight: "800",
+  authorBlock: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  row: {
-    alignItems: "flex-start",
+  authorAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: DISCOVER_SURFACE_ALT,
   },
-  gridItem: {
-    width: "50%",
+  authorName: {
+    flex: 1,
+    color: DISCOVER_MUTED,
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "600",
   },
-  list: {
-    padding: 12,
-    paddingBottom: 120,
+  likeBlock: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  likeText: {
+    color: "#8f8f98",
+    fontSize: 12,
+    fontWeight: "600",
   },
   emptyState: {
-    marginTop: 80,
+    marginTop: 96,
     paddingHorizontal: 28,
     alignItems: "center",
     gap: 10,
@@ -558,7 +569,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   emptyText: {
-    color: "#8f8f98",
+    color: DISCOVER_MUTED,
     lineHeight: 20,
     textAlign: "center",
   },

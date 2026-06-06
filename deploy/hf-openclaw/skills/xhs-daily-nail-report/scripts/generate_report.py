@@ -89,7 +89,7 @@ def note_table(notes):
     if not notes:
         return "暂无数据。\n"
     lines = [
-        "| 排名 | 标签 | 图片 | Like | Collect | Share |",
+        "| 排名 | 标签 | 图片 | 点赞 | 收藏 | 分享 |",
         "| --- | --- | --- | ---: | ---: | ---: |",
     ]
     for index, note in enumerate(notes[:TOP_LIMIT], start=1):

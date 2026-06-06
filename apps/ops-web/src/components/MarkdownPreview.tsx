@@ -20,7 +20,7 @@ function isTagColumn(header?: string): boolean {
 }
 
 function isMetricColumn(header?: string): boolean {
-  return ["Like", "Collect", "Share"].includes(cleanCell(header ?? ""));
+  return ["点赞", "收藏", "分享", "Like", "Collect", "Share"].includes(cleanCell(header ?? ""));
 }
 
 function renderInline(value: string, keyPrefix: string): ReactNode[] {
