@@ -1,5 +1,5 @@
 import { DownOutlined, GiftOutlined, StopOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { App, Button, Descriptions, Drawer, Dropdown, Image, Input, Space, Table, Typography } from "antd";
+import { App, Button, Descriptions, Drawer, Dropdown, Image, Input, Space, Table, Tag, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
 import { api, OpsUser } from "../api/client";
@@ -35,6 +35,17 @@ function UserDemoImage({ src, alt }: { src?: string | null; alt: string }) {
       height={160}
       style={{ objectFit: "cover", borderRadius: 12 }}
     />
+  );
+}
+
+function UserNameWithLocation({ user }: { user: OpsUser }) {
+  return (
+    <Space size={8} wrap>
+      <Typography.Text strong>{user.username}</Typography.Text>
+      <Tag bordered={false} className="ip-location-tag">
+        IP属地：{user.last_login_ip_location || "未知"}
+      </Tag>
+    </Space>
   );
 }
 
@@ -107,9 +118,8 @@ export function UsersPage() {
 
   const columns: ColumnsType<OpsUser> = [
     { title: "UID", dataIndex: "uid", width: 110 },
-    { title: "用户名", dataIndex: "username" },
+    { title: "用户名", dataIndex: "username", render: (_, record) => <UserNameWithLocation user={record} /> },
     { title: "手机", dataIndex: "phone" },
-    { title: "最近 IP 属地", dataIndex: "last_login_ip_location", width: 130, render: (value?: string) => value || "-" },
     { title: "预约", dataIndex: "booking_count", width: 90 },
     { title: "AI 焕手", dataIndex: "tryon_count", width: 100 },
     { title: "Like", dataIndex: "like_count", width: 90 },
@@ -186,10 +196,11 @@ export function UsersPage() {
       <Drawer title="用户详情" open={Boolean(selected)} width={460} onClose={() => setSelected(null)}>
         {selected && (
           <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="用户名">{selected.username}</Descriptions.Item>
+            <Descriptions.Item label="用户名">
+              <UserNameWithLocation user={selected} />
+            </Descriptions.Item>
             <Descriptions.Item label="UID">{selected.uid}</Descriptions.Item>
             <Descriptions.Item label="手机">{selected.phone || "-"}</Descriptions.Item>
-            <Descriptions.Item label="最近 IP 属地">{selected.last_login_ip_location || "-"}</Descriptions.Item>
             <Descriptions.Item label="预约数">{selected.booking_count}</Descriptions.Item>
             <Descriptions.Item label="AI 焕手">{selected.tryon_count}</Descriptions.Item>
             <Descriptions.Item label="上传首图">
@@ -200,7 +211,6 @@ export function UsersPage() {
             </Descriptions.Item>
             <Descriptions.Item label="Like">{selected.like_count}</Descriptions.Item>
             <Descriptions.Item label="Collect">{selected.collect_count}</Descriptions.Item>
-            <Descriptions.Item label="注册时间">{new Date(selected.created_at).toLocaleString("zh-CN")}</Descriptions.Item>
           </Descriptions>
         )}
       </Drawer>

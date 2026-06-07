@@ -321,6 +321,15 @@ textarea {
   font-weight: 700;
 }
 
+.ip-location-tag {
+  margin-inline-end: 0;
+  padding: 2px 8px;
+  color: #6b7280;
+  background: #f3f4f6;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .page-stack {
   width: 100%;
 }
