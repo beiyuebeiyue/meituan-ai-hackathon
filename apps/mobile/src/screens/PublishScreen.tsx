@@ -257,7 +257,7 @@ export function PublishScreen() {
           >
             <View
               style={[
-                styles.textDialog,
+                styles.textInputBox,
                 { backgroundColor: colors.background, borderColor: colors.border },
               ]}
             >
@@ -271,7 +271,13 @@ export function PublishScreen() {
                   { color: colors.text },
                 ]}
               />
-              <View style={[styles.textDialogDivider, { backgroundColor: colors.text }]} />
+            </View>
+            <View
+              style={[
+                styles.textInputBox,
+                { backgroundColor: colors.background, borderColor: colors.border },
+              ]}
+            >
               <TextInput
                 placeholder="展开说说"
                 placeholderTextColor={colors.subtext}
@@ -592,15 +598,10 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: -0.4,
   },
-  textDialog: {
+  textInputBox: {
     borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
-  },
-  textDialogDivider: {
-    height: StyleSheet.hairlineWidth,
-    opacity: 0.18,
-    marginHorizontal: 16,
   },
   descriptionInput: {
     minHeight: 84,
