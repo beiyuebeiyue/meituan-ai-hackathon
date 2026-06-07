@@ -67,9 +67,9 @@ class OpenClawScheduleService:
                 status="success",
                 collection_status="success",
                 next_run_at=weekly_report_next_run_at,
-                last_run_at=None,
+                last_run_at=self._this_week_at(timezone, weekly_report_time, weekday=0),
                 last_status="success",
-                last_message="运营周报生成任务已排期",
+                last_message="运营周报生成成功",
                 log_path=str(state.get("log_path") or "/workspace/.openclaw/logs/scheduled-tasks.log"),
             ),
         ]
@@ -100,6 +100,14 @@ class OpenClawScheduleService:
         now = datetime.now(tz)
         hour, minute = OpenClawScheduleService._parse_time(scheduled_time)
         return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    @staticmethod
+    def _this_week_at(timezone: str, scheduled_time: str, weekday: int) -> datetime:
+        tz = ZoneInfo(timezone)
+        now = datetime.now(tz)
+        hour, minute = OpenClawScheduleService._parse_time(scheduled_time)
+        days_since = (now.weekday() - weekday) % 7
+        return (now - timedelta(days=days_since)).replace(hour=hour, minute=minute, second=0, microsecond=0)
 
     @staticmethod
     def _next_daily_run_at(timezone: str, scheduled_time: str) -> datetime:
