@@ -153,44 +153,6 @@ export function PublishScreen() {
         >
           <View
             style={[
-              styles.hero,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <View style={styles.heroTop}>
-              <View>
-                <Text style={[styles.eyebrow, { color: colors.accent }]}>
-                  {isMerchant ? "商家作品" : "个人作品"}
-                </Text>
-                <Text style={[styles.title, { color: colors.text }]}>
-                  发布美甲灵感
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.heroBadge,
-                  { backgroundColor: colors.accentSoft },
-                ]}
-              >
-                <Ionicons
-                  name={isMerchant ? "storefront-outline" : "sparkles-outline"}
-                  size={16}
-                  color={colors.accent}
-                />
-                <Text style={[styles.heroBadgeText, { color: colors.accent }]}>
-                  {isMerchant ? "店铺展示" : "社区分享"}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.heroCopy, { color: colors.subtext }]}>
-              {isMerchant
-                ? "上传门店作品，系统会自动关联默认门店。"
-                : "上传图片，补充标题和标签即可。"}
-            </Text>
-          </View>
-
-          <View
-            style={[
               styles.composeCard,
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
@@ -199,88 +161,64 @@ export function PublishScreen() {
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
                 作品封面
               </Text>
-              <Text style={[styles.sectionHint, { color: colors.subtext }]}>
-                清晰手部图更好
-              </Text>
             </View>
-            <View style={styles.coverRow}>
-              <Pressable
-                style={[
-                  styles.uploadCard,
-                  {
-                    borderColor: imageUri ? colors.border : colors.accent,
-                    backgroundColor: imageUri
-                      ? colors.background
-                      : colors.accentSoft,
-                  },
-                ]}
-                onPress={pickImage}
-              >
-                {imageUri ? (
-                  <>
-                    <Image
-                      source={{ uri: imageUri }}
-                      style={[
-                        styles.preview,
-                        { backgroundColor: colors.accentSoft },
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.previewOverlay,
-                        { backgroundColor: colors.overlay },
-                      ]}
-                    >
-                      <Ionicons name="refresh" size={14} color="#ffffff" />
-                      <Text style={styles.previewOverlayText}>更换</Text>
-                    </View>
-                  </>
-                ) : (
-                  <View style={styles.uploadPlaceholder}>
-                    <Ionicons
-                      name="image-outline"
-                      size={30}
-                      color={colors.accent}
-                    />
-                    <Text style={[styles.uploadTitle, { color: colors.text }]}>
-                      上传图片
-                    </Text>
+            <Pressable
+              style={[
+                styles.uploadCard,
+                {
+                  borderColor: imageUri ? colors.border : colors.accent,
+                  backgroundColor: imageUri
+                    ? colors.background
+                    : colors.accentSoft,
+                },
+              ]}
+              onPress={pickImage}
+            >
+              {imageUri ? (
+                <>
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={[
+                      styles.preview,
+                      { backgroundColor: colors.accentSoft },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.previewOverlay,
+                      { backgroundColor: colors.overlay },
+                    ]}
+                  >
+                    <Ionicons name="refresh" size={14} color="#ffffff" />
+                    <Text style={styles.previewOverlayText}>更换</Text>
                   </View>
-                )}
-              </Pressable>
-              <View style={styles.coverTips}>
-                <View
-                  style={[
-                    styles.publishTarget,
-                    { backgroundColor: colors.background },
-                  ]}
-                >
+                </>
+              ) : (
+                <View style={styles.uploadPlaceholder}>
                   <Ionicons
-                    name={
-                      isMerchant
-                        ? "storefront-outline"
-                        : selectedBooking
-                          ? "shield-checkmark-outline"
-                          : "person-circle-outline"
-                    }
-                    size={17}
+                    name="image-outline"
+                    size={30}
                     color={colors.accent}
                   />
-                  <Text
-                    style={[styles.publishTargetText, { color: colors.text }]}
-                    numberOfLines={2}
-                  >
-                    {isMerchant
-                      ? defaultShop
-                        ? `${defaultShop.name} · ${defaultShop.city}`
-                        : "正在准备默认门店"
-                      : selectedBooking
-                        ? `真实消费 · ${selectedBooking.shop_name}`
-                        : "发布到个人主页"}
+                  <Text style={[styles.uploadTitle, { color: colors.text }]}>
+                    上传图片
                   </Text>
                 </View>
+              )}
+            </Pressable>
+            {isMerchant && !defaultShop ? (
+              <View
+                style={[
+                  styles.shopNotice,
+                  { backgroundColor: colors.background },
+                ]}
+              >
+                <Ionicons name="storefront-outline" size={17} color={colors.accent} />
+                <Text style={[styles.shopNoticeText, { color: colors.text }]}>
+                  正在准备默认门店
+                </Text>
               </View>
-            </View>
+            ) : null}
             <Pressable
               style={[
                 styles.generateButton,
@@ -322,7 +260,12 @@ export function PublishScreen() {
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            <View style={styles.fieldBlock}>
+            <View
+              style={[
+                styles.textDialog,
+                { backgroundColor: colors.background, borderColor: colors.border },
+              ]}
+            >
               <TextInput
                 placeholder="添加标题"
                 placeholderTextColor={colors.subtext}
@@ -333,22 +276,18 @@ export function PublishScreen() {
                   { color: colors.text },
                 ]}
               />
-            </View>
-            <View style={styles.descriptionBlock}>
-              <View style={styles.descriptionAccent} />
-              <View style={styles.descriptionInputWrap}>
-                <TextInput
-                  placeholder="展开说说"
-                  placeholderTextColor={colors.subtext}
-                  value={description}
-                  onChangeText={setDescription}
-                  style={[
-                    styles.descriptionInput,
-                    { color: colors.text },
-                  ]}
-                  multiline
-                />
-              </View>
+              <View style={[styles.textDialogDivider, { backgroundColor: colors.text }]} />
+              <TextInput
+                placeholder="展开说说"
+                placeholderTextColor={colors.subtext}
+                value={description}
+                onChangeText={setDescription}
+                style={[
+                  styles.descriptionInput,
+                  { color: colors.text },
+                ]}
+                multiline
+              />
             </View>
             <View style={styles.fieldBlock}>
               <Text style={[styles.fieldLabel, { color: colors.text }]}>
@@ -502,30 +441,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   keyboard: { flex: 1 },
   content: { padding: 16, gap: 14, paddingBottom: 120 },
-  hero: {
-    borderRadius: 28,
-    padding: 18,
-    gap: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  heroTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  eyebrow: { fontSize: 12, fontWeight: "900", letterSpacing: 1 },
-  title: { fontSize: 28, fontWeight: "900", letterSpacing: -0.8 },
-  heroBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  heroBadgeText: { fontSize: 12, fontWeight: "900" },
-  heroCopy: { fontSize: 13, lineHeight: 20, fontWeight: "600" },
   composeCard: {
     borderRadius: 26,
     padding: 14,
@@ -539,19 +454,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionTitle: { fontSize: 17, fontWeight: "900" },
-  sectionHint: { fontSize: 12, fontWeight: "700" },
-  coverRow: { flexDirection: "row", gap: 12, alignItems: "stretch" },
-  coverTips: { flex: 1, gap: 8 },
-  publishTarget: {
-    flex: 1,
-    minHeight: 52,
+  shopNotice: {
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     borderRadius: 16,
   },
-  publishTargetText: {
+  shopNoticeText: {
     flex: 1,
     fontSize: 13,
     fontWeight: "800",
@@ -637,8 +548,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   uploadCard: {
-    width: 128,
-    height: 128,
+    width: "100%",
+    aspectRatio: 1,
     borderRadius: 24,
     borderWidth: 1.5,
     borderStyle: "dashed",
@@ -687,37 +598,32 @@ const styles = StyleSheet.create({
   },
   titleInput: {
     minHeight: 58,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 28,
     fontWeight: "900",
     letterSpacing: -0.4,
   },
-  descriptionBlock: {
-    minHeight: 84,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
+  textDialog: {
+    borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
   },
-  descriptionAccent: {
-    width: 4,
-    height: 48,
-    marginTop: 8,
-    borderRadius: 999,
-    backgroundColor: PUBLISH_ROSE,
-  },
-  descriptionInputWrap: {
-    flex: 1,
+  textDialogDivider: {
+    height: StyleSheet.hairlineWidth,
+    opacity: 0.18,
+    marginHorizontal: 16,
   },
   descriptionInput: {
     minHeight: 84,
-    paddingTop: 0,
-    paddingBottom: 10,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 16,
     fontSize: 24,
     lineHeight: 32,
     fontWeight: "800",
     textAlignVertical: "top",
   },
-  textarea: { minHeight: 110, textAlignVertical: "top" },
   tagPreviewRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tagPreviewText: { fontSize: 13, fontWeight: "900" },
   publishButton: {

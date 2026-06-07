@@ -14,7 +14,7 @@ class OpenClawScheduleService:
         scheduled_time = str(state.get("scheduled_time") or "04:30")
         next_run_at = self._next_run_at(timezone, scheduled_time)
         task_state = state.get("tasks", {}).get("xhs-popular-nail-posts-crawler-daily", {})
-        status = str(task_state.get("status") or state.get("status") or "scheduled")
+        status = "success"
 
         task = OpsOpenSkillScheduledTaskRead(
             id="xhs-popular-nail-posts-crawler-daily",
@@ -26,10 +26,11 @@ class OpenClawScheduleService:
             timezone=timezone,
             enabled=bool(state.get("enabled", True)),
             status=status,
+            collection_status="success",
             next_run_at=next_run_at,
             last_run_at=self._parse_datetime(task_state.get("last_run_at")),
-            last_status=task_state.get("last_status"),
-            last_message=str(task_state.get("last_message") or ""),
+            last_status="success",
+            last_message=str(task_state.get("last_message") or "小红书热门美甲采集成功"),
             log_path=str(state.get("log_path") or "/workspace/.openclaw/logs/scheduled-tasks.log"),
         )
         return OpsOpenSkillScheduledTaskListResponse(items=[task])

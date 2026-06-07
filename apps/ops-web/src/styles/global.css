@@ -1739,7 +1739,25 @@ textarea {
 }
 
 .ops-chat-input {
+  position: relative;
   width: 100%;
+}
+
+.ops-chat-input grammarly-extension,
+.ops-chat-input grammarly-desktop-integration,
+.ops-chat-input [data-grammarly-part],
+.ops-chat-input [data-grammarly-shadow-root],
+.ops-chat-input [class*="grammarly"],
+.ops-chat-input [class*="Grammarly"],
+.ops-chat-input [class*="writing-assist"],
+.ops-chat-input [class*="WritingAssist"],
+.ops-chat-input [class*="prowriting"],
+.ops-chat-input [class*="ProWriting"],
+.ops-chat-input [class*="quillbot"],
+.ops-chat-input [class*="QuillBot"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .ops-command-list {

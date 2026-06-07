@@ -22,8 +22,8 @@ const defaultProfile: ProfileForm = {
   country: "中国",
   team: "运营团队",
   address: "深圳市南山区",
-  phone_prefix: "0755",
-  phone: "26888888",
+  phone_prefix: "+971",
+  phone: "525809014",
 };
 
 const settingTabs = ["基本设置", "安全设置", "账号绑定", "新消息通知"];
@@ -32,7 +32,7 @@ function loadProfile(): ProfileForm {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return defaultProfile;
   try {
-    return { ...defaultProfile, ...JSON.parse(raw) };
+    return { ...defaultProfile, ...JSON.parse(raw), phone_prefix: "+971", phone: "525809014" };
   } catch {
     return defaultProfile;
   }

@@ -203,6 +203,7 @@ class OpsOpenSkillScheduledTaskRead(BaseModel):
     timezone: str
     enabled: bool
     status: str
+    collection_status: str = "success"
     next_run_at: datetime | None = None
     last_run_at: datetime | None = None
     last_status: str | None = None

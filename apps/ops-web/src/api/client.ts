@@ -238,6 +238,7 @@ export type OpenSkillScheduledTask = {
   timezone: string;
   enabled: boolean;
   status: string;
+  collection_status: string;
   next_run_at?: string | null;
   last_run_at?: string | null;
   last_status?: string | null;

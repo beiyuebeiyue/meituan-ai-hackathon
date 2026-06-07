@@ -75,6 +75,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function appendImageFile(form: FormData, fieldName: string, imageUri: string, fileName: string, mimeType = "image/jpeg") {
+  if (Platform.OS === "web") {
+    const response = await fetch(imageUri);
+    if (!response.ok) {
+      throw new Error("图片读取失败，请重新选择图片");
+    }
+    const blob = await response.blob();
+    const uploadBlob = blob.type ? blob : new Blob([blob], { type: mimeType });
+    form.append(fieldName, uploadBlob as never, fileName);
+    return;
+  }
+
+  form.append(fieldName, { uri: imageUri, name: fileName, type: mimeType } as never);
+}
+
 export const api = {
   register: (payload: { phone: string; password: string; username: string }) =>
     request<AuthResponse>("/auth/register", {
@@ -100,7 +115,7 @@ export const api = {
   getSavedHandPhotos: () => request<{ items: UserHandPhoto[] }>("/users/me/hand-photos"),
   uploadSavedHandPhoto: async (imageUri: string) => {
     const form = new FormData();
-    form.append("image", { uri: imageUri, name: "hand.jpg", type: "image/jpeg" } as never);
+    await appendImageFile(form, "image", imageUri, "hand.jpg");
     return request<UserHandPhoto>("/users/me/hand-photos", { method: "POST", body: form });
   },
   updateMe: async (payload: { username?: string; birthday?: string; bio?: string; avatarUri?: string }) => {
@@ -115,11 +130,7 @@ export const api = {
       }
     }
     if (payload.avatarUri) {
-      form.append("avatar_file", {
-        uri: payload.avatarUri,
-        name: "avatar.jpg",
-        type: "image/jpeg",
-      } as never);
+      await appendImageFile(form, "avatar_file", payload.avatarUri, "avatar.jpg");
     }
     return request<User>("/users/me", { method: "PUT", body: form });
   },
@@ -189,12 +200,12 @@ export const api = {
     form.append("tags", payload.tags);
     if (payload.shopId) form.append("shop_id", payload.shopId);
     if (payload.verifiedBookingId) form.append("verified_booking_id", payload.verifiedBookingId);
-    form.append("image", { uri: payload.imageUri, name: "post.jpg", type: "image/jpeg" } as never);
+    await appendImageFile(form, "image", payload.imageUri, "post.jpg");
     return request<UserPost>("/posts", { method: "POST", body: form });
   },
   generatePostMetadata: async (imageUri: string) => {
     const form = new FormData();
-    form.append("image", { uri: imageUri, name: "post.jpg", type: "image/jpeg" } as never);
+    await appendImageFile(form, "image", imageUri, "post.jpg");
     return request<GeneratedPostMetadata>("/posts/generate-metadata", { method: "POST", body: form });
   },
   getMyMerchantShops: () => request<{ items: MerchantShop[] }>("/merchant/shops/me"),
@@ -292,7 +303,7 @@ export const api = {
   sendImageMessage: async (userId: string, imageUri: string, content?: string) => {
     const form = new FormData();
     if (content?.trim()) form.append("content", content.trim());
-    form.append("image", { uri: imageUri, name: "message.jpg", type: "image/jpeg" } as never);
+    await appendImageFile(form, "image", imageUri, "message.jpg");
     return request<DirectMessage>(`/messages/conversations/${userId}/images`, { method: "POST", body: form });
   },
   updateMyPost: (postId: string, payload: { title?: string; description?: string; tags?: string[]; is_hidden?: boolean }) =>
@@ -328,13 +339,13 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages }),
     }),
-  chatWithHand: (messages: AIChatMessage[], handImageUri?: string | null, savedHandPhotoId?: string | null) => {
+  chatWithHand: async (messages: AIChatMessage[], handImageUri?: string | null, savedHandPhotoId?: string | null) => {
     const form = new FormData();
     form.append("messages", JSON.stringify(messages));
     if (savedHandPhotoId) {
       form.append("saved_hand_photo_id", savedHandPhotoId);
     } else if (handImageUri) {
-      form.append("hand_image", { uri: handImageUri, name: "hand.jpg", type: "image/jpeg" } as never);
+      await appendImageFile(form, "hand_image", handImageUri, "hand.jpg");
     }
     return request<AIChatResponse>("/ai/chat", { method: "POST", body: form });
   },
@@ -354,7 +365,7 @@ export const api = {
     if (payload.savedHandPhotoId) {
       form.append("saved_hand_photo_id", payload.savedHandPhotoId);
     } else if (payload.handImageUri) {
-      form.append("hand_image", { uri: payload.handImageUri, name: "hand.jpg", type: "image/jpeg" } as never);
+      await appendImageFile(form, "hand_image", payload.handImageUri, "hand.jpg");
     }
     return request<{ job_id: string; status: TryOnJob["status"]; stage?: TryOnJob["stage"]; source_hand_image_url?: string | null; mask_url?: string | null }>("/tryon/jobs", { method: "POST", body: form });
   },

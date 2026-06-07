@@ -314,7 +314,7 @@ function RecommendationCard({
             ]}
           >
             <Text style={[styles.nailTypePillText, { color: colors.accent }]}>
-              穿戴甲
+              手工甲
             </Text>
           </View>
         </View>
@@ -1453,7 +1453,7 @@ export function AskAIScreen() {
                           { color: colors.accent },
                         ]}
                       >
-                        穿戴甲
+                        手工甲
                       </Text>
                     </View>
                     <Text

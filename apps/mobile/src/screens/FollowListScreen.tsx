@@ -79,11 +79,9 @@ export function FollowListScreen() {
 
   const getSubtitle = (item: UserSummary) => {
     if (displayTab === "followers") {
-      return `粉丝 · IP：${item.ip_location || "未知"}`;
+      return "粉丝";
     }
-    return item.is_following
-      ? `已关注 · IP：${item.ip_location || "未知"}`
-      : `IP：${item.ip_location || "未知"}`;
+    return item.is_following ? "已关注" : "未关注";
   };
 
   const renderUser = ({ item }: { item: UserSummary }) => {

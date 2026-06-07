@@ -15,7 +15,14 @@ import type { OpsDashboard, PopularNail } from "../api/client";
 import chinaGeoJson from "../assets/geo/china.json";
 
 echarts.use([CanvasRenderer, GeoComponent, MapChart, TooltipComponent, VisualMapComponent]);
-echarts.registerMap("china", chinaGeoJson as Parameters<typeof echarts.registerMap>[1]);
+const monitorChinaGeoJson = {
+  ...(chinaGeoJson as { type: string; features: Array<{ properties?: { name?: string } }> }),
+  features: (chinaGeoJson as { features: Array<{ properties?: { name?: string } }> }).features.filter((feature) => {
+    const name = feature.properties?.name?.trim();
+    return Boolean(name) && name !== "南海诸岛";
+  }),
+};
+echarts.registerMap("china", monitorChinaGeoJson as Parameters<typeof echarts.registerMap>[1]);
 
 const accentColors = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 const provinceHeat = [
@@ -239,8 +246,8 @@ export function MonitorPage() {
             <Card className="monitor-card monitor-side-card" title="活动情况预测">
               <div className="monitor-forecast-head">
                 <div>
-                  <Typography.Text type="secondary">目标评估</Typography.Text>
-                  <Typography.Title level={3}>有望达到预期</Typography.Title>
+                  <Typography.Text type="secondary">活动状况</Typography.Text>
+                  <Typography.Title level={3}>正常</Typography.Title>
                 </div>
                 <Tag color="green">目标 {values.targetRate}%</Tag>
               </div>
@@ -317,6 +324,19 @@ function ChinaHeatMap() {
   useEffect(() => {
     if (!chartRef.current) return undefined;
 
+    const formatProvinceLabel = (name?: string) => {
+      const item = provinceHeat.find((province) => province.name === name);
+      if (!item) return name ?? "";
+      const shortName = item.name
+        .replace("壮族自治区", "")
+        .replace("回族自治区", "")
+        .replace("维吾尔自治区", "")
+        .replace("特别行政区", "")
+        .replace("自治区", "")
+        .replace(/省|市/g, "");
+      return `${shortName}\n${item.value}`;
+    };
+
     const chart = echarts.init(chartRef.current);
     chart.setOption({
       tooltip: {
@@ -350,27 +370,22 @@ function ChinaHeatMap() {
             areaColor: "#f59e0b",
           },
           label: {
-            show: false,
+            show: true,
             color: "#111827",
+            fontSize: 12,
+            fontWeight: 700,
+            lineHeight: 16,
+            formatter: (params: { name?: string }) => formatProvinceLabel(params.name),
+            backgroundColor: "rgba(255,255,255,0.92)",
+            borderColor: "rgba(17,24,39,0.12)",
+            borderWidth: 1,
+            borderRadius: 6,
+            padding: [4, 6],
           },
         },
         label: {
-          show: true,
+          show: false,
           color: "#111827",
-          fontSize: 9,
-          lineHeight: 12,
-          formatter: (params: { name?: string; value?: unknown }) => {
-            const item = provinceHeat.find((province) => province.name === params.name);
-            if (!item) return params.name ?? "";
-            const shortName = item.name
-              .replace("壮族自治区", "")
-              .replace("回族自治区", "")
-              .replace("维吾尔自治区", "")
-              .replace("特别行政区", "")
-              .replace("自治区", "")
-              .replace(/省|市/g, "");
-            return `${shortName}\n${item.value}`;
-          },
         },
       },
       series: [
@@ -379,6 +394,24 @@ function ChinaHeatMap() {
           map: "china",
           geoIndex: 0,
           selectedMode: false,
+          label: {
+            show: false,
+          },
+          emphasis: {
+            label: {
+              show: true,
+              color: "#111827",
+              fontSize: 12,
+              fontWeight: 700,
+              lineHeight: 16,
+              formatter: (params: { name?: string }) => formatProvinceLabel(params.name),
+              backgroundColor: "rgba(255,255,255,0.92)",
+              borderColor: "rgba(17,24,39,0.12)",
+              borderWidth: 1,
+              borderRadius: 6,
+              padding: [4, 6],
+            },
+          },
           data: provinceHeat,
         },
       ],
@@ -395,11 +428,6 @@ function ChinaHeatMap() {
   return (
     <div className="china-map-wrap">
       <div ref={chartRef} className="china-map-chart" role="img" aria-label="中国业务热力分布" />
-      <div className="china-map-legend">
-        <Tag>高热度</Tag>
-        <Tag>交易活跃</Tag>
-        <Tag>门店增长</Tag>
-      </div>
     </div>
   );
 }

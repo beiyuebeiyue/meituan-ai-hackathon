@@ -123,7 +123,6 @@ export function MerchantsPage() {
     { title: "城市", dataIndex: "city", width: 100 },
     { title: "地址", dataIndex: "address" },
     { title: "门店电话", dataIndex: "contact_phone", width: 140, render: (value?: string | null) => value || "-" },
-    { title: "最近 IP 属地", dataIndex: "merchant_last_login_ip_location", width: 130, render: (value?: string | null) => value || "-" },
     { title: "预定单", dataIndex: "booking_count", width: 100 },
     { title: "完成单", dataIndex: "completed_booking_count", width: 100 },
   ];
@@ -186,7 +185,6 @@ export function MerchantsPage() {
             <Descriptions.Item label="商家">{selected.merchant_name}</Descriptions.Item>
             <Descriptions.Item label="商家 UID">{selected.merchant_uid}</Descriptions.Item>
             <Descriptions.Item label="商家手机">{selected.merchant_phone || "-"}</Descriptions.Item>
-            <Descriptions.Item label="最近 IP 属地">{selected.merchant_last_login_ip_location || "-"}</Descriptions.Item>
             <Descriptions.Item label="城市">{selected.city}</Descriptions.Item>
             <Descriptions.Item label="地址">{selected.address || "-"}</Descriptions.Item>
             <Descriptions.Item label="联系电话">{selected.contact_phone || "-"}</Descriptions.Item>

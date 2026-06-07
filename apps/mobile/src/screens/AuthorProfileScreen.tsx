@@ -973,15 +973,6 @@ export function AuthorProfileScreen({
           >
             {isMerchantSelfProfile ? "商家焕甲号" : "焕甲号"}：{author.uid}
           </Text>
-          <Text
-            style={[
-              styles.authorMeta,
-              shouldCompactSelfProfile && styles.compactAuthorMeta,
-              { color: heroSubtextColor },
-            ]}
-          >
-            IP：{author.ip_location}
-          </Text>
         </View>
       </Animated.View>
 

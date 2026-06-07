@@ -77,12 +77,6 @@ def create_app() -> FastAPI:
         StaticFiles(directory=str(settings.xhs_daily_report_assets_path), check_dir=False),
         name="xhs-daily-report-assets",
     )
-    app.mount(
-        "/demo-assets",
-        StaticFiles(directory=str(Path(__file__).resolve().parent / "static" / "demo"), check_dir=False),
-        name="demo-assets",
-    )
-
     @app.get("/xhs-weekly-nail-report.html")
     @app.head("/xhs-weekly-nail-report.html")
     @app.get("/xhs_weekly_nail_report.html")

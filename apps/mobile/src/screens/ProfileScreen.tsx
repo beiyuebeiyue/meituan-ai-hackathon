@@ -250,7 +250,7 @@ function ConsumerProfileScreen() {
     {
       key: "bookings",
       icon: "receipt-outline",
-      title: "我的订单",
+      title: "历史订单",
       subtitle: "预约与历史订单",
     },
     {
@@ -333,11 +333,6 @@ function ConsumerProfileScreen() {
                 <Text style={[styles.consumerName, { color: colors.text }]} numberOfLines={1}>
                   {user?.username ?? "焕甲用户"}
                 </Text>
-                <View style={[styles.consumerLocationBadge, { backgroundColor: colors.surfaceAlt }]}>
-                  <Text style={[styles.consumerLocationText, { color: colors.subtext }]} numberOfLines={1}>
-                    IP属地：{user?.last_login_ip_location ?? "未知"}
-                  </Text>
-                </View>
               </View>
               <Text style={[styles.consumerMeta, { color: colors.subtext }]}>
                 焕甲号 {user?.uid ?? "--"}
@@ -390,14 +385,6 @@ function ConsumerProfileScreen() {
             { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
         >
-          <View style={styles.consumerSectionHeader}>
-            <Text style={[styles.consumerSectionTitle, { color: colors.text }]}>
-              常用功能
-            </Text>
-            <Text style={[styles.consumerSectionMeta, { color: colors.subtext }]}>
-              快速进入
-            </Text>
-          </View>
           <View style={styles.consumerQuickGrid}>
             {quickActions.map((item) => (
               <Pressable
@@ -427,60 +414,46 @@ function ConsumerProfileScreen() {
             <Text style={[styles.consumerSectionTitle, { color: colors.text }]}>
               最近预约
             </Text>
-            <Pressable onPress={() => navigation.navigate("ConsumerOrders")}>
-              <Text style={[styles.consumerSectionLink, { color: colors.text }]}>
-                全部
-              </Text>
-            </Pressable>
           </View>
           {recentBookings.map((item) => (
-            <Pressable
+            <View
               key={item.id}
-              style={[styles.bookingRow, { borderBottomColor: colors.border }]}
-              onPress={() => {
-                if (item.style_id)
-                  navigation.navigate("StylePreview", {
-                    styleId: item.style_id,
-                  });
-              }}
+              style={[styles.bookingBlock, { backgroundColor: colors.surfaceAlt }]}
             >
-              <View style={styles.bookingText}>
+              <View style={styles.bookingBlockHeader}>
+                <View style={styles.bookingText}>
+                  <Text
+                    style={[styles.bookingTitle, { color: colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {item.style_title}
+                  </Text>
+                  <Text style={[styles.bookingMeta, { color: colors.subtext }]}>
+                    {item.shop_name}
+                  </Text>
+                </View>
                 <Text
-                  style={[styles.bookingTitle, { color: colors.text }]}
-                  numberOfLines={1}
+                  style={[
+                    styles.bookingStatus,
+                    { color: getBookingStatusTextColor(item.status, colors) },
+                  ]}
                 >
-                  {item.style_title}
-                </Text>
-                <Text style={[styles.bookingMeta, { color: colors.subtext }]}>
-                  {item.shop_name} · {item.appointment_time}
+                  {bookingStatusLabel[item.status]}
                 </Text>
               </View>
-              <Text
-                style={[
-                  styles.bookingStatus,
-                  { color: getBookingStatusTextColor(item.status, colors) },
-                ]}
-              >
-                {bookingStatusLabel[item.status]}
+              <Text style={[styles.bookingMeta, { color: colors.subtext }]}>
+                预约时间：{item.appointment_time}
               </Text>
-            </Pressable>
+            </View>
           ))}
           {!recentBookings.length ? (
-            <Pressable
+            <View
               style={[styles.emptyBookingPanel, { backgroundColor: colors.surfaceAlt }]}
-              onPress={() => navigation.navigate("Market")}
             >
-              <Ionicons name="storefront-outline" size={22} color={colors.text} />
-              <View style={styles.emptyBookingTextBlock}>
-                <Text style={[styles.emptyBookingTitle, { color: colors.text }]}>
-                  还没有预约
-                </Text>
-                <Text style={[styles.emptyBooking, { color: colors.subtext }]}>
-                  去市场看看附近的美甲店。
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
-            </Pressable>
+              <Text style={[styles.emptyBookingTitle, { color: colors.text }]}>
+                当前没有预约
+              </Text>
+            </View>
           ) : null}
         </View>
 
@@ -490,11 +463,6 @@ function ConsumerProfileScreen() {
             { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
         >
-          <View style={styles.consumerSectionHeader}>
-            <Text style={[styles.consumerSectionTitle, { color: colors.text }]}>
-              工具与设置
-            </Text>
-          </View>
           {toolActions.map((item, index) => (
             <Pressable
               key={item.key}
@@ -532,6 +500,7 @@ function ConsumerProfileScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  emptyBooking: { fontSize: 13, lineHeight: 20 },
   profileErrorActions: {
     flexDirection: "row",
     gap: 12,
@@ -760,16 +729,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  consumerLocationBadge: {
-    maxWidth: 118,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  consumerLocationText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
   consumerHeroActions: {
     flexDirection: "row",
     gap: 10,
@@ -807,7 +766,6 @@ const styles = StyleSheet.create({
   },
   consumerSectionTitle: { fontSize: 18, fontWeight: "900" },
   consumerSectionMeta: { fontSize: 12, fontWeight: "700" },
-  consumerSectionLink: { fontSize: 13, fontWeight: "900" },
   consumerQuickGrid: {
     flexDirection: "row",
     borderRadius: 12,
@@ -821,28 +779,29 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   consumerQuickTitle: { fontSize: 13, fontWeight: "800" },
-  bookingRow: {
+  bookingBlock: {
+    borderRadius: 18,
+    padding: 14,
+    gap: 8,
+  },
+  bookingBlockHeader: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 12,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   bookingText: { flex: 1, gap: 4 },
   bookingTitle: { fontSize: 15, fontWeight: "800" },
   bookingMeta: { fontSize: 12 },
   bookingStatus: { fontSize: 12, fontWeight: "800" },
-  emptyBooking: { fontSize: 13, lineHeight: 20 },
   emptyBookingPanel: {
     minHeight: 72,
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
-  emptyBookingTextBlock: { flex: 1, gap: 2 },
   emptyBookingTitle: { fontSize: 15, fontWeight: "900" },
   consumerListRow: {
     minHeight: 64,

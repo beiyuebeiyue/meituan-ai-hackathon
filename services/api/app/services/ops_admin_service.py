@@ -39,8 +39,10 @@ from app.schemas.ops import (
 )
 
 class OpsAdminService:
-    DEMO_MOMO_HAND_IMAGE_URL = "/demo-assets/momo-hand.png"
-    DEMO_MOMO_TRYON_RESULT_IMAGE_URL = "/demo-assets/momo-tryon-result.png"
+    DEMO_MOMO_HAND_IMAGE_URL = "https://pub-17b30b99b4d24df39184b3477620adcd.r2.dev/demo/momo/hand.png"
+    DEMO_MOMO_TRYON_RESULT_IMAGE_URL = (
+        "https://pub-17b30b99b4d24df39184b3477620adcd.r2.dev/demo/momo/tryon-result.png"
+    )
 
     def _today_window(self) -> tuple[datetime, datetime, date, str]:
         settings = get_settings()

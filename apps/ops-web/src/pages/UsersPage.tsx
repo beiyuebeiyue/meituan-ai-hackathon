@@ -1,5 +1,5 @@
 import { DownOutlined, GiftOutlined, StopOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { App, Button, Descriptions, Drawer, Dropdown, Image, Input, Space, Table, Tag, Typography } from "antd";
+import { App, Button, Descriptions, Drawer, Dropdown, Image, Input, Space, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
 import { api, OpsUser } from "../api/client";
@@ -35,17 +35,6 @@ function UserDemoImage({ src, alt }: { src?: string | null; alt: string }) {
       height={160}
       style={{ objectFit: "cover", borderRadius: 12 }}
     />
-  );
-}
-
-function UserNameWithLocation({ user }: { user: OpsUser }) {
-  return (
-    <Space size={8} wrap>
-      <Typography.Text strong>{user.username}</Typography.Text>
-      <Tag bordered={false} className="ip-location-tag">
-        IP属地：{user.last_login_ip_location || "未知"}
-      </Tag>
-    </Space>
   );
 }
 
@@ -118,7 +107,7 @@ export function UsersPage() {
 
   const columns: ColumnsType<OpsUser> = [
     { title: "UID", dataIndex: "uid", width: 110 },
-    { title: "用户名", dataIndex: "username", render: (_, record) => <UserNameWithLocation user={record} /> },
+    { title: "用户名", dataIndex: "username", render: (value: string) => <Typography.Text strong>{value}</Typography.Text> },
     { title: "手机", dataIndex: "phone" },
     { title: "预约", dataIndex: "booking_count", width: 90 },
     { title: "AI 焕手", dataIndex: "tryon_count", width: 100 },
@@ -197,7 +186,7 @@ export function UsersPage() {
         {selected && (
           <Descriptions column={1} bordered size="small">
             <Descriptions.Item label="用户名">
-              <UserNameWithLocation user={selected} />
+              <Typography.Text strong>{selected.username}</Typography.Text>
             </Descriptions.Item>
             <Descriptions.Item label="UID">{selected.uid}</Descriptions.Item>
             <Descriptions.Item label="手机">{selected.phone || "-"}</Descriptions.Item>
