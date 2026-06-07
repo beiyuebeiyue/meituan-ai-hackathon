@@ -20,25 +20,29 @@ export function BrowseFeedCard({ item, onPress, onToggleLike, showLike = true }:
   const isDark = useIsDarkMode();
   const avatarSource = item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar;
   const nailTypeTone = getNailTypeTone(item.nail_type, isDark);
+  const nailTypeIcon = item.nail_type === "handmade" ? "brush-outline" : "cube-outline";
 
   return (
     <Pressable style={[styles.card, { backgroundColor: isDark ? "#1f1f24" : colors.surface }]} onPress={() => onPress(item)}>
-      <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={[styles.image, { backgroundColor: isDark ? "#2a2a30" : colors.accentSoft }]} />
-      <View style={styles.body}>
-        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-          {item.title}
-        </Text>
+      <View style={styles.imageWrap}>
+        <Image source={{ uri: resolveAssetUrl(item.image_url) }} style={[styles.image, { backgroundColor: isDark ? "#2a2a30" : colors.accentSoft }]} />
         <View
           style={[
-            styles.typePill,
+            styles.typeBadge,
             {
               backgroundColor: nailTypeTone.backgroundColor,
               borderColor: nailTypeTone.borderColor,
             },
           ]}
         >
-          <Text style={[styles.typePillText, { color: nailTypeTone.textColor }]}>{getNailTypeLabel(item.nail_type)}</Text>
+          <Ionicons name={nailTypeIcon} size={14} color={nailTypeTone.textColor} />
+          <Text style={[styles.typeBadgeText, { color: nailTypeTone.textColor }]}>{getNailTypeLabel(item.nail_type)}</Text>
         </View>
+      </View>
+      <View style={styles.body}>
+        <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+          {item.title}
+        </Text>
         <View style={styles.footer}>
           <View style={styles.authorWrap}>
             <Image source={avatarSource} style={[styles.avatar, { backgroundColor: isDark ? "#34343a" : colors.surfaceAlt }]} />
@@ -78,6 +82,26 @@ const styles = StyleSheet.create({
     width: "100%",
     aspectRatio: 1,
   },
+  imageWrap: {
+    position: "relative",
+  },
+  typeBadge: {
+    position: "absolute",
+    left: 8,
+    top: 8,
+    minHeight: 28,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  typeBadgeText: {
+    fontSize: 12,
+    fontWeight: "900",
+  },
   body: {
     padding: 10,
     gap: 8,
@@ -87,17 +111,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 20,
     minHeight: 40,
-  },
-  typePill: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  typePillText: {
-    fontSize: 11,
-    fontWeight: "800",
   },
   footer: {
     flexDirection: "row",

@@ -108,31 +108,35 @@ function DiscoverFeedCard({
   isDark: boolean;
 }) {
   const nailTypeTone = getNailTypeTone(item.nail_type, isDark);
+  const nailTypeIcon = item.nail_type === "handmade" ? "brush-outline" : "cube-outline";
 
   return (
     <Pressable style={[styles.card, { width, backgroundColor: colors.surface }]} onPress={() => onPress(item)}>
-      <Image
-        source={{ uri: resolveAssetUrl(item.image_url) }}
-        style={[styles.cardImage, { width, height: imageHeight, backgroundColor: colors.surfaceAlt }]}
-        resizeMode="cover"
-      />
-      <View style={styles.cardBody}>
-        <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
-          {item.title}
-        </Text>
+      <View style={[styles.cardImageWrap, { width, height: imageHeight }]}>
+        <Image
+          source={{ uri: resolveAssetUrl(item.image_url) }}
+          style={[styles.cardImage, { width, height: imageHeight, backgroundColor: colors.surfaceAlt }]}
+          resizeMode="cover"
+        />
         <View
           style={[
-            styles.discoverTypePill,
+            styles.discoverTypeBadge,
             {
               backgroundColor: nailTypeTone.backgroundColor,
               borderColor: nailTypeTone.borderColor,
             },
           ]}
         >
-          <Text style={[styles.discoverTypePillText, { color: nailTypeTone.textColor }]}>
+          <Ionicons name={nailTypeIcon} size={13} color={nailTypeTone.textColor} />
+          <Text style={[styles.discoverTypeBadgeText, { color: nailTypeTone.textColor }]}>
             {getNailTypeLabel(item.nail_type)}
           </Text>
         </View>
+      </View>
+      <View style={styles.cardBody}>
+        <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
+          {item.title}
+        </Text>
         <View style={styles.cardFooter}>
           <View style={styles.authorBlock}>
             <Image source={avatarSource(item)} style={[styles.authorAvatar, { backgroundColor: colors.surfaceAlt }]} />
@@ -581,6 +585,9 @@ const styles = StyleSheet.create({
   cardImage: {
     backgroundColor: DISCOVER_SURFACE_ALT,
   },
+  cardImageWrap: {
+    position: "relative",
+  },
   cardBody: {
     paddingHorizontal: 10,
     paddingTop: 9,
@@ -593,16 +600,22 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     lineHeight: 20,
   },
-  discoverTypePill: {
-    alignSelf: "flex-start",
+  discoverTypeBadge: {
+    position: "absolute",
+    left: 8,
+    top: 8,
+    minHeight: 27,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
-  discoverTypePillText: {
-    fontSize: 10,
-    fontWeight: "800",
+  discoverTypeBadgeText: {
+    fontSize: 12,
+    fontWeight: "900",
   },
   cardFooter: {
     minHeight: 28,

@@ -8,27 +8,27 @@ export function getNailTypeTone(nailType?: NailType | null, isDark = false) {
   if (nailType === "handmade") {
     return isDark
       ? {
-          backgroundColor: "#3a2414",
-          borderColor: "#7c3f12",
-          textColor: "#ffb86b",
+          backgroundColor: "#4a3215",
+          borderColor: "rgba(255,202,96,0.54)",
+          textColor: "#ffd27a",
         }
       : {
-          backgroundColor: "#fff7ed",
-          borderColor: "#fed7aa",
-          textColor: "#c2410c",
+          backgroundColor: "#fff3d6",
+          borderColor: "rgba(235,174,69,0.42)",
+          textColor: "#8a5b00",
         };
   }
 
   return isDark
     ? {
-        backgroundColor: "#172554",
-        borderColor: "#1d4ed8",
+        backgroundColor: "#12254f",
+        borderColor: "rgba(88,166,255,0.5)",
         textColor: "#93c5fd",
       }
     : {
-        backgroundColor: "#eff6ff",
-        borderColor: "#bfdbfe",
-        textColor: "#1d4ed8",
+        backgroundColor: "#eaf3ff",
+        borderColor: "rgba(96,165,250,0.42)",
+        textColor: "#2563eb",
       };
 }
 
