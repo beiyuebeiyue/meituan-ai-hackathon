@@ -11,7 +11,7 @@ function rewriteFile(filePath) {
   const next = original
     .replace(/(["':])\/_expo\//g, "$1/mobile-expo/")
     .replace(/(["':])\/assets\//g, "$1/mobile-assets/")
-    .replace(/(["':])\/favicon\.ico/g, "$1/mobile-favicon.ico");
+    .replace(/(["':])\/favicon\.ico/g, "$1/mobile-favicon.ico?v=20260607b");
   if (next !== original) {
     fs.writeFileSync(filePath, next);
   }
