@@ -20,7 +20,10 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useMarketStore } from "../store/useMarketStore";
 import { NailStyle, NearbyShop } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
-import { DEFAULT_CONSUMER_AVATAR_SOURCE } from "../constants/imageSources";
+import {
+  DEFAULT_CONSUMER_AVATAR_SOURCE,
+  DEFAULT_SHOP_COVER_SOURCE,
+} from "../constants/imageSources";
 
 const fallbackAvatar = DEFAULT_CONSUMER_AVATAR_SOURCE;
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
@@ -244,6 +247,7 @@ export function MarketShopDetailScreen() {
       ? merchantGalleryItems[0]?.image_url || reviewItems[0]?.image_url
       : null);
   const heroUri = heroSourceUri ? resolveAssetUrl(heroSourceUri) : null;
+  const heroImageSource = heroUri ? { uri: heroUri } : DEFAULT_SHOP_COVER_SOURCE;
   const priceAndTime = joinMeta([
     shop.average_price_text,
     shop.business_time_text,
@@ -269,33 +273,10 @@ export function MarketShopDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroWrap}>
-          {heroUri ? (
-            <Image
-              source={{ uri: heroUri }}
-              style={[styles.heroImage, { backgroundColor: colors.surfaceAlt }]}
-            />
-          ) : (
-            <View
-              style={[
-                styles.heroPhotoPlaceholder,
-                { backgroundColor: colors.surfaceAlt },
-              ]}
-            >
-              <Ionicons
-                name="storefront-outline"
-                size={42}
-                color={colors.subtext}
-              />
-              <Text
-                style={[
-                  styles.heroPhotoPlaceholderText,
-                  { color: colors.subtext },
-                ]}
-              >
-                暂无门店照片
-              </Text>
-            </View>
-          )}
+          <Image
+            source={heroImageSource}
+            style={[styles.heroImage, { backgroundColor: colors.surfaceAlt }]}
+          />
           <View style={styles.heroOverlay} />
           <View style={styles.header}>
             <Pressable

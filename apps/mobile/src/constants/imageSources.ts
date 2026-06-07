@@ -30,6 +30,8 @@ export const BRAND_LOGO_SOURCE: ImageSourcePropType = {
   uri: "https://huanjia.eu.cc/favicon.png?v=20260607b",
 };
 
+export const DEFAULT_SHOP_COVER_SOURCE: ImageSourcePropType = require("../../assets/app/default_shop_cover.png");
+
 export function defaultAvatarSourceFor(owner?: AvatarOwner | null): ImageSourcePropType {
   if (owner?.avatar_url) {
     return { uri: owner.avatar_url };

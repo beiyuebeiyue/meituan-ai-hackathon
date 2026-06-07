@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { resolveAssetUrl } from "../api/client";
+import { DEFAULT_SHOP_COVER_SOURCE } from "../constants/imageSources";
 import { NearbyShop } from "../types/api";
 
 type CoordinateShop = NearbyShop & { latitude: number; longitude: number };
@@ -428,9 +429,7 @@ export function MarketMapView({
                   {coverUri ? (
                     <Image source={{ uri: coverUri }} style={[styles.shopImage, { backgroundColor: colors.surfaceAlt }]} />
                   ) : (
-                    <View style={[styles.shopPhotoPlaceholder, { backgroundColor: colors.surfaceAlt }]}>
-                      <Ionicons name="storefront-outline" size={18} color={colors.subtext} />
-                    </View>
+                    <Image source={DEFAULT_SHOP_COVER_SOURCE} style={[styles.shopImage, { backgroundColor: colors.surfaceAlt }]} />
                   )}
                   <View style={styles.shopInfo}>
                     <Text style={[styles.shopName, { color: colors.text }]} numberOfLines={1}>

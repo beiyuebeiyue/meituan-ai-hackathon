@@ -20,6 +20,7 @@ import {
 import { useMarketStore } from "../store/useMarketStore";
 import { NearbyShop } from "../types/api";
 import { useThemeColors } from "../utils/theme";
+import { DEFAULT_SHOP_COVER_SOURCE } from "../constants/imageSources";
 
 function formatRating(rating?: number | null) {
   return typeof rating === "number" && rating > 0 ? rating.toFixed(1) : null;
@@ -27,34 +28,6 @@ function formatRating(rating?: number | null) {
 
 function joinMeta(parts: Array<string | null | undefined>) {
   return parts.filter(Boolean).join(" · ");
-}
-
-function ShopPhotoPlaceholder({
-  colors,
-  compact = false,
-}: {
-  colors: ReturnType<typeof useThemeColors>;
-  compact?: boolean;
-}) {
-  return (
-    <View
-      style={[
-        compact ? styles.compactPhotoPlaceholder : styles.photoPlaceholder,
-        { backgroundColor: colors.surfaceAlt },
-      ]}
-    >
-      <Ionicons
-        name="storefront-outline"
-        size={compact ? 18 : 24}
-        color={colors.subtext}
-      />
-      {!compact ? (
-        <Text style={[styles.photoPlaceholderText, { color: colors.subtext }]}>
-          暂无门店照片
-        </Text>
-      ) : null}
-    </View>
-  );
 }
 
 export function MarketScreen() {
@@ -99,7 +72,10 @@ export function MarketScreen() {
             style={[styles.resultImage, { backgroundColor: colors.surfaceAlt }]}
           />
         ) : (
-          <ShopPhotoPlaceholder colors={colors} />
+          <Image
+            source={DEFAULT_SHOP_COVER_SOURCE}
+            style={[styles.resultImage, { backgroundColor: colors.surfaceAlt }]}
+          />
         )}
         <View style={styles.resultBody}>
           <View style={styles.resultTitleRow}>

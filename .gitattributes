@@ -1,1 +1,2 @@
 apps/mobile/assets/app/favicon.png filter=lfs diff=lfs merge=lfs -text
+apps/mobile/assets/app/default_shop_cover.png filter=lfs diff=lfs merge=lfs -text
