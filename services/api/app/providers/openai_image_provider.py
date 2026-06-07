@@ -143,7 +143,7 @@ class OpenAIImageProvider:
             if isinstance(first, dict):
                 return first.get("b64_json") or first.get("url") or first.get("image_url") or first.get("base64")
             return first
-        for key in ("b64_json", "image", "image_url", "url", "result", "output"):
+        for key in ("b64_json", "image", "image_url", "url", "result", "output", "results", "result_data"):
             value = payload.get(key)
             if isinstance(value, str) and value:
                 return value

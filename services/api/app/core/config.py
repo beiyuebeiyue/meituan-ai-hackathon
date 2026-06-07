@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     evolink_image_size: str = "1:1"
     evolink_image_resolution: str = "1K"
     evolink_poll_interval_seconds: float = 3.0
-    evolink_poll_timeout_seconds: float = 180.0
+    evolink_poll_timeout_seconds: float = 240.0
     hf_token: str = ""
     longcat_api_key: str = ""
     longcat_base_url: str = "https://api.longcat.chat/openai"
