@@ -2,6 +2,7 @@ import {
   BellOutlined,
   CheckOutlined,
   DownOutlined,
+  FireOutlined,
   GlobalOutlined,
   DashboardOutlined,
   RobotOutlined,
@@ -62,7 +63,7 @@ const navItems = [
       { key: "/posts", label: "帖子" },
     ],
   },
-  { key: "/trend-nails", label: "热门推款" },
+  { key: "/trend-nails", icon: <FireOutlined />, label: "热门推款" },
   {
     key: "reports",
     icon: <ReadOutlined />,
