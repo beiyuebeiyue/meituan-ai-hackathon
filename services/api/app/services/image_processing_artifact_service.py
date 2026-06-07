@@ -93,7 +93,7 @@ class ImageProcessingArtifactService:
         artifact.roi_boxes_json = segmentation.roi_boxes
         artifact.quality_score = segmentation.confidence
         if segmentation.mask_path is not None:
-            alpha_mask_path = self._create_alpha_mask_from_mask(segmentation.mask_path, artifact)
+            alpha_mask_path = self._create_alpha_mask_from_mask(segmentation.mask_path, image_path, artifact)
             artifact.mask_path = relative_to_base(alpha_mask_path)
             artifact.mask_url = public_url_for_path(alpha_mask_path)
             if create_cutout:
@@ -188,8 +188,9 @@ class ImageProcessingArtifactService:
         image.save(target)
         return target
 
-    def _create_alpha_mask_from_mask(self, mask_path: Path, artifact: ImageProcessingArtifact) -> Path:
-        mask = Image.open(mask_path).convert("L")
+    def _create_alpha_mask_from_mask(self, mask_path: Path, image_path: Path, artifact: ImageProcessingArtifact) -> Path:
+        image_size = Image.open(image_path).size
+        mask = Image.open(mask_path).convert("L").resize(image_size)
         mask_rgba = mask.convert("RGBA")
         mask_rgba.putalpha(mask)
         target = self._artifact_dir(artifact) / f"{artifact.image_sha256[:16]}-{artifact.id}-mask-alpha.png"

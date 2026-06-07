@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { useEffect } from "react";
 import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
@@ -21,6 +21,7 @@ export function TryOnResultScreen() {
   const dismissOverlay = useSlideOverlayDismiss();
   const route = useRoute<ScreenRoute>();
   const colors = useThemeColors();
+  const queryClient = useQueryClient();
   const setPendingBookingStyleId = useMarketStore(
     (state) => state.setPendingBookingStyleId,
   );
@@ -41,6 +42,13 @@ export function TryOnResultScreen() {
     queryKey: ["style", query.data?.selected_style_id, "tryon-result"],
     queryFn: () => api.getStyle(query.data?.selected_style_id ?? ""),
     enabled: Boolean(query.data?.selected_style_id),
+  });
+  const submitMutation = useMutation({
+    mutationFn: (jobId: string) => api.submitTryOnJob(jobId),
+    onSuccess: (job) => {
+      void queryClient.invalidateQueries({ queryKey: ["tryon-job", job.job_id] });
+      void queryClient.invalidateQueries({ queryKey: ["tryon-history"] });
+    },
   });
 
   const saveResult = async () => {
@@ -97,7 +105,7 @@ export function TryOnResultScreen() {
                 已完成手图分析
               </Text>
               <Text style={[styles.reviewText, { color: colors.subtext }]}>
-                指甲区域 mask 已经生成。测试阶段先停在这里，不会发送到 EvoLink，也不会产生模型费用。
+                指甲区域 mask 已经生成。确认后会把手图、mask 和款式图发送给 EvoLink 生成焕甲效果。
               </Text>
               <View style={styles.previewRow}>
                 {query.data.source_hand_image_url ? (
@@ -126,7 +134,7 @@ export function TryOnResultScreen() {
               <View style={styles.checkList}>
                 <Text style={[styles.checkItem, { color: colors.text }]}>手图已保存</Text>
                 <Text style={[styles.checkItem, { color: colors.text }]}>YOLO 指甲分割完成</Text>
-                <Text style={[styles.checkItem, { color: colors.text }]}>EvoLink 生成请求已拦截</Text>
+                <Text style={[styles.checkItem, { color: colors.text }]}>EvoLink 请求内容已准备</Text>
               </View>
             </View>
             <PrimaryButton
@@ -134,9 +142,9 @@ export function TryOnResultScreen() {
               onPress={() => dismissOverlay?.() ?? navigation.goBack()}
             />
             <PrimaryButton
-              label="发送生成（测试阶段关闭）"
-              onPress={() => undefined}
-              disabled
+              label={query.data.mask_url ? "发送生成" : "等待 mask 完成"}
+              onPress={() => submitMutation.mutate(route.params.jobId)}
+              disabled={!query.data.mask_url || submitMutation.isPending}
               variant="ghost"
             />
           </>

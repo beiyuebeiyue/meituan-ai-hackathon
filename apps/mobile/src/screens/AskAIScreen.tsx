@@ -616,6 +616,18 @@ export function AskAIScreen() {
       );
     },
   });
+  const submitTryOnMutation = useMutation({
+    mutationFn: (jobId: string) => api.submitTryOnJob(jobId),
+    onSuccess: (job) => {
+      setActiveJobId(job.job_id);
+      setAssistantLine("正在帮你生成焕甲效果，请耐心等待。");
+      void queryClient.invalidateQueries({ queryKey: ["ask-ai-job", job.job_id] });
+      void queryClient.invalidateQueries({ queryKey: ["tryon-history"] });
+    },
+    onError: () => {
+      Alert.alert("生成失败", "发送生成请求失败，请确认指甲 mask 已完成后再试。");
+    },
+  });
 
   const savedHandsData = savedHandPicker.savedHandsQuery.data;
   const savedHandsReady = savedHandPicker.savedHandsQuery.isSuccess;
@@ -626,7 +638,10 @@ export function AskAIScreen() {
     [savedHandPicker.recentHandPhotos],
   );
   const hasHandSelection = Boolean(selectedHandPhotoId || handImageUri);
-  const displayedRecommendations = recommendations;
+  const isTryOnFlowActive = Boolean(
+    activeJobId || tryOnJobQuery.data || isStartingTryOn,
+  );
+  const displayedRecommendations = isTryOnFlowActive ? [] : recommendations;
   const conversationMessages = useMemo<AIChatMessage[]>(() => {
     if (!chatMessages.length) {
       return [{ role: "assistant" as const, content: assistantLine }];
@@ -1080,7 +1095,7 @@ export function AskAIScreen() {
                     已完成手图分析
                   </Text>
                   <Text style={[styles.reviewText, { color: colors.subtext }]}>
-                    系统已经生成指甲区域 mask。测试阶段先停在这里，不会把请求发送到 EvoLink，也不会产生模型费用。
+                    系统已经生成指甲区域 mask。确认后会把手图、mask 和款式图发送给 EvoLink 生成焕甲效果。
                   </Text>
                 </View>
               </View>
@@ -1122,7 +1137,7 @@ export function AskAIScreen() {
                   YOLO 指甲分割完成
                 </Text>
                 <Text style={[styles.reviewChecklistItem, { color: colors.text }]}>
-                  EvoLink 请求已拦截
+                  EvoLink 请求内容已准备
                 </Text>
               </View>
               <View style={styles.resultActions}>
@@ -1136,9 +1151,13 @@ export function AskAIScreen() {
                   style={{ flex: 1 }}
                 />
                 <PrimaryButton
-                  label="发送生成（测试阶段关闭）"
-                  disabled
-                  onPress={() => undefined}
+                  label={pendingTryOnMaskUrl ? "发送生成" : "等待 mask 完成"}
+                  disabled={!pendingTryOnMaskUrl || submitTryOnMutation.isPending}
+                  onPress={() => {
+                    const jobId = tryOnJobQuery.data?.job_id;
+                    if (!jobId || !pendingTryOnMaskUrl) return;
+                    submitTryOnMutation.mutate(jobId);
+                  }}
                   style={{ flex: 1 }}
                 />
               </View>

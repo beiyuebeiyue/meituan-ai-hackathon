@@ -6,6 +6,35 @@ mkdir -p \
   /data/xhs-popular-nail-posts-crawler/assets \
   /data/xhs-daily-nail-report/assets
 
+hydrate_packaged_seed_assets() {
+  local sample="/workspace/data/seed/nails/ff31a259a83d23c8c4ce.png"
+  if [ ! -f "${sample}" ] || ! head -c 32 "${sample}" | grep -q "version https://git-lfs"; then
+    return 0
+  fi
+
+  if [ -z "${HF_TOKEN:-}" ]; then
+    echo "HF_TOKEN is not set; packaged seed images are still LFS pointers" >&2
+    return 0
+  fi
+
+  echo "Hydrating packaged seed images from Hugging Face LFS"
+  python - <<'PY'
+import os
+from huggingface_hub import snapshot_download
+
+snapshot_download(
+    repo_id="dongli/meituan-ai-hackathon",
+    repo_type="space",
+    token=os.environ["HF_TOKEN"],
+    allow_patterns=["data/seed/**"],
+    local_dir="/workspace",
+    force_download=True,
+)
+PY
+}
+
+hydrate_packaged_seed_assets
+
 rm -rf /workspace/.openclaw/workspace/skills/xhs-popular-nail-posts-crawler/assets
 rm -rf /workspace/.openclaw/workspace/skills/xhs-daily-nail-report/assets
 ln -sfn /data/xhs-popular-nail-posts-crawler/assets /workspace/.openclaw/workspace/skills/xhs-popular-nail-posts-crawler/assets

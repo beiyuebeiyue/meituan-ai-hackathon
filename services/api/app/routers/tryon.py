@@ -34,6 +34,17 @@ def create_tryon_job(
         saved_hand_photo_id=saved_hand_photo_id,
     )
     if prepare_only:
+        mask_url = _mask_url_for_job(db, job)
+        if not mask_url:
+            job.status = "failed"
+            job.stage = "failed"
+            job.error_message = "没有检测到清晰的指甲，请重新上传一张手部照片"
+            db.add(job)
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=job.error_message,
+            )
         job.status = "awaiting_confirmation"
         job.stage = "mask_ready"
         db.add(job)
@@ -46,7 +57,7 @@ def create_tryon_job(
         status=job.status,
         stage=job.stage,
         source_hand_image_url=job.source_hand_image_url,
-        mask_url=_mask_url_for_job(db, job),
+        mask_url=mask_url if prepare_only else _mask_url_for_job(db, job),
     )
 
 
@@ -60,6 +71,12 @@ def submit_tryon_job(
     job = tryon_service.get_job(db, user, job_id)
     if job.status not in {"awaiting_confirmation", "pending", "failed"}:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="当前试戴任务不可重复提交")
+    mask_url = _mask_url_for_job(db, job)
+    if not mask_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="没有检测到可用的指甲 mask，请重新上传一张手部照片",
+        )
     job.status = "pending"
     job.stage = "pending"
     job.error_message = None
@@ -72,7 +89,7 @@ def submit_tryon_job(
         status=job.status,
         stage=job.stage,
         source_hand_image_url=job.source_hand_image_url,
-        mask_url=_mask_url_for_job(db, job),
+        mask_url=mask_url,
     )
 
 
