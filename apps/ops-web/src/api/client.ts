@@ -416,6 +416,7 @@ function writeXhsWeeklyReportCache(cacheKey: string, report: OpsHtmlReport | nul
 function normalizeXhsWeeklyReportHtml(html: string, week: XhsWeeklyReportWeek): string {
   const weekFolder = `${week.year}/w${week.week}`;
   return html
+    .replace(/焕甲小红书美甲运营周报/g, "小红书美甲趋势周报")
     .replace(
       /(["'])([^"']*xhs-popular-nail-posts-crawler\/assets\/([^"']+))\1/g,
       (_match, quote: string, _src: string, assetPath: string) => {
