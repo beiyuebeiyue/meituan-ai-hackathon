@@ -35,6 +35,40 @@ PY
 
 hydrate_packaged_seed_assets
 
+hydrate_packaged_yolo_model() {
+  local model="/workspace/.openclaw/workspace/skills/xhs-popular-nail-posts-crawler/spaces/nail_yolo26/best.pt"
+  if [ ! -f "${model}" ] || ! head -c 32 "${model}" | grep -q "version https://git-lfs"; then
+    return 0
+  fi
+
+  if [ -z "${HF_TOKEN:-}" ]; then
+    echo "HF_TOKEN is not set; packaged YOLO model is still an LFS pointer" >&2
+    return 0
+  fi
+
+  echo "Hydrating packaged YOLO model from Hugging Face LFS"
+  python - <<'PY'
+import os
+from huggingface_hub import snapshot_download
+
+snapshot_download(
+    repo_id="dongli/meituan-ai-hackathon",
+    repo_type="space",
+    token=os.environ["HF_TOKEN"],
+    allow_patterns=[
+        "deploy/hf-openclaw/skills/xhs-popular-nail-posts-crawler/spaces/nail_yolo26/best.pt",
+    ],
+    local_dir="/workspace",
+    force_download=True,
+)
+PY
+
+  mkdir -p "$(dirname "${model}")"
+  cp /workspace/deploy/hf-openclaw/skills/xhs-popular-nail-posts-crawler/spaces/nail_yolo26/best.pt "${model}"
+}
+
+hydrate_packaged_yolo_model
+
 rm -rf /workspace/.openclaw/workspace/skills/xhs-popular-nail-posts-crawler/assets
 rm -rf /workspace/.openclaw/workspace/skills/xhs-daily-nail-report/assets
 ln -sfn /data/xhs-popular-nail-posts-crawler/assets /workspace/.openclaw/workspace/skills/xhs-popular-nail-posts-crawler/assets

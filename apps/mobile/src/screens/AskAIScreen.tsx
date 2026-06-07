@@ -66,6 +66,19 @@ type ChatDebugEntry = {
 
 const AI_WAITING_MESSAGE = "正在帮你寻找您心怡的美甲，请耐心等待";
 
+function extractApiErrorMessage(error: unknown) {
+  if (!(error instanceof Error)) return "请稍后再试。";
+  try {
+    const parsed = JSON.parse(error.message) as { detail?: unknown };
+    if (typeof parsed.detail === "string" && parsed.detail.trim()) {
+      return parsed.detail;
+    }
+  } catch {
+    // Keep the original error message below.
+  }
+  return error.message || "请稍后再试。";
+}
+
 function AnimatedPressable({
   children,
   disabled,
@@ -610,9 +623,9 @@ export function AskAIScreen() {
       setTryOnFeedback("idle");
       setAssistantLine(getAgentResultPrompt("pending"));
     },
-    onError: () => {
+    onError: (error) => {
       setAssistantLine(
-        "试戴没能开始成功。你可以换一张手图，或者重新选一款继续试。",
+        `试戴没能开始成功：${extractApiErrorMessage(error)}`,
       );
     },
   });
