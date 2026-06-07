@@ -22,7 +22,7 @@
 
 ### 运营端
 
-- https://huanjia.eu.cc/dashboard
+- https://huanjia.eu.cc
 
 用于查看平台数据、用户与商家信息、热门美甲推款、运营报告和 AI 运营助手。
 
