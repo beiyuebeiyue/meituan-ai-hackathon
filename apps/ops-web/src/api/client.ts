@@ -319,7 +319,7 @@ export const XHS_WEEKLY_REPORT_WEEKS = [
 
 export type XhsWeeklyReportWeek = (typeof XHS_WEEKLY_REPORT_WEEKS)[number];
 
-const XHS_WEEKLY_REPORT_CACHE_PREFIX = "xhs-weekly-report-html:";
+const XHS_WEEKLY_REPORT_CACHE_PREFIX = "xhs-weekly-report-html:v2:";
 const XHS_WEEKLY_REPORT_MEMORY_CACHE = new Map<string, OpsHtmlReport | null>();
 
 function shanghaiDateKey(value: Date): string {
@@ -414,19 +414,17 @@ function writeXhsWeeklyReportCache(cacheKey: string, report: OpsHtmlReport | nul
 }
 
 function normalizeXhsWeeklyReportHtml(html: string, week: XhsWeeklyReportWeek): string {
-  const weekFolder = `${week.year}/w${week.week}`;
   return html
     .replace(/焕甲小红书美甲运营周报/g, "小红书美甲趋势周报")
     .replace(
       /(["'])([^"']*xhs-popular-nail-posts-crawler\/assets\/([^"']+))\1/g,
       (_match, quote: string, _src: string, assetPath: string) => {
-        const normalizedAssetPath = assetPath.replace(/^\d{8}\//, `${weekFolder}/`);
-        return `${quote}${API_ORIGIN}/openclaw-assets/${normalizedAssetPath}${quote}`;
+        return `${quote}${API_ORIGIN}/openclaw-assets/${assetPath}${quote}`;
       },
     )
     .replace(
-      /(["'])(?:https?:\/\/[^"']+)?\/openclaw-assets\/(?:\d{8}|2026\/w\d+)\/([^"']+)\1/g,
-      (_match, quote: string, assetPath: string) => `${quote}${API_ORIGIN}/openclaw-assets/${weekFolder}/${assetPath}${quote}`,
+      /(["'])(?:https?:\/\/[^"']+)?\/openclaw-assets\/(\d{8}\/[^"']+)\1/g,
+      (_match, quote: string, assetPath: string) => `${quote}${API_ORIGIN}/openclaw-assets/${assetPath}${quote}`,
     );
 }
 
