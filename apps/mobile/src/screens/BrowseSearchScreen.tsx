@@ -25,12 +25,11 @@ import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import { useSearchHistoryStore } from "../store/useSearchHistoryStore";
 import { NailStyle, UserSummary } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 
 const HISTORY_MAX_ROWS = 6;
 const HISTORY_CHIP_GAP = 12;
 const HISTORY_CONTAINER_HORIZONTAL_PADDING = 40;
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 
 function estimateChipWidth(label: string, availableWidth: number) {
   const textWidth = Array.from(label).reduce((sum, char) => {
@@ -190,9 +189,7 @@ export function BrowseSearchScreen() {
   }, [historyItems, windowWidth]);
 
   const renderUserItem = (item: UserSummary) => {
-    const avatarSource = item.avatar_url
-      ? { uri: resolveAssetUrl(item.avatar_url) }
-      : defaultAvatar;
+    const avatarSource = defaultAvatarSourceFor(item);
 
     return (
       <Pressable

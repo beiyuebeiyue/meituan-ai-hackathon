@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { api, resolveAssetUrl } from "../api/client";
+import { api } from "../api/client";
 import {
   DrawerModuleCard,
   DrawerModuleThumbnail,
@@ -17,6 +17,7 @@ import {
 } from "../components/DrawerModuleLayout";
 import { OverlayContent } from "../components/OverlayContent";
 import { UserSummary } from "../types/api";
+import { DEFAULT_CONSUMER_AVATAR_URL, DEFAULT_MERCHANT_AVATAR_URL } from "../constants/imageSources";
 import { useThemeColors } from "../utils/theme";
 
 export function BlockedUsersScreen() {
@@ -45,7 +46,7 @@ export function BlockedUsersScreen() {
       }
     >
       <DrawerModuleThumbnail
-        uri={item.avatar_url ? resolveAssetUrl(item.avatar_url) : null}
+        uri={item.is_shop ? DEFAULT_MERCHANT_AVATAR_URL : DEFAULT_CONSUMER_AVATAR_URL}
         icon="person-outline"
         size="small"
         round

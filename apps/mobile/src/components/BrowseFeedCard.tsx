@@ -5,9 +5,7 @@ import { AuthorRoleBadge } from "./AuthorRoleBadge";
 import { NailStyle } from "../types/api";
 import { getNailTypeLabel, getNailTypeTone } from "../utils/nailType";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
-
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 
 type BrowseFeedCardProps = {
   item: NailStyle;
@@ -19,7 +17,7 @@ type BrowseFeedCardProps = {
 export function BrowseFeedCard({ item, onPress, onToggleLike, showLike = true }: BrowseFeedCardProps) {
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
-  const avatarSource = item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar;
+  const avatarSource = defaultAvatarSourceFor({ is_shop: item.author_is_shop });
   const nailTypeTone = getNailTypeTone(item.nail_type, isDark);
   const nailTypeIcon = item.nail_type === "handmade" ? "brush-outline" : "cube-outline";
 

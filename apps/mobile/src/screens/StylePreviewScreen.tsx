@@ -36,10 +36,9 @@ import { StyleDetail } from "../types/api";
 import { isMockDiscoverStyleId } from "../data/mockDiscoverStyles";
 import { getNailTypeLabel, getNailTypeTone } from "../utils/nailType";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 
 type ScreenRoute = RouteProp<RootStackParamList, "StylePreview">;
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 const emojiGroups = [
   {
     key: "smile",
@@ -566,11 +565,7 @@ export function StylePreviewScreen() {
               }}
             >
               <Image
-                source={
-                  query.data.author_avatar_url
-                    ? { uri: resolveAssetUrl(query.data.author_avatar_url) }
-                    : defaultAvatar
-                }
+                source={defaultAvatarSourceFor({ is_shop: query.data.author_is_shop })}
                 style={[styles.authorAvatar, { backgroundColor: colors.input }]}
               />
               <View style={styles.authorText}>
@@ -781,11 +776,7 @@ export function StylePreviewScreen() {
                 commentsQuery.data.items.map((item) => (
                   <View key={item.id} style={styles.commentItem}>
                     <Image
-                      source={
-                        item.author_avatar_url
-                          ? { uri: resolveAssetUrl(item.author_avatar_url) }
-                          : defaultAvatar
-                      }
+                      source={defaultAvatarSourceFor({ is_shop: item.author_is_shop })}
                       style={[
                         styles.commentAvatar,
                         { backgroundColor: colors.input },

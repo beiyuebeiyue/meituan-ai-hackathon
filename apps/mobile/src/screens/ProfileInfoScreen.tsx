@@ -5,16 +5,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { useEffect, useMemo, useState } from "react";
 import { Image, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { api, resolveAssetUrl } from "../api/client";
+import { api } from "../api/client";
 import { OverlayContent } from "../components/OverlayContent";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { RequireLogin } from "../components/RequireLogin";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
-
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -86,9 +84,7 @@ export function ProfileInfoScreen() {
 
   const currentAvatar = avatarUri
     ? { uri: avatarUri }
-    : currentUser?.avatar_url
-      ? { uri: resolveAssetUrl(currentUser.avatar_url) }
-      : defaultAvatar;
+    : defaultAvatarSourceFor(currentUser);
 
   const pickAvatar = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({

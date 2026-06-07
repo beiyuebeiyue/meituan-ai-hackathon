@@ -47,12 +47,14 @@ def create_app() -> FastAPI:
         from app.services.seed_service import SeedService
 
         with database.session() as session:
-            admin_user = AuthService().ensure_default_admin(session)
+            auth_service = AuthService()
+            admin_user = auth_service.ensure_default_admin(session)
             seed_service = SeedService()
             if settings.enable_packaged_seed_styles:
                 seed_service.ensure_packaged_seed_styles(session, author_user_id=admin_user.id if admin_user else None)
             seed_service.normalize_demo_nail_types(session)
             MerchantShopService().ensure_default_admin_shop(session, admin_user)
+            auth_service.normalize_default_avatars(session)
         from app.tasks.trend_tasks import start_weekly_trend_campaign_scheduler
 
         start_weekly_trend_campaign_scheduler()

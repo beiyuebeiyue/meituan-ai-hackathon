@@ -37,6 +37,7 @@ from app.schemas.ops import (
     OpsUserListItem,
     OpsUserListResponse,
 )
+from app.utils.avatar import avatar_url_for_user
 
 class OpsAdminService:
     DEMO_MOMO_HAND_IMAGE_URL = "https://pub-17b30b99b4d24df39184b3477620adcd.r2.dev/demo/momo/hand.png"
@@ -229,7 +230,7 @@ class OpsAdminService:
             uid=user.uid,
             username=user.username,
             phone=user.phone,
-            avatar_url=user.avatar_url,
+            avatar_url=avatar_url_for_user(user),
             latest_hand_image_url=latest_hand_image_url,
             latest_tryon_result_image_url=latest_tryon_result_image_url,
             last_login_ip_location=user.last_login_ip_location,
@@ -324,7 +325,7 @@ class OpsAdminService:
             uid=user.uid,
             username=user.username,
             phone=user.phone,
-            avatar_url=user.avatar_url,
+            avatar_url=avatar_url_for_user(user),
             last_login_ip_location=user.last_login_ip_location,
             role=user.role,
             created_at=user.created_at,

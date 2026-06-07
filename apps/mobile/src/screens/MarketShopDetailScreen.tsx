@@ -20,9 +20,9 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useMarketStore } from "../store/useMarketStore";
 import { NailStyle, NearbyShop } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
+import { DEFAULT_CONSUMER_AVATAR_SOURCE } from "../constants/imageSources";
 
-const fallbackAvatar = DEFAULT_AVATAR_SOURCE;
+const fallbackAvatar = DEFAULT_CONSUMER_AVATAR_SOURCE;
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const SHOP_TAGS = ["免费停车", "无隐性消费", "有沙发位", "支持预约"];
 
@@ -547,7 +547,6 @@ export function MarketShopDetailScreen() {
             <View style={styles.reviewList}>
               {featuredReviewItems.map((item) => {
                 const imageUri = resolveAssetUrl(item.image_url);
-                const avatarUri = resolveAssetUrl(item.author_avatar_url);
                 return (
                   <Pressable
                     key={item.id}
@@ -561,7 +560,7 @@ export function MarketShopDetailScreen() {
                   >
                     <View style={styles.reviewTopRow}>
                       <Image
-                        source={avatarUri ? { uri: avatarUri } : fallbackAvatar}
+                        source={fallbackAvatar}
                         style={styles.reviewAvatar}
                       />
                       <View style={styles.reviewAuthorBlock}>

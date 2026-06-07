@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.nails import NailStyleRead
 from app.schemas.posts import AuthorPostRead
+from app.utils.avatar import avatar_url_for_user
 
 
 class UserRead(BaseModel):
@@ -137,6 +138,7 @@ class AuthorProfileRead(BaseModel):
 
 def serialize_user_read(user: object) -> UserRead:
     payload = UserRead.model_validate(user)
+    payload.avatar_url = avatar_url_for_user(user)
     payload.is_shop = payload.role == "merchant"
     payload.show_following_public = False
     payload.show_followers_public = False

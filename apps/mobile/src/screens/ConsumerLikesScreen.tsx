@@ -9,9 +9,7 @@ import { RequireLogin } from "../components/RequireLogin";
 import { useAuthStore } from "../store/useAuthStore";
 import { NailStyle } from "../types/api";
 import { useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
-
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 
 export function ConsumerLikesScreen() {
   const navigation = useNavigation<any>();
@@ -59,7 +57,7 @@ export function ConsumerLikesScreen() {
         <View style={styles.metaRow}>
           <View style={styles.authorWrap}>
             <Image
-              source={item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar}
+              source={defaultAvatarSourceFor({ is_shop: item.author_is_shop })}
               style={[styles.avatar, { backgroundColor: colors.surfaceAlt }]}
             />
             <Text style={[styles.author, { color: colors.subtext }]} numberOfLines={1}>

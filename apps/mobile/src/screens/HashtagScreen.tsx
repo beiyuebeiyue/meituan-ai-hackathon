@@ -10,9 +10,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import type { NailStyle } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
-
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 
 function normalizeTag(raw?: string) {
   return (raw ?? "").trim().replace(/^#+/, "");
@@ -37,7 +35,7 @@ function HashtagCard({
   isDark: boolean;
   colors: ReturnType<typeof useThemeColors>;
 }) {
-  const avatarSource = item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar;
+  const avatarSource = defaultAvatarSourceFor({ is_shop: item.author_is_shop });
   const cardBg = isDark ? "#202026" : colors.surface;
   const imageBg = isDark ? "#2a2a30" : colors.surfaceAlt;
   const subtleText = isDark ? "#a4a4ad" : colors.subtext;

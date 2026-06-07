@@ -17,7 +17,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { RequireLogin } from "../components/RequireLogin";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 import { NailStyle } from "../types/api";
 import { useAuthStore } from "../store/useAuthStore";
 import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
@@ -54,8 +54,7 @@ type MasonryItem = {
 };
 
 function avatarSource(item: NailStyle) {
-  const defaultAvatar = DEFAULT_AVATAR_SOURCE;
-  return item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar;
+  return defaultAvatarSourceFor({ is_shop: item.author_is_shop });
 }
 
 function estimateTitleLines(item: NailStyle) {

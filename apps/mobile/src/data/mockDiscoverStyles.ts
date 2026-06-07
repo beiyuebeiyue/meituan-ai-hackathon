@@ -1,8 +1,9 @@
 import { NailStyle, NailStyleListResponse, StyleComment, StyleDetail } from "../types/api";
+import { DEFAULT_MERCHANT_AVATAR_URL } from "../constants/imageSources";
 
 const AUTHOR_ID = "local-huanjia-shop";
 const SHOP_ID = "local-huanjia-shop-futian";
-const AUTHOR_AVATAR_URL = "https://pub-17b30b99b4d24df39184b3477620adcd.r2.dev/uploads/avatars/0/p0.png";
+const AUTHOR_AVATAR_URL = DEFAULT_MERCHANT_AVATAR_URL;
 
 const baseCreatedAt = "2026-06-05T03:02:53.377396Z";
 

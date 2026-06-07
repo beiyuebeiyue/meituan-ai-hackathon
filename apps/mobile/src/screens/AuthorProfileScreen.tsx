@@ -48,9 +48,8 @@ import {
 import { getStoredValue, setStoredValue } from "../utils/sessionStorage";
 import { formatRelativeRegionTime } from "../utils/postTime";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE, DEFAULT_PROFILE_BACKGROUND_SOURCE } from "../constants/imageSources";
+import { DEFAULT_PROFILE_BACKGROUND_SOURCE, defaultAvatarSourceFor } from "../constants/imageSources";
 
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 const profileBgDefault = DEFAULT_PROFILE_BACKGROUND_SOURCE;
 const PROFILE_HEADER_HEIGHT = Math.min(
   330,
@@ -94,7 +93,7 @@ function buildAuthorShopDetail(author: AuthorProfile): NearbyShop | null {
     id: author.shop_id,
     platform_shop_id: author.shop_id,
     name: author.shop_name || author.username,
-    cover_image_url: author.avatar_url || "",
+    cover_image_url: "",
     city,
     region: city,
     address: author.shop_address || "",
@@ -755,11 +754,7 @@ export function AuthorProfileScreen({
         ]}
       >
         <Image
-          source={
-            author.avatar_url
-              ? { uri: resolveAssetUrl(author.avatar_url) }
-              : defaultAvatar
-          }
+          source={defaultAvatarSourceFor(author)}
           style={[
             styles.floatingCenterAvatar,
             { backgroundColor: colors.surfaceAlt },
@@ -938,11 +933,7 @@ export function AuthorProfileScreen({
         ]}
       >
         <Image
-          source={
-            author.avatar_url
-              ? { uri: resolveAssetUrl(author.avatar_url) }
-              : defaultAvatar
-          }
+          source={defaultAvatarSourceFor(author)}
           style={[
             styles.avatar,
             shouldCompactSelfProfile && styles.compactAvatar,
@@ -1494,11 +1485,7 @@ export function AuthorProfileScreen({
                 }
               >
                 <Image
-                  source={
-                    author.avatar_url
-                      ? { uri: resolveAssetUrl(author.avatar_url) }
-                      : defaultAvatar
-                  }
+                  source={defaultAvatarSourceFor(author)}
                   style={[
                     styles.commentAvatar,
                     { backgroundColor: colors.surfaceAlt },
@@ -1560,11 +1547,7 @@ export function AuthorProfileScreen({
                   </Text>
                   <View style={styles.likedMetaRow}>
                     <Image
-                      source={
-                        item.author_avatar_url
-                          ? { uri: resolveAssetUrl(item.author_avatar_url) }
-                          : defaultAvatar
-                      }
+                      source={defaultAvatarSourceFor({ is_shop: item.author_is_shop })}
                       style={styles.likedAuthorAvatar}
                     />
                     <Text
@@ -1656,11 +1639,7 @@ export function AuthorProfileScreen({
                 </Text>
                 <View style={styles.likedMetaRow}>
                   <Image
-                    source={
-                      author.avatar_url
-                        ? { uri: resolveAssetUrl(author.avatar_url) }
-                        : defaultAvatar
-                    }
+                    source={defaultAvatarSourceFor(author)}
                     style={styles.likedAuthorAvatar}
                   />
                   <Text

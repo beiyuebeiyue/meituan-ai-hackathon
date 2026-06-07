@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import shutil
-
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -10,33 +8,17 @@ from app.core.config import get_settings
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest
-from app.utils.files import public_url_for_path
+from app.utils.avatar import DEFAULT_MERCHANT_AVATAR_URL, default_avatar_url_for_role
 
 INT32_MAX = 2_147_483_647
 DEMO_CONSUMER_UID = 1
 DEMO_CONSUMER_PHONE = "13886722665"
 DEMO_CONSUMER_USERNAME = "momo酱"
-DEFAULT_ADMIN_AVATAR_FILENAME = "p0.png"
 
 
 class AuthService:
     def _ensure_default_admin_avatar(self) -> str:
-        settings = get_settings()
-        target_path = settings.upload_path / "avatars" / "0" / DEFAULT_ADMIN_AVATAR_FILENAME
-        if not target_path.exists():
-            source_candidates = [
-                settings.base_dir / "data" / "uploads" / "avatars" / "0" / DEFAULT_ADMIN_AVATAR_FILENAME,
-                settings.base_dir / "apps" / "mobile" / "assets" / "profile" / DEFAULT_ADMIN_AVATAR_FILENAME,
-            ]
-            for source_path in source_candidates:
-                if not source_path.exists():
-                    continue
-                if source_path.resolve() == target_path.resolve():
-                    break
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(source_path, target_path)
-                break
-        return public_url_for_path(target_path)
+        return DEFAULT_MERCHANT_AVATAR_URL
 
     def _apply_demo_consumer_identity(self, db: Session, user: User | None = None) -> bool:
         demo_user = user or db.scalar(select(User).where(User.phone == DEMO_CONSUMER_PHONE))
@@ -263,3 +245,15 @@ class AuthService:
         db.refresh(existing)
         self.ensure_user_uids(db)
         return existing
+
+    def normalize_default_avatars(self, db: Session) -> None:
+        changed = False
+        for user in db.scalars(select(User)):
+            avatar_url = default_avatar_url_for_role(user.role)
+            if user.avatar_url == avatar_url:
+                continue
+            user.avatar_url = avatar_url
+            db.add(user)
+            changed = True
+        if changed:
+            db.commit()

@@ -21,6 +21,7 @@ from app.schemas.nails import (
 from app.services.follow_service import FollowService
 from app.services.style_comment_service import StyleCommentService
 from app.services.style_service import StyleService
+from app.utils.avatar import avatar_url_for_user
 
 
 router = APIRouter(prefix="/nails", tags=["nails"])
@@ -76,7 +77,7 @@ def build_style_payloads(db: Session, items: list, user: User | None) -> list[Na
                 comment_count=comment_counts.get(style.id, 0),
                 author_id=author.id if author else None,
                 author_name=author.username if author else "焕甲图库",
-                author_avatar_url=author.avatar_url if author else None,
+                author_avatar_url=avatar_url_for_user(author),
                 author_is_shop=bool(author and author.role == "merchant"),
                 is_following_author=bool(user and author and author.id != user.id and author.id in following_ids),
                 is_authored_by_me=bool(user and author and author.id == user.id),

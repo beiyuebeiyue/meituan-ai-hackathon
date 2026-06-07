@@ -15,9 +15,7 @@ import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { UserSummary } from "../types/api";
 import { useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
-
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 type FollowTab = "following" | "followers";
 
 export function FollowListScreen() {
@@ -96,11 +94,7 @@ export function FollowListScreen() {
         }
       >
         <Image
-          source={
-            item.avatar_url
-              ? { uri: resolveAssetUrl(item.avatar_url) }
-              : defaultAvatar
-          }
+          source={defaultAvatarSourceFor(item)}
           style={styles.avatar}
         />
         <View style={styles.userBody}>

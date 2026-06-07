@@ -25,6 +25,7 @@ from app.models.tryon_job import TryOnJob
 from app.services.merchant_service import MerchantShopService
 from app.services.message_service import MessageService, MessageThreadSummary
 from app.services.style_service import StyleService
+from app.utils.avatar import avatar_url_for_user
 from app.utils.files import public_url_for_path, relative_to_base, save_user_upload_file, user_upload_dir
 
 
@@ -41,7 +42,7 @@ def _serialize_target(target: User) -> DirectMessageTargetRead:
         username=target.username,
         role=target.role,
         is_shop=target.role == "merchant",
-        avatar_url=target.avatar_url,
+        avatar_url=avatar_url_for_user(target),
     )
 
 
@@ -54,7 +55,7 @@ def _serialize_message(db: Session, current_user: User, item) -> DirectMessageRe
             title=item.shared_style.title,
             image_url=item.shared_style.image_url,
             author_name=author.username if author else "焕甲图库",
-            author_avatar_url=author.avatar_url if author else None,
+            author_avatar_url=avatar_url_for_user(author),
             author_is_shop=bool(author and author.role == "merchant"),
             like_count=style_service.get_like_count(db, item.shared_style.id),
         )

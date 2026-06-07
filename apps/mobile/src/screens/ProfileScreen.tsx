@@ -19,16 +19,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthorProfileScreen } from "./AuthorProfileScreen";
-import { api, resolveAssetUrl } from "../api/client";
+import { api } from "../api/client";
 import { useAuthStore } from "../store/useAuthStore";
 import {
   bookingStatusLabel,
   getBookingStatusTextColor,
 } from "../utils/bookingStatus";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE, BRAND_LOGO_SOURCE } from "../constants/imageSources";
-
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+import { BRAND_LOGO_SOURCE, defaultAvatarSourceFor } from "../constants/imageSources";
 const loginLogo = BRAND_LOGO_SOURCE;
 const DEMO_CONSUMER_PHONE = "13886722665";
 const DEMO_PASSWORD = "admin@123456";
@@ -319,9 +317,7 @@ function ConsumerProfileScreen() {
           <View style={styles.consumerHeroMain}>
             <Image
               source={
-                user?.avatar_url
-                  ? { uri: resolveAssetUrl(user.avatar_url) }
-                  : defaultAvatar
+                defaultAvatarSourceFor(user)
               }
               style={[
                 styles.consumerAvatar,
@@ -343,15 +339,28 @@ function ConsumerProfileScreen() {
                 </Text>
               ) : null}
             </View>
-            <Pressable
-              style={[
-                styles.consumerTopIcon,
-                { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-              ]}
-              onPress={() => navigation.navigate("ProfileSettings")}
-            >
-              <Ionicons name="settings-outline" size={21} color={colors.text} />
-            </Pressable>
+            <View style={styles.consumerTopActions}>
+              <Pressable
+                style={styles.consumerTopAction}
+                onPress={() =>
+                  Alert.alert("客服", "在线客服功能演示中，后续会接入真实客服。")
+                }
+              >
+                <Ionicons name="headset-outline" size={24} color={colors.text} />
+                <Text style={[styles.consumerTopActionText, { color: colors.text }]}>
+                  客服
+                </Text>
+              </Pressable>
+              <Pressable
+                style={styles.consumerTopAction}
+                onPress={() => navigation.navigate("ProfileSettings")}
+              >
+                <Ionicons name="settings-outline" size={24} color={colors.text} />
+                <Text style={[styles.consumerTopActionText, { color: colors.text }]}>
+                  设置
+                </Text>
+              </Pressable>
+            </View>
           </View>
           <View style={styles.consumerHeroActions}>
             <Pressable
@@ -703,13 +712,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   consumerContent: { padding: 16, paddingTop: 10, paddingBottom: 120, gap: 14 },
-  consumerTopIcon: {
+  consumerTopActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  consumerTopAction: {
     width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: "center",
     justifyContent: "center",
+    gap: 4,
+  },
+  consumerTopActionText: {
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "700",
   },
   consumerHero: {
     borderRadius: 26,

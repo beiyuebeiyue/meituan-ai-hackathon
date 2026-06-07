@@ -36,6 +36,7 @@ from app.services.style_comment_service import StyleCommentService
 from app.services.style_service import StyleService
 from app.services.user_hand_photo_service import UserHandPhotoService
 from app.services.image_processing_artifact_service import ImageProcessingArtifactService
+from app.utils.avatar import avatar_url_for_user
 from app.utils.files import public_url_for_path, save_user_upload_file, user_upload_dir
 from app.core.config import get_settings
 
@@ -78,7 +79,7 @@ def serialize_user_summary(db: Session, target: User, viewer: User | None) -> Us
         id=target.id,
         uid=target.uid,
         username=target.username,
-        avatar_url=target.avatar_url,
+        avatar_url=avatar_url_for_user(target),
         bio=target.bio,
         ip_location=target.last_login_ip_location or "未知",
         is_shop=target.role == "merchant",
@@ -103,7 +104,7 @@ def build_style_payloads_for_viewer(db: Session, items: list, viewer: User | Non
                 comment_count=style_service.get_comment_count(db, style.id),
                 author_id=author.id if author else None,
                 author_name=author.username if author else "焕甲图库",
-                author_avatar_url=author.avatar_url if author else None,
+                author_avatar_url=avatar_url_for_user(author),
                 author_is_shop=bool(author and author.role == "merchant"),
                 is_following_author=bool(viewer and author and author.id != viewer.id and author.id in following_ids),
                 is_authored_by_me=bool(viewer and author and author.id == viewer.id),
@@ -273,7 +274,7 @@ def get_my_style_comments(
                 comment_created_at=comment.created_at,
                 style_author_id=author.id if author else None,
                 style_author_name=author.username if author else "焕甲图库",
-                style_author_avatar_url=author.avatar_url if author else None,
+                style_author_avatar_url=avatar_url_for_user(author),
             )
         )
     return MyStyleCommentListResponse(items=items)
@@ -368,7 +369,7 @@ def get_author_style_comments(
                 comment_created_at=comment.created_at,
                 style_author_id=style_author.id if style_author else None,
                 style_author_name=style_author.username if style_author else "焕甲图库",
-                style_author_avatar_url=style_author.avatar_url if style_author else None,
+                style_author_avatar_url=avatar_url_for_user(style_author),
             )
         )
     return MyStyleCommentListResponse(items=items)
@@ -461,7 +462,7 @@ def get_author_profile(
         role=author.role,
         is_shop=author.role == "merchant",
         username=author.username,
-        avatar_url=author.avatar_url,
+        avatar_url=avatar_url_for_user(author),
         bio=author.bio,
         ip_location=author.last_login_ip_location or "未知",
         follower_count=follower_count,

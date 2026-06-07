@@ -5,6 +5,7 @@ from app.models.style_comment import StyleComment
 from app.models.user_post import UserPost
 from app.schemas.nails import NailStyleDetailRead, NailStyleRead, StyleCommentRead
 from app.schemas.posts import AuthorPostRead, UserPostRead
+from app.utils.avatar import avatar_url_for_user
 
 
 def serialize_style(
@@ -117,7 +118,7 @@ def serialize_style_comment(
         content=comment.content,
         created_at=comment.created_at,
         author_name=author.username if author is not None else "焕甲用户",
-        author_avatar_url=author.avatar_url if author is not None else None,
+        author_avatar_url=avatar_url_for_user(author),
         author_is_shop=bool(author and author.role == "merchant"),
         is_style_author=bool(style_author_id and comment.user_id == style_author_id),
         is_mine=is_mine,

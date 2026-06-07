@@ -1,11 +1,8 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { MessageInboxThread } from "../types/api";
-import { resolveAssetUrl } from "../api/client";
 import type { AppPalette } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
-
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 
 function formatConversationTime(value: string) {
   const date = new Date(value);
@@ -43,7 +40,7 @@ export function MessageThreadRow({ item, colors, onPress }: MessageThreadRowProp
   return (
     <Pressable style={styles.row} onPress={() => onPress(item)}>
       <Image
-        source={item.target.avatar_url ? { uri: resolveAssetUrl(item.target.avatar_url) } : defaultAvatar}
+        source={defaultAvatarSourceFor(item.target)}
         style={[styles.avatar, { backgroundColor: colors.surfaceAlt }]}
       />
       <View style={styles.body}>

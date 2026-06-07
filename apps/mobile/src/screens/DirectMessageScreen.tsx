@@ -25,9 +25,7 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 import { useAuthStore } from "../store/useAuthStore";
 import { DirectMessage } from "../types/api";
 import { useThemeColors } from "../utils/theme";
-import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
-
-const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+import { defaultAvatarSourceFor } from "../constants/imageSources";
 
 type ScreenRoute = RouteProp<RootStackParamList, "DirectMessage">;
 const emojiGroups = [
@@ -429,11 +427,7 @@ export function DirectMessageScreen() {
             }}
           >
             <Image
-              source={
-                thread?.target.avatar_url
-                  ? { uri: resolveAssetUrl(thread.target.avatar_url) }
-                  : defaultAvatar
-              }
+              source={defaultAvatarSourceFor(thread?.target)}
               style={[
                 styles.headerAvatar,
                 { backgroundColor: colors.surfaceAlt },
@@ -489,11 +483,7 @@ export function DirectMessageScreen() {
             >
               {!item.is_mine ? (
                 <Image
-                  source={
-                    thread?.target.avatar_url
-                      ? { uri: resolveAssetUrl(thread.target.avatar_url) }
-                      : defaultAvatar
-                  }
+                  source={defaultAvatarSourceFor(thread?.target)}
                   style={[
                     styles.messageAvatar,
                     { backgroundColor: colors.surfaceAlt },

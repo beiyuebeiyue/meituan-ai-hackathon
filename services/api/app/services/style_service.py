@@ -18,6 +18,7 @@ from app.models.user_post import UserPost
 from app.models.user import User
 from app.services.block_service import BlockService
 from app.services.xhs_style_materialization_service import XhsStyleMaterializationService
+from app.utils.avatar import avatar_url_for_user
 from app.utils.files import public_url_for_path, relative_to_base
 
 
@@ -369,7 +370,7 @@ class StyleService:
     def resolve_style_author(self, db: Session, style: NailStyle) -> tuple[str, str | None]:
         author = self.resolve_style_author_user(db, style)
         if author is not None:
-            return author.username, author.avatar_url
+            return author.username, avatar_url_for_user(author)
         return "焕甲图库", None
 
     def _author_style_conditions(self, author: User):
