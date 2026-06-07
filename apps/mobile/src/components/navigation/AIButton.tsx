@@ -9,7 +9,6 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 import { useIsDarkMode } from "../../utils/theme";
-import { AIButtonGlow } from "./AIButtonGlow";
 import { AIButtonThinkingRing } from "./AIButtonThinkingRing";
 import { useAIPulseAnimation } from "./useAIPulseAnimation";
 
@@ -37,8 +36,8 @@ export const AIButton = memo(function AIButton({
   const isDarkMode = useIsDarkMode();
   const thinking = status === "thinking";
   const tabSurface = isDarkMode ? "#111116" : "#ffffff";
-  const { buttonStyle, glowStyle, ringStyle, runPressAnimation } =
-    useAIPulseAnimation({ focused, thinking });
+  const { buttonStyle, ringStyle, runPressAnimation } =
+    useAIPulseAnimation({ thinking });
 
   const handlePress = useCallback(
     (event: GestureResponderEvent) => {
@@ -69,7 +68,6 @@ export const AIButton = memo(function AIButton({
             },
           ]}
         />
-        <AIButtonGlow animatedStyle={glowStyle} focused={focused || thinking} />
         <AIButtonThinkingRing animatedStyle={ringStyle} />
         <Animated.View
           style={[

@@ -4,14 +4,12 @@ import {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
-  withRepeat,
   withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
 
 type UseAIPulseAnimationOptions = {
-  focused: boolean;
   thinking: boolean;
 };
 
@@ -21,45 +19,13 @@ const SPRING_CONFIG = {
   stiffness: 210,
 };
 
-export function useAIPulseAnimation({ focused, thinking }: UseAIPulseAnimationOptions) {
-  const pulseScale = useSharedValue(1);
-  const glowProgress = useSharedValue(0);
+export function useAIPulseAnimation({ thinking }: UseAIPulseAnimationOptions) {
   const pressScale = useSharedValue(1);
   const entranceY = useSharedValue(20);
   const entranceOpacity = useSharedValue(0);
   const ringRotation = useSharedValue(0);
 
   useEffect(() => {
-    pulseScale.value = withRepeat(
-      withSequence(
-        withTiming(1.08, {
-          duration: 1250,
-          easing: Easing.inOut(Easing.quad),
-        }),
-        withTiming(1, {
-          duration: 1250,
-          easing: Easing.inOut(Easing.quad),
-        }),
-      ),
-      -1,
-      false,
-    );
-
-    glowProgress.value = withRepeat(
-      withSequence(
-        withTiming(1, {
-          duration: 1250,
-          easing: Easing.out(Easing.quad),
-        }),
-        withTiming(0, {
-          duration: 1250,
-          easing: Easing.in(Easing.quad),
-        }),
-      ),
-      -1,
-      false,
-    );
-
     entranceY.value = withDelay(
       120,
       withSpring(0, {
@@ -69,18 +35,14 @@ export function useAIPulseAnimation({ focused, thinking }: UseAIPulseAnimationOp
       }),
     );
     entranceOpacity.value = withDelay(80, withTiming(1, { duration: 360 }));
-  }, [entranceOpacity, entranceY, glowProgress, pulseScale]);
+  }, [entranceOpacity, entranceY]);
 
   useEffect(() => {
     ringRotation.value = thinking
-      ? withRepeat(
-          withTiming(360, {
-            duration: 1800,
-            easing: Easing.linear,
-          }),
-          -1,
-          false,
-        )
+      ? withTiming(360, {
+          duration: 1800,
+          easing: Easing.linear,
+        })
       : withTiming(0, { duration: 180 });
   }, [ringRotation, thinking]);
 
@@ -96,18 +58,9 @@ export function useAIPulseAnimation({ focused, thinking }: UseAIPulseAnimationOp
     opacity: entranceOpacity.value,
     transform: [
       { translateY: entranceY.value },
-      { scale: pulseScale.value * pressScale.value },
+      { scale: pressScale.value },
     ],
   }));
-
-  const glowStyle = useAnimatedStyle(() => {
-    const activeBoost = focused ? 0.16 : 0;
-
-    return {
-      opacity: 0.12 + activeBoost + glowProgress.value * 0.18,
-      transform: [{ scale: 0.92 + glowProgress.value * 0.2 }],
-    };
-  });
 
   const ringStyle = useAnimatedStyle(() => ({
     opacity: thinking ? 1 : 0,
@@ -116,7 +69,6 @@ export function useAIPulseAnimation({ focused, thinking }: UseAIPulseAnimationOp
 
   return {
     buttonStyle,
-    glowStyle,
     ringStyle,
     runPressAnimation,
   };
