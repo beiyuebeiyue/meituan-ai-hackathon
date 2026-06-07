@@ -118,7 +118,6 @@ export function DirectMessageScreen() {
   const [message, setMessage] = useState("");
   const [emojiPanelOpen, setEmojiPanelOpen] = useState(false);
   const [morePanelOpen, setMorePanelOpen] = useState(false);
-  const [likedStylesOpen, setLikedStylesOpen] = useState(false);
   const [bookingInviteShop, setBookingInviteShop] = useState<
     DirectMessage["booking_invite"] | null
   >(null);
@@ -136,7 +135,7 @@ export function DirectMessageScreen() {
   const likedStylesQuery = useQuery({
     queryKey: ["liked-styles", "direct-message-picker"],
     queryFn: api.getLikedStyles,
-    enabled: morePanelOpen && likedStylesOpen,
+    enabled: morePanelOpen,
   });
 
   useEffect(() => {
@@ -162,7 +161,6 @@ export function DirectMessageScreen() {
       setMessage("");
       setEmojiPanelOpen(false);
       setMorePanelOpen(false);
-      setLikedStylesOpen(false);
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["conversation", route.params.userId],
@@ -195,7 +193,6 @@ export function DirectMessageScreen() {
       setMessage("");
       setEmojiPanelOpen(false);
       setMorePanelOpen(false);
-      setLikedStylesOpen(false);
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["conversation", route.params.userId],
@@ -223,7 +220,6 @@ export function DirectMessageScreen() {
       setMessage("");
       setEmojiPanelOpen(false);
       setMorePanelOpen(false);
-      setLikedStylesOpen(false);
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["conversation", route.params.userId],
@@ -261,7 +257,6 @@ export function DirectMessageScreen() {
       setMessage("");
       setEmojiPanelOpen(false);
       setMorePanelOpen(false);
-      setLikedStylesOpen(false);
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["conversation", route.params.userId],
@@ -287,7 +282,6 @@ export function DirectMessageScreen() {
     onSuccess: async () => {
       setEmojiPanelOpen(false);
       setMorePanelOpen(false);
-      setLikedStylesOpen(false);
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: ["conversation", route.params.userId],
@@ -366,7 +360,6 @@ export function DirectMessageScreen() {
       const next = !current;
       if (next) {
         setMorePanelOpen(false);
-        setLikedStylesOpen(false);
         Keyboard.dismiss();
       }
       return next;
@@ -380,7 +373,6 @@ export function DirectMessageScreen() {
         setEmojiPanelOpen(false);
         Keyboard.dismiss();
       } else {
-        setLikedStylesOpen(false);
       }
       return next;
     });
@@ -433,9 +425,14 @@ export function DirectMessageScreen() {
                 { backgroundColor: colors.surfaceAlt },
               ]}
             />
-            <Text style={[styles.headerName, { color: colors.text }]}>
-              {thread?.target.username ?? "私信"}
-            </Text>
+            <View style={styles.headerTextBlock}>
+              <Text style={[styles.headerName, { color: colors.text }]} numberOfLines={1}>
+                {thread?.target.username ?? "正在加载私信对象"}
+              </Text>
+              <Text style={[styles.headerSubtitle, { color: colors.subtext }]} numberOfLines={1}>
+                {thread?.target.role === "merchant" ? "商家私信" : "用户私信"}
+              </Text>
+            </View>
           </Pressable>
           <Pressable
             style={styles.headerAction}
@@ -692,6 +689,13 @@ export function DirectMessageScreen() {
               placeholderTextColor={colors.subtext}
               style={[styles.input, { color: colors.text }]}
               editable={Boolean(thread?.can_send)}
+              returnKeyType="send"
+              blurOnSubmit={false}
+              onSubmitEditing={() => {
+                if (canSend) {
+                  sendMutation.mutate();
+                }
+              }}
               onFocus={() => {
                 setEmojiPanelOpen(false);
                 setMorePanelOpen(false);
@@ -716,7 +720,7 @@ export function DirectMessageScreen() {
                 disabled={!canSend}
                 onPress={() => sendMutation.mutate()}
               >
-                <Ionicons name="paper-plane" size={18} color="#ffffff" />
+                <Text style={styles.inlineSendText}>发送</Text>
               </Pressable>
             ) : (
               <Pressable
@@ -771,7 +775,7 @@ export function DirectMessageScreen() {
                     },
                   ]}
                   disabled={!canSendImage}
-                  onPress={() => setLikedStylesOpen((current) => !current)}
+                  onPress={() => void likedStylesQuery.refetch()}
                 >
                   <View
                     style={[
@@ -821,63 +825,69 @@ export function DirectMessageScreen() {
                   </Pressable>
                 ) : null}
               </View>
-              {likedStylesOpen ? (
-                <View style={styles.likedPicker}>
-                  {likedStylesQuery.isLoading ? (
-                    <Text
-                      style={[
-                        styles.likedPickerHint,
-                        { color: colors.subtext },
-                      ]}
-                    >
-                      正在加载喜爱美甲...
-                    </Text>
-                  ) : (likedStylesQuery.data?.items ?? []).length ? (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.likedPickerScroll}
-                    >
-                      {(likedStylesQuery.data?.items ?? []).map((style) => (
-                        <Pressable
-                          key={style.id}
-                          style={[
-                            styles.likedStyleCard,
-                            { backgroundColor: colors.background },
-                          ]}
-                          disabled={styleMessageMutation.isPending}
-                          onPress={() =>
-                            styleMessageMutation.mutate({ styleId: style.id })
-                          }
-                        >
-                          <Image
-                            source={{ uri: resolveAssetUrl(style.image_url) }}
-                            style={styles.likedStyleImage}
-                          />
-                          <Text
-                            style={[
-                              styles.likedStyleTitle,
-                              { color: colors.text },
-                            ]}
-                            numberOfLines={2}
-                          >
-                            {style.title}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                  ) : (
-                    <Text
-                      style={[
-                        styles.likedPickerHint,
-                        { color: colors.subtext },
-                      ]}
-                    >
-                      还没有点赞过的美甲。
-                    </Text>
-                  )}
+              <View style={styles.likedPicker}>
+                <View style={styles.likedPickerHeader}>
+                  <Text style={[styles.likedPickerTitle, { color: colors.text }]}>
+                    最近点赞
+                  </Text>
+                  <Text style={[styles.likedPickerSubtitle, { color: colors.subtext }]}>
+                    点一张直接发给对方
+                  </Text>
                 </View>
-              ) : null}
+                {likedStylesQuery.isLoading ? (
+                  <Text
+                    style={[
+                      styles.likedPickerHint,
+                      { color: colors.subtext },
+                    ]}
+                  >
+                    正在加载最近点赞...
+                  </Text>
+                ) : (likedStylesQuery.data?.items ?? []).length ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.likedPickerScroll}
+                  >
+                    {(likedStylesQuery.data?.items ?? []).slice(0, 12).map((style) => (
+                      <Pressable
+                        key={style.id}
+                        style={[
+                          styles.likedStyleCard,
+                          { backgroundColor: colors.background },
+                        ]}
+                        disabled={styleMessageMutation.isPending}
+                        onPress={() =>
+                          styleMessageMutation.mutate({ styleId: style.id })
+                        }
+                      >
+                        <Image
+                          source={{ uri: resolveAssetUrl(style.image_url) }}
+                          style={styles.likedStyleImage}
+                        />
+                        <Text
+                          style={[
+                            styles.likedStyleTitle,
+                            { color: colors.text },
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {style.title}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                ) : (
+                  <Text
+                    style={[
+                      styles.likedPickerHint,
+                      { color: colors.subtext },
+                    ]}
+                  >
+                    还没有点赞过的美甲。
+                  </Text>
+                )}
+              </View>
             </View>
           ) : null}
           {emojiPanelOpen ? (
@@ -965,6 +975,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     flex: 1,
+    minWidth: 0,
   },
   headerAvatar: {
     width: 44,
@@ -973,6 +984,15 @@ const styles = StyleSheet.create({
   },
   headerName: {
     fontSize: 18,
+    fontWeight: "700",
+  },
+  headerTextBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  headerSubtitle: {
+    fontSize: 12,
     fontWeight: "700",
   },
   notice: {
@@ -1121,12 +1141,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   inlineSendButton: {
-    width: 38,
+    minWidth: 52,
     height: 34,
     borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
     marginLeft: 2,
+    paddingHorizontal: 12,
+  },
+  inlineSendText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "900",
   },
   input: {
     flex: 1,
@@ -1162,6 +1188,20 @@ const styles = StyleSheet.create({
   },
   likedPicker: {
     marginTop: 12,
+    gap: 10,
+  },
+  likedPickerHeader: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 8,
+  },
+  likedPickerTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  likedPickerSubtitle: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   likedPickerHint: {
     paddingVertical: 16,

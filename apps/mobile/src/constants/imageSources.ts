@@ -3,6 +3,7 @@ import type { ImageSourcePropType } from "react-native";
 export type AvatarOwner = {
   role?: "consumer" | "merchant" | string | null;
   is_shop?: boolean | null;
+  avatar_url?: string | null;
 };
 
 export const DEFAULT_CONSUMER_AVATAR_URL =
@@ -30,6 +31,9 @@ export const BRAND_LOGO_SOURCE: ImageSourcePropType = {
 };
 
 export function defaultAvatarSourceFor(owner?: AvatarOwner | null): ImageSourcePropType {
+  if (owner?.avatar_url) {
+    return { uri: owner.avatar_url };
+  }
   return owner?.role === "merchant" || owner?.is_shop
     ? DEFAULT_MERCHANT_AVATAR_SOURCE
     : DEFAULT_CONSUMER_AVATAR_SOURCE;
