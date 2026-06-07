@@ -1,4 +1,4 @@
-import { App, Card, Empty, Segmented, Select, Space } from "antd";
+import { App, Card, Empty, Select, Space } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { api, OpsHtmlReport, XHS_WEEKLY_REPORT_WEEKS } from "../api/client";
 import type { XhsWeeklyReportWeek } from "../api/client";
@@ -6,9 +6,8 @@ import { buildOpsWeeklyReportHtml } from "../utils/opsWeeklyReportHtml";
 
 type ReportPanel = "ops" | "xhs";
 
-export function ReportsPage() {
+export function ReportsPage({ panel }: { panel: ReportPanel }) {
   const { message } = App.useApp();
-  const [activePanel, setActivePanel] = useState<ReportPanel>("ops");
   const [selectedWeek, setSelectedWeek] = useState<XhsWeeklyReportWeek>(XHS_WEEKLY_REPORT_WEEKS[0]);
   const [xhsReport, setXhsReport] = useState<OpsHtmlReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,21 +25,15 @@ export function ReportsPage() {
   }, [message, selectedWeek]);
 
   useEffect(() => {
-    loadReports();
-  }, [loadReports]);
+    if (panel === "xhs") {
+      loadReports();
+    }
+  }, [loadReports, panel]);
 
   return (
     <Space direction="vertical" size={10} className="page-stack reports-page">
-      <div className="report-toolbar">
-        <Segmented
-          value={activePanel}
-          options={[
-            { label: "运营数据周报", value: "ops" },
-            { label: "美甲趋势周报", value: "xhs" },
-          ]}
-          onChange={(value) => setActivePanel(value as ReportPanel)}
-        />
-        {activePanel === "xhs" ? (
+      {panel === "xhs" ? (
+        <div className="report-toolbar">
           <Select
             className="report-week-select"
             value={selectedWeek.week}
@@ -50,11 +43,11 @@ export function ReportsPage() {
               if (nextWeek) setSelectedWeek(nextWeek);
             }}
           />
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
-      <Card loading={activePanel === "xhs" && loading}>
-        {activePanel === "ops" ? (
+      <Card loading={panel === "xhs" && loading}>
+        {panel === "ops" ? (
           <iframe
             className="xhs-weekly-report-frame"
             title="焕甲运营数据周报"

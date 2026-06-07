@@ -51,10 +51,6 @@ function CandidateCard({
             <Tag key={tag}>{tag}</Tag>
           ))}
         </Space>
-        <Space split={<Text type="secondary">·</Text>}>
-          <Text type="secondary">{item.like_count} 赞</Text>
-          <Text type="secondary">{item.claim_count} 家已登记</Text>
-        </Space>
       </Space>
     </Card>
   );

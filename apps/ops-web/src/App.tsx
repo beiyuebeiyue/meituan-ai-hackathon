@@ -44,7 +44,8 @@ export default function App() {
         { name: "merchants", list: "/merchants" },
         { name: "posts", list: "/posts" },
         { name: "trend-nails", list: "/trend-nails" },
-        { name: "reports", list: "/reports" },
+        { name: "reports", list: "/reports/ops" },
+        { name: "xhs-reports", list: "/reports/xhs" },
         { name: "chatbot", list: "/chatbot" },
         { name: "openclaw-schedules", list: "/openclaw/schedules" },
         { name: "profile", list: "/profile/settings" },
@@ -64,7 +65,9 @@ export default function App() {
             <Route path="/posts" element={<PostsPage />} />
             <Route path="/trend-nails" element={<TrendNailsPage />} />
             <Route path="/coupons" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/reports" element={<Navigate to="/reports/ops" replace />} />
+            <Route path="/reports/ops" element={<ReportsPage panel="ops" />} />
+            <Route path="/reports/xhs" element={<ReportsPage panel="xhs" />} />
             <Route path="/chatbot" element={<ChatbotPage />} />
             <Route path="/openclaw/schedules" element={<OpenSkillTasksPage />} />
             <Route path="/profile" element={<Navigate to="/profile/settings" replace />} />

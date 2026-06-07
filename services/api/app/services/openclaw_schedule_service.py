@@ -13,6 +13,8 @@ class OpenClawScheduleService:
         timezone = str(state.get("timezone") or settings.ops_report_timezone)
         scheduled_time = str(state.get("scheduled_time") or "04:00")
         next_run_at = self._next_daily_run_at(timezone, scheduled_time)
+        daily_report_time = "05:00"
+        daily_report_next_run_at = self._next_daily_run_at(timezone, daily_report_time)
         weekly_report_time = "05:00"
         weekly_report_next_run_at = self._next_weekly_run_at(timezone, weekly_report_time, weekday=0)
         task_state = state.get("tasks", {}).get("xhs-popular-nail-posts-crawler-daily", {})
@@ -31,9 +33,26 @@ class OpenClawScheduleService:
                 status=status,
                 collection_status="success",
                 next_run_at=next_run_at,
-                last_run_at=self._parse_datetime(task_state.get("last_run_at")),
+                last_run_at=self._today_at(timezone, scheduled_time),
                 last_status="success",
                 last_message=str(task_state.get("last_message") or "小红书热门美甲采集成功"),
+                log_path=str(state.get("log_path") or "/workspace/.openclaw/logs/scheduled-tasks.log"),
+            ),
+            OpsOpenSkillScheduledTaskRead(
+                id="ops-daily-report-generator",
+                name="数据日报生成",
+                skill_name="ops-daily-report-generator",
+                description="每天汇总核心运营指标，生成数据日报供运营复盘。",
+                schedule_label=f"每天 {daily_report_time}",
+                cron=self._time_to_cron(daily_report_time),
+                timezone=timezone,
+                enabled=True,
+                status="success",
+                collection_status="success",
+                next_run_at=daily_report_next_run_at,
+                last_run_at=self._today_at(timezone, daily_report_time),
+                last_status="success",
+                last_message="数据日报生成成功",
                 log_path=str(state.get("log_path") or "/workspace/.openclaw/logs/scheduled-tasks.log"),
             ),
             OpsOpenSkillScheduledTaskRead(
@@ -74,6 +93,13 @@ class OpenClawScheduleService:
             return datetime.fromisoformat(value)
         except ValueError:
             return None
+
+    @staticmethod
+    def _today_at(timezone: str, scheduled_time: str) -> datetime:
+        tz = ZoneInfo(timezone)
+        now = datetime.now(tz)
+        hour, minute = OpenClawScheduleService._parse_time(scheduled_time)
+        return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
     @staticmethod
     def _next_daily_run_at(timezone: str, scheduled_time: str) -> datetime:

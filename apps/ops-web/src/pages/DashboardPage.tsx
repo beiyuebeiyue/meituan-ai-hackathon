@@ -307,21 +307,26 @@ function buildDemoAnalyticsOverview(range: [string, string] | undefined): OpsAna
 function AnalyticsKpiGrid({ analytics }: { analytics: OpsAnalyticsOverview }) {
   const kpis = analytics.kpis;
   const revenueCents = Math.max(kpis.revenue_cents, DEMO_REVENUE_CENTS);
-  const revenueConversionRate = DEMO_REVENUE_CONVERSION_RATE;
   const completedOrders = Math.max(kpis.completed_orders, Math.round(revenueCents / Math.max(kpis.average_order_value_cents, 16800)));
   const averageOrderValueCents = Math.round(rate(revenueCents, completedOrders));
   const userTotal = Math.max(kpis.dau, 1286);
+  const dailyActiveUsers = Math.max(kpis.dau, 342);
+  const monthlyActiveUsers = Math.max(userTotal, 1286);
   const newUsers = Math.max(kpis.new_users, 62);
   const merchantTotal = 28;
   const newMerchants = 3;
   const tryonUses = Math.max(kpis.tryon_completed, 399);
   const todayTryons = Math.max(46, Math.round(tryonUses * 0.12));
-  const bookingSubmits = Math.max(kpis.booking_submits, 116);
   const cards = [
     {
       label: "营业额",
       value: formatCents(revenueCents),
       detail: `客单价 ${formatCents(averageOrderValueCents)}`,
+    },
+    {
+      label: "活跃用户",
+      value: formatNumber(dailyActiveUsers),
+      detail: `月活 ${formatNumber(monthlyActiveUsers)}`,
     },
     {
       label: "用户数",
@@ -337,11 +342,6 @@ function AnalyticsKpiGrid({ analytics }: { analytics: OpsAnalyticsOverview }) {
       label: "焕甲使用次数",
       value: formatNumber(tryonUses),
       detail: `今日使用 ${formatNumber(todayTryons)}`,
-    },
-    {
-      label: "预约提交",
-      value: formatNumber(bookingSubmits),
-      detail: `收入转化 ${formatPercent(revenueConversionRate)}`,
     },
   ];
 

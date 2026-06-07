@@ -35,7 +35,9 @@ const pageMeta = [
   { path: "/merchants", title: "商家", description: "" },
   { path: "/posts", title: "帖子", description: "内容审核、作者与互动数据" },
   { path: "/trend-nails", title: "热门推款", description: "自动发现上周热门款式并推荐给商家" },
-  { path: "/reports", title: "运营周报", description: "小红书美甲趋势与运营复盘" },
+  { path: "/reports/ops", title: "运营数据周报", description: "核心运营指标、转化链路与行动建议" },
+  { path: "/reports/xhs", title: "美甲趋势周报", description: "小红书美甲趋势与运营复盘" },
+  { path: "/reports", title: "周报", description: "" },
   { path: "/chatbot", title: "运营小嘉", description: "运营问题、工具调用与 OpenClaw 能力" },
   { path: "/openclaw/schedules", title: "定期任务", description: "查看 OpenClaw 自动运行的 skill 与排期" },
   { path: "/profile/settings", title: "设置", description: "后台账号与偏好设置" },
@@ -62,7 +64,15 @@ const navItems = [
       { key: "/trend-nails", icon: <FireOutlined />, label: "热门推款" },
     ],
   },
-  { key: "/reports", icon: <ReadOutlined />, label: "运营周报" },
+  {
+    key: "reports",
+    icon: <ReadOutlined />,
+    label: "周报",
+    children: [
+      { key: "/reports/ops", label: "运营数据周报" },
+      { key: "/reports/xhs", label: "美甲趋势周报" },
+    ],
+  },
   {
     key: "chatbot",
     icon: <RobotOutlined />,
@@ -96,7 +106,7 @@ export function AppLayout() {
   const renderMenu = () => (
     <Menu
       mode="inline"
-      defaultOpenKeys={["dashboard", "members", "chatbot"]}
+      defaultOpenKeys={["dashboard", "members", "reports", "chatbot"]}
       selectedKeys={[location.pathname]}
       items={navItems}
       onClick={({ key }) => {
