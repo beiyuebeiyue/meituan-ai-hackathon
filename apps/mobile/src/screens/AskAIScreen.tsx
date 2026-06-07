@@ -167,6 +167,48 @@ function ChatBubble({
   colors: ReturnType<typeof useThemeColors>;
 }) {
   const isUser = message.role === "user";
+  const cloudFloat = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!pending || isUser) {
+      cloudFloat.stopAnimation();
+      cloudFloat.setValue(0);
+      return;
+    }
+
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(cloudFloat, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(cloudFloat, {
+          toValue: 0,
+          duration: 1500,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [cloudFloat, isUser, pending]);
+
+  const cloudAnimatedStyle = {
+    opacity: cloudFloat.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.94, 1],
+    }),
+    transform: [
+      {
+        translateY: cloudFloat.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -4],
+        }),
+      },
+    ],
+  };
+
   return (
     <View
       style={[
@@ -174,35 +216,54 @@ function ChatBubble({
         isUser ? styles.chatBubbleRowUser : styles.chatBubbleRowAssistant,
       ]}
     >
-      <View
+      <Animated.View
         style={[
           styles.chatBubble,
           isUser
             ? [styles.userBubble, { backgroundColor: colors.accent }]
+            : pending
+              ? [
+                  styles.assistantCloudBubble,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                  cloudAnimatedStyle,
+                ]
             : [
                 styles.assistantBubble,
                 { backgroundColor: colors.surface, borderColor: colors.border },
               ],
         ]}
       >
+        {!isUser && pending ? (
+          <>
+            <View style={[styles.cloudPuff, styles.cloudPuffLeft, { backgroundColor: colors.surface, borderColor: colors.border }]} />
+            <View style={[styles.cloudPuff, styles.cloudPuffTop, { backgroundColor: colors.surface, borderColor: colors.border }]} />
+            <View style={[styles.cloudPuff, styles.cloudPuffRight, { backgroundColor: colors.surface, borderColor: colors.border }]} />
+          </>
+        ) : null}
         {message.content ? (
           <Text
             style={[
               styles.chatBubbleText,
+              pending && !isUser ? styles.cloudBubbleText : null,
               { color: isUser ? "#ffffff" : colors.text },
             ]}
           >
             {message.content}
           </Text>
         ) : null}
-        {pending ? (
-          <ActivityIndicator
-            size="small"
-            color={colors.accent}
-            style={styles.chatBubbleSpinner}
-          />
+        {pending && !isUser ? (
+          <View style={styles.cloudDots}>
+            <View style={[styles.cloudDot, { backgroundColor: colors.accent }]} />
+            <View style={[styles.cloudDot, { backgroundColor: colors.accent }]} />
+            <View style={[styles.cloudDot, { backgroundColor: colors.accent }]} />
+          </View>
+        ) : pending ? (
+          <ActivityIndicator size="small" color={colors.accent} style={styles.chatBubbleSpinner} />
         ) : null}
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -1790,9 +1851,66 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 6,
     borderWidth: 1,
   },
+  assistantCloudBubble: {
+    marginTop: 8,
+    maxWidth: "88%",
+    minHeight: 70,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    overflow: "visible",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 5,
+  },
+  cloudPuff: {
+    position: "absolute",
+    borderWidth: 1,
+    zIndex: -1,
+  },
+  cloudPuffLeft: {
+    left: 18,
+    top: -8,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
+  cloudPuffTop: {
+    left: 54,
+    top: -17,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+  },
+  cloudPuffRight: {
+    right: 26,
+    top: -10,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+  },
   chatBubbleText: {
     fontSize: 15,
     lineHeight: 22,
+  },
+  cloudBubbleText: {
+    fontWeight: "700",
+    lineHeight: 21,
+  },
+  cloudDots: {
+    marginTop: 8,
+    flexDirection: "row",
+    gap: 5,
+    alignItems: "center",
+  },
+  cloudDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    opacity: 0.65,
   },
   chatBubbleSpinner: {
     alignSelf: "flex-start",
