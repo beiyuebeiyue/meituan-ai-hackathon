@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import Animated from "react-native-reanimated";
+import { useIsDarkMode } from "../../utils/theme";
 import { AIButtonGlow } from "./AIButtonGlow";
 import { AIButtonThinkingRing } from "./AIButtonThinkingRing";
 import { useAIPulseAnimation } from "./useAIPulseAnimation";
@@ -33,7 +34,9 @@ export const AIButton = memo(function AIButton({
   accessibilityLabel,
   testID,
 }: AIButtonProps) {
+  const isDarkMode = useIsDarkMode();
   const thinking = status === "thinking";
+  const tabSurface = isDarkMode ? "#111116" : "#ffffff";
   const { buttonStyle, glowStyle, ringStyle, runPressAnimation } =
     useAIPulseAnimation({ focused, thinking });
 
@@ -56,6 +59,16 @@ export const AIButton = memo(function AIButton({
       style={styles.touchTarget}
     >
       <View style={styles.stage}>
+        <View
+          pointerEvents="none"
+          style={[
+            styles.hill,
+            {
+              backgroundColor: tabSurface,
+              borderColor: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(17,17,17,0.06)",
+            },
+          ]}
+        />
         <AIButtonGlow animatedStyle={glowStyle} focused={focused || thinking} />
         <AIButtonThinkingRing animatedStyle={ringStyle} />
         <Animated.View
@@ -66,6 +79,11 @@ export const AIButton = memo(function AIButton({
             buttonStyle,
           ]}
         >
+          <View pointerEvents="none" style={styles.prismHalo}>
+            <View style={[styles.prismDot, styles.prismDotPink]} />
+            <View style={[styles.prismDot, styles.prismDotCyan]} />
+            <View style={[styles.prismDot, styles.prismDotGold]} />
+          </View>
           <Ionicons
             name={focused || thinking ? "sparkles" : "sparkles-outline"}
             size={25}
@@ -90,20 +108,37 @@ const styles = StyleSheet.create({
   touchTarget: {
     alignItems: "center",
     justifyContent: "flex-start",
-    minWidth: 78,
-    minHeight: 82,
-    marginTop: -20,
+    minWidth: 90,
+    minHeight: 96,
+    marginTop: -34,
   },
   stage: {
-    width: 92,
-    height: 92,
+    width: 112,
+    height: 108,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    paddingTop: 8,
+  },
+  hill: {
+    position: "absolute",
+    bottom: 0,
+    width: 112,
+    height: 62,
+    borderTopLeftRadius: 56,
+    borderTopRightRadius: 56,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 2,
   },
   button: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     alignItems: "center",
     justifyContent: "center",
     gap: 1,
@@ -115,6 +150,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.34,
     shadowRadius: 18,
     elevation: 11,
+    overflow: "hidden",
   },
   buttonFocused: {
     backgroundColor: "#151515",
@@ -137,5 +173,30 @@ const styles = StyleSheet.create({
   },
   labelFocused: {
     color: "#fff8c7",
+  },
+  prismHalo: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.42,
+  },
+  prismDot: {
+    position: "absolute",
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+  },
+  prismDotPink: {
+    left: -8,
+    top: -4,
+    backgroundColor: "rgba(255, 112, 203, 0.55)",
+  },
+  prismDotCyan: {
+    right: -8,
+    top: 8,
+    backgroundColor: "rgba(74, 206, 255, 0.58)",
+  },
+  prismDotGold: {
+    left: 18,
+    bottom: -12,
+    backgroundColor: "rgba(255, 231, 91, 0.58)",
   },
 });

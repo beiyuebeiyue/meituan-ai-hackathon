@@ -539,6 +539,7 @@ const styles = StyleSheet.create({
   tabBar: {
     paddingTop: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
+    overflow: "visible",
   },
   tabBarItem: {
     paddingTop: 3,
