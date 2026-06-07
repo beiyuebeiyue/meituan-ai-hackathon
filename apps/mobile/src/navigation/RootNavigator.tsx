@@ -1,25 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
-import {
-  BottomTabBarButtonProps,
-  createBottomTabNavigator,
-} from "@react-navigation/bottom-tabs";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigatorScreenParams, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { useRef, type ComponentType } from "react";
-import {
-  Animated,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { type ComponentType } from "react";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { AIButton } from "../components/navigation/AIButton";
 import { OverlayContent } from "../components/OverlayContent";
 import {
   SlideDirection,
   SlideOverlayScreen,
 } from "../components/SlideOverlayScreen";
 import { WeeklyHotNailsModal } from "../components/WeeklyHotNailsModal";
+import { AskAIScreen } from "../screens/AskAIScreen";
 import { AuthorProfileScreen } from "../screens/AuthorProfileScreen";
 import { BrowseHistoryScreen } from "../screens/BrowseHistoryScreen";
 import { BrowseSearchScreen } from "../screens/BrowseSearchScreen";
@@ -57,7 +50,7 @@ import { WearableOrderScreen } from "../screens/WearableOrderScreen";
 import { WearableStoreScreen } from "../screens/WearableStoreScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import type { NearbyShop } from "../types/api";
-import { useThemeColors } from "../utils/theme";
+import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 export type OverlayEntryParams = { entryEdge?: SlideDirection };
 
@@ -68,7 +61,6 @@ export type MainTabParamList = {
   Publish: undefined;
   AskAI: undefined;
   MerchantOverview: undefined;
-  Messages: undefined;
   Profile: undefined;
 };
 
@@ -124,7 +116,10 @@ const Tab = createBottomTabNavigator();
 const TAB_BG = "#111116";
 const TAB_TEXT = "#f2f2f4";
 const TAB_MUTED = "#8f8f98";
-const TAB_RED = "#ff2d55";
+const TAB_LIGHT_BG = "#ffffff";
+const TAB_LIGHT_TEXT = "#111111";
+const TAB_LIGHT_MUTED = "#777777";
+const TAB_LIGHT_BORDER = "#eeeeee";
 
 const overlayOptions = {
   headerShown: false,
@@ -254,51 +249,16 @@ const MarketShopDetailOverlayScreen = createOverlayComponent(
   MarketShopDetailScreen,
 );
 
-function CenterTabButton({ props }: { props: BottomTabBarButtonProps }) {
-  const pressScale = useRef(new Animated.Value(1)).current;
-
-  const animatePress = (toValue: number) => {
-    Animated.spring(pressScale, {
-      toValue,
-      damping: 12,
-      mass: 0.55,
-      stiffness: 260,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  return (
-    <Pressable
-      onPress={props.onPress}
-      onPressIn={() => animatePress(0.92)}
-      onPressOut={() => animatePress(1)}
-      accessibilityState={props.accessibilityState}
-      accessibilityLabel={props.accessibilityLabel}
-      testID={props.testID}
-      style={styles.askButton}
-    >
-      <Animated.View
-        style={[
-          styles.askButtonInner,
-          {
-            backgroundColor: TAB_RED,
-            shadowColor: TAB_RED,
-            transform: [{ scale: pressScale }],
-          },
-        ]}
-      >
-        <Ionicons name="add" size={27} color="#ffffff" />
-        <Text style={styles.askButtonText}>发布</Text>
-      </Animated.View>
-    </Pressable>
-  );
-}
-
 function MainTabs() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const isDarkMode = useIsDarkMode();
   const user = useAuthStore((state) => state.user);
   const isMerchant = user?.role === "merchant";
+  const tabBackground = isDarkMode ? TAB_BG : TAB_LIGHT_BG;
+  const tabActiveColor = isDarkMode ? TAB_TEXT : TAB_LIGHT_TEXT;
+  const tabInactiveColor = isDarkMode ? TAB_MUTED : TAB_LIGHT_MUTED;
+  const tabBorderColor = isDarkMode ? "transparent" : TAB_LIGHT_BORDER;
 
   return (
     <>
@@ -311,10 +271,12 @@ function MainTabs() {
             {
               height: 64 + insets.bottom,
               paddingBottom: Math.max(insets.bottom, 8),
+              backgroundColor: tabBackground,
+              borderTopColor: tabBorderColor,
             },
           ],
-          tabBarActiveTintColor: TAB_TEXT,
-          tabBarInactiveTintColor: TAB_MUTED,
+          tabBarActiveTintColor: tabActiveColor,
+          tabBarInactiveTintColor: tabInactiveColor,
           tabBarLabelStyle: styles.tabBarLabel,
           tabBarItemStyle: styles.tabBarItem,
         }}
@@ -333,9 +295,27 @@ function MainTabs() {
           name="Market"
           component={MarketScreen}
           options={{
-            title: "市集",
+            title: "店铺",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="storefront-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="AskAI"
+          component={AskAIScreen}
+          options={{
+            title: "问问小嘉",
+            tabBarButton: (props) => (
+              <AIButton
+                label="问问小嘉"
+                focused={Boolean(props.accessibilityState?.selected)}
+                status="idle"
+                onPress={props.onPress ?? undefined}
+                onLongPress={props.onLongPress ?? undefined}
+                accessibilityLabel={props.accessibilityLabel}
+                testID={props.testID}
+              />
             ),
           }}
         />
@@ -344,16 +324,8 @@ function MainTabs() {
           component={PublishScreen}
           options={{
             title: "发布",
-            tabBarButton: (props) => <CenterTabButton props={props} />,
-          }}
-        />
-        <Tab.Screen
-          name="Messages"
-          component={MessagesInboxScreen}
-          options={{
-            title: "消息",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />
+              <Ionicons name="add-circle-outline" size={size} color={color} />
             ),
           }}
         />
@@ -566,8 +538,7 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     paddingTop: 6,
-    backgroundColor: TAB_BG,
-    borderTopWidth: 0,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   tabBarItem: {
     paddingTop: 3,
@@ -576,28 +547,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
     lineHeight: 16,
-  },
-  askButton: {
-    alignItems: "center",
-    marginTop: -12,
-    position: "relative",
-  },
-  askButtonInner: {
-    width: 64,
-    height: 54,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 1,
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 8,
-  },
-  askButtonText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 14,
   },
 });
