@@ -955,35 +955,6 @@ export function AskAIScreen() {
             </View>
           ) : null}
 
-          {showingHandChooser ? (
-            <TryOnHandChooser
-              title={
-                needsHandFor === "recommend"
-                  ? "先选一张手图，再继续推荐"
-                  : "选一张手图，马上开始试戴"
-              }
-              description={
-                needsHandFor === "recommend" && handPickerMessage
-                  ? handPickerMessage
-                  : recentHandPhotos.length
-                    ? "我先把你最近的 5 张手图摆出来，你可以直接挑一张继续。"
-                    : "你还没有可用的手图，先拍一张，或者从相册里选一张以前拍过的。"
-              }
-              recentHandPhotos={recentHandPhotos}
-              selectedHandPhotoId={selectedHandPhotoId}
-              loading={token ? savedHandsLoading : false}
-              busy={isStartingTryOn}
-              tip={
-                needsHandFor === "recommend"
-                  ? "选好手图后，我会继续按你的手型、肤色和文字需求推荐款式。"
-                  : "选好手图后，我会直接拿当前这款美甲开始焕甲试戴。"
-              }
-              onSelectSavedHand={savedHandPicker.handleSavedHandSelect}
-              onTakePhoto={() => void savedHandPicker.takePhotoNow()}
-              onPickFromLibrary={() => void savedHandPicker.pickFromLibrary()}
-            />
-          ) : null}
-
           {displayedRecommendations.length ? (
             <View style={styles.resultSection}>
               <View style={styles.resultSectionHeader}>
@@ -1331,6 +1302,59 @@ export function AskAIScreen() {
             </AnimatedPressable>
           </View>
         </View>
+
+        <Modal
+          visible={showingHandChooser}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setNeedsHandFor(null)}
+        >
+          <View style={styles.handChooserModalOverlay}>
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setNeedsHandFor(null)}
+            />
+            <View style={styles.handChooserModalPanel}>
+              <Pressable
+                style={[
+                  styles.handChooserCloseButton,
+                  { backgroundColor: colors.surfaceAlt },
+                ]}
+                onPress={() => setNeedsHandFor(null)}
+                accessibilityRole="button"
+                accessibilityLabel="关闭手图选择"
+              >
+                <Ionicons name="close" size={20} color={colors.text} />
+              </Pressable>
+              <TryOnHandChooser
+                title={
+                  needsHandFor === "recommend"
+                    ? "先选一张手图，再继续推荐"
+                    : "选一张手图，马上开始试戴"
+                }
+                description={
+                  needsHandFor === "recommend" && handPickerMessage
+                    ? handPickerMessage
+                    : recentHandPhotos.length
+                      ? "我先把你最近的 5 张手图摆出来，你可以直接挑一张继续。"
+                      : "你还没有可用的手图，先拍一张，或者从相册里选一张以前拍过的。"
+                }
+                recentHandPhotos={recentHandPhotos}
+                selectedHandPhotoId={selectedHandPhotoId}
+                loading={token ? savedHandsLoading : false}
+                busy={isStartingTryOn}
+                tip={
+                  needsHandFor === "recommend"
+                    ? "选好手图后，我会继续按你的手型、肤色和文字需求推荐款式。"
+                    : "选好手图后，我会直接拿当前这款美甲开始焕甲试戴。"
+                }
+                onSelectSavedHand={savedHandPicker.handleSavedHandSelect}
+                onTakePhoto={() => void savedHandPicker.takePhotoNow()}
+                onPickFromLibrary={() => void savedHandPicker.pickFromLibrary()}
+              />
+            </View>
+          </View>
+        </Modal>
 
         <Modal
           visible={!!previewItem}
@@ -2104,6 +2128,31 @@ const styles = StyleSheet.create({
   sendButtonHalo: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 20,
+  },
+  handChooserModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.42)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 28,
+  },
+  handChooserModalPanel: {
+    width: "100%",
+    maxWidth: 520,
+    maxHeight: "88%",
+    position: "relative",
+  },
+  handChooserCloseButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 2,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: "center",
+    justifyContent: "center",
   },
   previewOverlay: {
     flex: 1,
