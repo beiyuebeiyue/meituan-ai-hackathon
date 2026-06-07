@@ -488,7 +488,7 @@ function ConsumerProfileScreen() {
                 <Text style={[styles.consumerMenuTitle, { color: colors.text }]}>
                   {item.title}
                 </Text>
-                {"subtitle" in item && item.subtitle ? (
+                {"subtitle" in item && typeof item.subtitle === "string" && item.subtitle ? (
                   <Text
                     style={[styles.consumerMenuSubtitle, { color: colors.subtext }]}
                     numberOfLines={1}
