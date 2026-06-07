@@ -23,7 +23,6 @@ import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 const fallbackAvatar = require("../../assets/profile/default_avatar.png");
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-const SHOP_SECTION_TABS = ["团购", "美甲师", "评价", "相关推荐"];
 const SHOP_TAGS = ["免费停车", "无隐性消费", "有沙发位", "支持预约"];
 
 type MarketShopDetailRoute = {
@@ -311,62 +310,42 @@ export function MarketShopDetailScreen() {
             >
               <Ionicons name="chevron-back" size={28} color={colors.text} />
             </Pressable>
+            <View style={styles.headerSpacer} />
             {isPlatformShop ? (
-              <>
-                <View
+              <View style={styles.heroActions}>
+                <Pressable
                   style={[
-                    styles.heroSearch,
+                    styles.actionButton,
                     {
                       backgroundColor: isDark
-                        ? "rgba(27,28,32,0.66)"
-                        : "rgba(255,255,255,0.62)",
+                        ? "rgba(27,28,32,0.7)"
+                        : "rgba(255,255,255,0.72)",
                     },
                   ]}
                 >
                   <Ionicons
-                    name="search"
-                    size={18}
-                    color="rgba(255,255,255,0.92)"
+                    name="star-outline"
+                    size={22}
+                    color={colors.text}
                   />
-                  <Text style={styles.heroSearchText} numberOfLines={1}>
-                    搜索店内美甲
-                  </Text>
-                </View>
-                <View style={styles.heroActions}>
-                  <Pressable
-                    style={[
-                      styles.actionButton,
-                      {
-                        backgroundColor: isDark
-                          ? "rgba(27,28,32,0.7)"
-                          : "rgba(255,255,255,0.72)",
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="star-outline"
-                      size={22}
-                      color={colors.text}
-                    />
-                  </Pressable>
-                  <Pressable
-                    style={[
-                      styles.actionButton,
-                      {
-                        backgroundColor: isDark
-                          ? "rgba(27,28,32,0.7)"
-                          : "rgba(255,255,255,0.72)",
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name="arrow-redo-outline"
-                      size={22}
-                      color={colors.text}
-                    />
-                  </Pressable>
-                </View>
-              </>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.actionButton,
+                    {
+                      backgroundColor: isDark
+                        ? "rgba(27,28,32,0.7)"
+                        : "rgba(255,255,255,0.72)",
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="arrow-redo-outline"
+                    size={22}
+                    color={colors.text}
+                  />
+                </Pressable>
+              </View>
             ) : null}
           </View>
           <View style={styles.heroInfo}>
@@ -521,31 +500,6 @@ export function MarketShopDetailScreen() {
           </View>
         ) : (
           <>
-            <View
-              style={[styles.sectionTabs, { backgroundColor: colors.surface }]}
-            >
-              {SHOP_SECTION_TABS.map((tab, index) => (
-                <View key={tab} style={styles.sectionTab}>
-                  <Text
-                    style={[
-                      styles.sectionTabText,
-                      { color: index === 0 ? colors.text : colors.subtext },
-                    ]}
-                  >
-                    {tab}
-                  </Text>
-                  {index === 0 ? (
-                    <View
-                      style={[
-                        styles.sectionTabUnderline,
-                        { backgroundColor: colors.accent },
-                      ]}
-                    />
-                  ) : null}
-                </View>
-              ))}
-            </View>
-
             <View style={styles.galleryHeader}>
               <Text style={[styles.galleryTitle, { color: colors.text }]}>
                 热门美甲
@@ -812,20 +766,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  heroSearch: {
+  headerSpacer: {
     flex: 1,
-    height: 44,
-    borderRadius: 22,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-  },
-  heroSearchText: {
-    flex: 1,
-    color: "rgba(255,255,255,0.94)",
-    fontSize: 15,
-    fontWeight: "900",
   },
   heroActions: {
     flexDirection: "row",
@@ -996,28 +938,6 @@ const styles = StyleSheet.create({
   notJoinedText: {
     fontSize: 15,
     fontWeight: "900",
-  },
-  sectionTabs: {
-    marginTop: 2,
-    paddingHorizontal: 18,
-    height: 58,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 24,
-  },
-  sectionTab: {
-    height: 42,
-    justifyContent: "center",
-    gap: 6,
-  },
-  sectionTabText: {
-    fontSize: 18,
-    fontWeight: "900",
-  },
-  sectionTabUnderline: {
-    width: 30,
-    height: 3,
-    borderRadius: 2,
   },
   galleryHeader: {
     paddingHorizontal: 18,
