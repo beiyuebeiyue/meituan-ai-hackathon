@@ -16,6 +16,8 @@
 
 ## 在线体验
 
+> 访问提示：项目服务器部署在海外，首次加载和部分功能响应可能会有一定延迟，请评委老师稍作等待。
+
 ### 产品 PRD
 
 - https://pcn7x0h2nqqh.feishu.cn/docx/ZXnKddUIRoGvFIxyH2ic7D7rnzV
@@ -29,6 +31,10 @@
 ### 用户端
 
 用户端原本是为手机 App 设计的，推荐使用 Android 手机体验，以获得完整的功能体验。
+
+Android App 下载：
+
+- https://pan.baidu.com/s/1N403ORBb7cyMgHVqKsyu3Q?pwd=2vji
 
 同时也提供网页版用户端，方便快速预览和分享：
 
