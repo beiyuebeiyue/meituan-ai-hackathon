@@ -251,6 +251,11 @@ function buildDemoAnalyticsOverview(range: [string, string] | undefined): OpsAna
   const demoRevenueCents = Math.max(revenueCents, DEMO_REVENUE_CENTS);
   const topStyleRevenue = Math.round(demoRevenueCents * 0.78);
   const topShopRevenue = Math.round(demoRevenueCents * 1.42);
+  const demoCompletedOrders = Math.max(completedOrders, Math.round(demoRevenueCents / 17300));
+  const demoBookingSubmits = Math.max(bookingSubmits, 760);
+  const demoTryonCompleted = Math.max(tryonCompleted, 1240);
+  const demoRecommendationClicks = Math.max(recommendationClicks, 2180);
+  const demoRecommendationImpressions = Math.max(recommendationImpressions, 7625);
 
   return {
     start_date: startDate,
@@ -277,11 +282,11 @@ function buildDemoAnalyticsOverview(range: [string, string] | undefined): OpsAna
       revenue_conversion_rate: DEMO_REVENUE_CONVERSION_RATE,
     },
     funnel: buildFunnel([
-      { key: "impression", label: "推荐曝光", count: recommendationImpressions },
-      { key: "click", label: "推荐点击", count: recommendationClicks },
-      { key: "tryon", label: "使用焕甲", count: tryonCompleted },
-      { key: "booking_submit", label: "提交预约", count: bookingSubmits },
-      { key: "completed_order", label: "完成订单", count: completedOrders },
+      { key: "impression", label: "推荐曝光", count: demoRecommendationImpressions },
+      { key: "click", label: "推荐点击", count: demoRecommendationClicks },
+      { key: "tryon", label: "使用焕甲", count: demoTryonCompleted },
+      { key: "booking_submit", label: "提交预约", count: demoBookingSubmits },
+      { key: "completed_order", label: "完成订单", count: demoCompletedOrders },
     ]),
     trends,
     top_styles: [

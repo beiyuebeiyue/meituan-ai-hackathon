@@ -220,6 +220,134 @@ export function buildOpsWeeklyReportHtml() {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       gap: 16px;
     }
+    .visual-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .chart-card {
+      min-height: 280px;
+      padding: 16px;
+      border: 1px solid #e1e1dc;
+      border-radius: 8px;
+      background: #fbfbf9;
+    }
+    .chart-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .chart-title strong {
+      color: var(--ink);
+      font-size: 15px;
+    }
+    .chart-title span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .line-chart {
+      width: 100%;
+      height: 214px;
+      overflow: visible;
+    }
+    .axis-text {
+      fill: #777;
+      font: 11px "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .chart-grid-line {
+      stroke: #e3e3dd;
+      stroke-width: 1;
+    }
+    .chart-line {
+      fill: none;
+      stroke: var(--ink);
+      stroke-width: 4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .chart-line.revenue {
+      stroke: var(--green);
+    }
+    .chart-area {
+      fill: rgba(16, 185, 129, .12);
+    }
+    .chart-dot {
+      fill: #fff;
+      stroke: var(--green);
+      stroke-width: 3;
+    }
+    .donut-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .donut-card {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      min-height: 124px;
+      padding: 14px;
+      border: 1px solid #e1e1dc;
+      border-radius: 8px;
+      background: #fbfbf9;
+    }
+    .donut {
+      width: 104px;
+      height: 104px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at center, #fbfbf9 0 53%, transparent 54%),
+        conic-gradient(var(--ink) var(--value), #e8e8e4 0);
+    }
+    .donut strong {
+      font: 700 22px/1 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    .donut-copy b {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+      color: var(--ink);
+    }
+    .donut-copy span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .mini-table {
+      width: 100%;
+      min-width: 0;
+    }
+    .mini-table th,
+    .mini-table td {
+      padding: 10px 12px;
+      white-space: nowrap;
+    }
+    .priority-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .priority-item {
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr);
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid #e1e1dc;
+      border-radius: 6px;
+      background: #fbfbf9;
+    }
+    .priority-item b {
+      color: var(--ink);
+      font-size: 13px;
+    }
+    .priority-item span {
+      color: #444;
+      font-size: 13px;
+    }
     .insight-list {
       display: grid;
       gap: 12px;
@@ -317,6 +445,7 @@ export function buildOpsWeeklyReportHtml() {
     @media (max-width: 860px) {
       .page { width: min(100vw - 24px, 1280px); padding-top: 18px; }
       .hero, .grid-2 { grid-template-columns: 1fr; }
+      .visual-grid { grid-template-columns: 1fr; }
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
@@ -346,6 +475,64 @@ export function buildOpsWeeklyReportHtml() {
         </div>
         <p>本周运营数据整体稳定，用户增长和 AI 焕甲使用继续贡献核心活跃。预约提交保持增长，但从试戴到预约仍是下一阶段最值得优化的转化环节。</p>
       </aside>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <h2>可视化数据概览</h2>
+        <p>用图表快速判断本周增长、转化和履约表现</p>
+      </div>
+      <div class="visual-grid">
+        <div class="chart-card">
+          <div class="chart-title">
+            <strong>营业额与焕甲使用趋势</strong>
+            <span>近 7 日模拟运营数据</span>
+          </div>
+          <svg class="line-chart" viewBox="0 0 720 230" role="img" aria-label="营业额与焕甲使用趋势折线图">
+            <line class="chart-grid-line" x1="48" y1="30" x2="688" y2="30" />
+            <line class="chart-grid-line" x1="48" y1="80" x2="688" y2="80" />
+            <line class="chart-grid-line" x1="48" y1="130" x2="688" y2="130" />
+            <line class="chart-grid-line" x1="48" y1="180" x2="688" y2="180" />
+            <text class="axis-text" x="8" y="34">2.0w</text>
+            <text class="axis-text" x="8" y="84">1.5w</text>
+            <text class="axis-text" x="8" y="134">1.0w</text>
+            <text class="axis-text" x="8" y="184">0.5w</text>
+            <path class="chart-area" d="M58 168 L158 154 L258 132 L358 118 L458 98 L558 72 L678 50 L678 180 L58 180 Z" />
+            <path class="chart-line revenue" d="M58 168 C104 160 118 158 158 154 C206 148 218 138 258 132 C304 124 318 122 358 118 C410 112 420 102 458 98 C510 90 522 78 558 72 C604 64 630 54 678 50" />
+            <path class="chart-line" d="M58 176 C108 170 118 166 158 164 C208 158 218 148 258 146 C308 140 318 136 358 132 C408 126 420 118 458 116 C508 108 526 98 558 96 C608 90 632 82 678 78" />
+            <circle class="chart-dot" cx="58" cy="168" r="5" />
+            <circle class="chart-dot" cx="158" cy="154" r="5" />
+            <circle class="chart-dot" cx="258" cy="132" r="5" />
+            <circle class="chart-dot" cx="358" cy="118" r="5" />
+            <circle class="chart-dot" cx="458" cy="98" r="5" />
+            <circle class="chart-dot" cx="558" cy="72" r="5" />
+            <circle class="chart-dot" cx="678" cy="50" r="5" />
+            <text class="axis-text" x="50" y="214">05/31</text>
+            <text class="axis-text" x="146" y="214">06/01</text>
+            <text class="axis-text" x="246" y="214">06/02</text>
+            <text class="axis-text" x="346" y="214">06/03</text>
+            <text class="axis-text" x="446" y="214">06/04</text>
+            <text class="axis-text" x="546" y="214">06/05</text>
+            <text class="axis-text" x="646" y="214">06/06</text>
+          </svg>
+        </div>
+        <div class="donut-grid">
+          <div class="donut-card">
+            <div class="donut" style="--value: 17%"><strong>17%</strong></div>
+            <div class="donut-copy">
+              <b>收入转化</b>
+              <span>试戴与预约链路已有正向表现，下周重点优化“试戴后找店”。</span>
+            </div>
+          </div>
+          <div class="donut-card">
+            <div class="donut" style="--value: 74%"><strong>74%</strong></div>
+            <div class="donut-copy">
+              <b>焕甲完成率</b>
+              <span>AI 试戴体验稳定，可继续作为用户决策的核心入口。</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="panel">
@@ -427,9 +614,28 @@ export function buildOpsWeeklyReportHtml() {
         </div>
         <div class="bar-list">
           <div class="bar-row"><span>推荐曝光</span><div class="bar-track"><span class="bar-fill" style="width:100%;background:var(--blue)"></span></div><strong>7,625</strong></div>
-          <div class="bar-row"><span>推荐点击</span><div class="bar-track"><span class="bar-fill" style="width:42%;background:var(--green)"></span></div><strong>3,196</strong></div>
-          <div class="bar-row"><span>使用焕甲</span><div class="bar-track"><span class="bar-fill" style="width:31%;background:var(--orange)"></span></div><strong>399</strong></div>
-          <div class="bar-row"><span>预约提交</span><div class="bar-track"><span class="bar-fill" style="width:23%;background:var(--pink)"></span></div><strong>116</strong></div>
+          <div class="bar-row"><span>推荐点击</span><div class="bar-track"><span class="bar-fill" style="width:29%;background:var(--green)"></span></div><strong>2,180</strong></div>
+          <div class="bar-row"><span>使用焕甲</span><div class="bar-track"><span class="bar-fill" style="width:16%;background:var(--orange)"></span></div><strong>1,240</strong></div>
+          <div class="bar-row"><span>预约提交</span><div class="bar-track"><span class="bar-fill" style="width:10%;background:var(--pink)"></span></div><strong>760</strong></div>
+          <div class="bar-row"><span>完成订单</span><div class="bar-track"><span class="bar-fill" style="width:7%;background:var(--ink)"></span></div><strong>506</strong></div>
+        </div>
+        <div class="table-wrap" style="margin-top:18px">
+          <table class="mini-table">
+            <thead>
+              <tr>
+                <th>节点</th>
+                <th>数量</th>
+                <th>上一步转化</th>
+                <th>总转化</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>推荐点击</td><td><strong>2,180</strong></td><td>28.6%</td><td>28.6%</td></tr>
+              <tr><td>使用焕甲</td><td><strong>1,240</strong></td><td>56.9%</td><td>16.3%</td></tr>
+              <tr><td>预约提交</td><td><strong>760</strong></td><td>61.3%</td><td>10.0%</td></tr>
+              <tr><td>完成订单</td><td><strong>506</strong></td><td>66.6%</td><td>6.6%</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
       <div class="panel">
@@ -443,6 +649,11 @@ export function buildOpsWeeklyReportHtml() {
           <li><b>3</b><span>围绕福田中心等重点商圈补齐商家供给，提高用户试戴后找到附近门店的成功率。</span></li>
           <li><b>4</b><span>下周重点观察“焕甲使用次数到预约提交”的转化变化，判断推荐理由和试戴效果是否提升成交意愿。</span></li>
         </ol>
+        <div class="priority-list">
+          <div class="priority-item"><b>优先级高</b><span>把“试戴后找附近门店”做成更明显的下一步动作，降低用户从 AI 试戴到预约的犹豫成本。</span></div>
+          <div class="priority-item"><b>优先级中</b><span>将高热手工甲推送给更多商家，提升“我也能做”的覆盖率和附近门店命中率。</span></div>
+          <div class="priority-item"><b>优先级中</b><span>继续监控福田、南山等高活跃区域，如果需求明显高于供给，优先补充商家。</span></div>
+        </div>
       </div>
     </section>
 
