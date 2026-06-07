@@ -587,7 +587,7 @@ export function AskAIScreen() {
     setHandPickerMessage("");
     if (needsHandFor === "tryon" || selectedStyleId) {
       setRecommendations([]);
-      setAssistantLine("正在生成焕甲图片");
+      setAssistantLine("正在为您焕甲");
     }
 
     if (intent === "hand_match" && askedQuery) {
@@ -625,7 +625,7 @@ export function AskAIScreen() {
       setActiveJobId(job.job_id);
       setNeedsHandFor(null);
       setTryOnFeedback("idle");
-      setAssistantLine("正在生成焕甲图片");
+      setAssistantLine("正在为您焕甲");
     },
     onError: (error) => {
       setAssistantLine(
@@ -637,7 +637,7 @@ export function AskAIScreen() {
     mutationFn: (jobId: string) => api.submitTryOnJob(jobId),
     onSuccess: (job) => {
       setActiveJobId(job.job_id);
-      setAssistantLine("正在生成焕甲图片");
+      setAssistantLine("正在为您焕甲");
       void queryClient.invalidateQueries({ queryKey: ["ask-ai-job", job.job_id] });
       void queryClient.invalidateQueries({ queryKey: ["tryon-history"] });
     },
@@ -842,7 +842,7 @@ export function AskAIScreen() {
     }
 
     setNeedsHandFor(null);
-    setAssistantLine("正在生成焕甲图片");
+    setAssistantLine("正在为您焕甲");
     tryOnLauncher.launchTryOn({
       styleId,
       promptText: askedQuery || promptText,
@@ -1191,7 +1191,7 @@ export function AskAIScreen() {
             >
               <ActivityIndicator size="large" color={colors.accent} />
               <Text style={[styles.processingTitle, { color: colors.text }]}>
-                正在生成焕甲图片
+                正在为您焕甲
               </Text>
               <Text style={[styles.processingText, { color: colors.subtext }]}>
                 我正在用你选中的手图、指甲 mask 和款式图生成试戴效果。
