@@ -31,7 +31,30 @@ export function MerchantBookingsScreen({ navigation }: any) {
   const mutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: Booking["status"] }) =>
       api.updateMerchantBookingStatus(id, status),
-    onSuccess: () =>
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["merchant-bookings"] });
+      const previous = queryClient.getQueryData<{ items: Booking[] }>([
+        "merchant-bookings",
+      ]);
+      queryClient.setQueryData<{ items: Booking[] }>(
+        ["merchant-bookings"],
+        (current) =>
+          current
+            ? {
+                items: current.items.map((item) =>
+                  item.id === id ? { ...item, status } : item
+                ),
+              }
+            : current
+      );
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["merchant-bookings"], context.previous);
+      }
+    },
+    onSettled: () =>
       void queryClient.invalidateQueries({ queryKey: ["merchant-bookings"] }),
   });
 
@@ -105,9 +128,11 @@ export function MerchantBookingsScreen({ navigation }: any) {
                 {item.status === "pending" ? (
                   <View style={styles.actionRow}>
                     <Pressable
+                      disabled={mutation.isPending}
                       style={[
                         styles.actionButton,
                         { backgroundColor: colors.accentSoft },
+                        mutation.isPending && styles.disabledButton,
                       ]}
                       onPress={() =>
                         mutation.mutate({ id: item.id, status: "accepted" })
@@ -120,9 +145,11 @@ export function MerchantBookingsScreen({ navigation }: any) {
                       </Text>
                     </Pressable>
                     <Pressable
+                      disabled={mutation.isPending}
                       style={[
                         styles.actionButton,
                         { backgroundColor: colors.surfaceAlt },
+                        mutation.isPending && styles.disabledButton,
                       ]}
                       onPress={() =>
                         mutation.mutate({ id: item.id, status: "rejected" })
@@ -137,9 +164,11 @@ export function MerchantBookingsScreen({ navigation }: any) {
                   </View>
                 ) : item.status === "accepted" ? (
                   <Pressable
+                    disabled={mutation.isPending}
                     style={[
                       styles.completeButton,
                       { backgroundColor: colors.accent },
+                      mutation.isPending && styles.disabledButton,
                     ]}
                     onPress={() =>
                       mutation.mutate({ id: item.id, status: "completed" })
@@ -193,6 +222,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   actionText: { fontWeight: "800" },
+  disabledButton: { opacity: 0.55 },
   completeButton: {
     marginTop: 4,
     borderRadius: 12,

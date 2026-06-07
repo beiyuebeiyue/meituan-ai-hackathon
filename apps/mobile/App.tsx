@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
+import { Image, StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthSessionGate } from "./src/components/AuthSessionGate";
 import { RootNavigator } from "./src/navigation/RootNavigator";
@@ -16,6 +17,7 @@ import { getNavigationTheme } from "./src/utils/theme";
 
 const queryClient = new QueryClient();
 const SPLASH_MIN_VISIBLE_MS = 2000;
+const splashImage = require("./assets/app/opening.png");
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -41,13 +43,15 @@ export default function App() {
   }, []);
 
   const handleRootLayout = useCallback(() => {
-    if (isReady) {
-      void SplashScreen.hideAsync();
-    }
-  }, [isReady]);
+    void SplashScreen.hideAsync();
+  }, []);
 
   if (!isReady) {
-    return null;
+    return (
+      <View style={styles.splashRoot} onLayout={handleRootLayout}>
+        <Image source={splashImage} style={StyleSheet.absoluteFillObject} resizeMode="stretch" />
+      </View>
+    );
   }
 
   return (
@@ -63,3 +67,10 @@ export default function App() {
     </QueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  splashRoot: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+  },
+});

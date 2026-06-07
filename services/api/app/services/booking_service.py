@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.booking import Booking
 from app.models.merchant_shop import MerchantShop
@@ -94,11 +94,33 @@ class BookingService:
         return booking
 
     def list_for_user(self, db: Session, user: User) -> list[Booking]:
-        return list(db.scalars(select(Booking).where(Booking.user_id == user.id).order_by(Booking.created_at.desc())))
+        return list(
+            db.scalars(
+                select(Booking)
+                .where(Booking.user_id == user.id)
+                .options(
+                    selectinload(Booking.style),
+                    selectinload(Booking.shop),
+                    selectinload(Booking.user),
+                    selectinload(Booking.merchant),
+                )
+                .order_by(Booking.created_at.desc())
+            )
+        )
 
     def list_for_merchant(self, db: Session, user: User) -> list[Booking]:
         return list(
-            db.scalars(select(Booking).where(Booking.merchant_user_id == user.id).order_by(Booking.created_at.desc()))
+            db.scalars(
+                select(Booking)
+                .where(Booking.merchant_user_id == user.id)
+                .options(
+                    selectinload(Booking.style),
+                    selectinload(Booking.shop),
+                    selectinload(Booking.user),
+                    selectinload(Booking.merchant),
+                )
+                .order_by(Booking.created_at.desc())
+            )
         )
 
     def update_status(self, db: Session, user: User, booking_id: str, status_value: str) -> Booking:
