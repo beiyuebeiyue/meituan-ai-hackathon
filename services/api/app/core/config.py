@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     evolink_api_key: str = ""
     evolink_gpt_image_2_url: str = "https://evolink.ai/gpt-image-2"
     evolink_api_base_url: str = "https://api.evolink.ai"
-    evolink_image_model: str = "gemini-3.1-flash-image-preview"
+    evolink_image_model: str = "gpt-image-2"
     evolink_image_quality: str = "low"
     evolink_image_size: str = "1:1"
     evolink_image_resolution: str = "1K"
