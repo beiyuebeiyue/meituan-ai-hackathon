@@ -16,11 +16,11 @@ function formatDateTime(value?: string | null) {
 }
 
 function statusTag(task: OpenSkillScheduledTask) {
-  if (task.collection_status === "success") return <Tag color="success">采集成功</Tag>;
+  if (task.collection_status === "success") return <Tag color="success">成功</Tag>;
   if (!task.enabled) return <Tag color="default">已停用</Tag>;
   if (task.status === "running") return <Tag color="processing">运行中</Tag>;
   if (task.last_status === "failed" || task.status === "failed") return <Tag color="error">失败</Tag>;
-  if (task.last_status === "success") return <Tag color="success">采集成功</Tag>;
+  if (task.last_status === "success") return <Tag color="success">成功</Tag>;
   return <Tag color="blue">已排期</Tag>;
 }
 
@@ -78,7 +78,7 @@ export function OpenSkillTasksPage() {
               render: (_value, record) => <Typography.Text>{record.schedule_label}</Typography.Text>,
             },
             {
-              title: "采集状态",
+              title: "状态",
               render: (_value, record) => statusTag(record),
             },
             {

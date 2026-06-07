@@ -22,7 +22,7 @@ def env_bool(name: str, default: bool) -> bool:
 
 
 TIMEZONE = os.getenv("OPENCLAW_SCHEDULE_TIMEZONE", "Asia/Shanghai")
-SCHEDULED_TIME = os.getenv("OPENCLAW_XHS_CRAWLER_DAILY_TIME", "04:30")
+SCHEDULED_TIME = os.getenv("OPENCLAW_XHS_CRAWLER_DAILY_TIME", "04:00")
 STATE_PATH = Path(os.getenv("OPENCLAW_SCHEDULE_STATE_PATH", "/workspace/.openclaw/logs/scheduled-tasks.json"))
 LOG_PATH = Path(os.getenv("OPENCLAW_SCHEDULE_LOG_PATH", "/workspace/.openclaw/logs/scheduled-tasks.log"))
 OPENCLAW_BASE_URL = os.getenv("OPENCLAW_BASE_URL", "http://127.0.0.1:18798").rstrip("/")
@@ -43,7 +43,7 @@ def parse_time(value: str) -> tuple[int, int]:
         hour_text, minute_text = value.split(":", 1)
         return max(0, min(23, int(hour_text))), max(0, min(59, int(minute_text)))
     except (ValueError, TypeError):
-        return 4, 30
+        return 4, 0
 
 
 def next_run_at(now: datetime) -> datetime:
