@@ -346,6 +346,9 @@ export function AskAIScreen() {
   const [previewItem, setPreviewItem] = useState<XhsHotRecommendation | null>(
     null,
   );
+  const [enlargedTryOnImageUrl, setEnlargedTryOnImageUrl] = useState<string | null>(
+    null,
+  );
   const [needsHandFor, setNeedsHandFor] = useState<
     "recommend" | "tryon" | null
   >(null);
@@ -839,6 +842,9 @@ export function AskAIScreen() {
   const currentResultImageUrl = tryOnJobQuery.data?.result_image_url
     ? resolveAssetUrl(tryOnJobQuery.data.result_image_url)
     : null;
+  const currentReferenceImageUrl = activeStyleQuery.data?.image_url
+    ? resolveAssetUrl(activeStyleQuery.data.image_url)
+    : null;
   const pendingTryOnHandUrl = tryOnJobQuery.data?.source_hand_image_url
     ? resolveAssetUrl(tryOnJobQuery.data.source_hand_image_url)
     : handImageUri;
@@ -1128,28 +1134,30 @@ export function AskAIScreen() {
                 ) : null}
               </View>
               <View style={styles.tryOnCompareRow}>
-                {pendingTryOnHandUrl ? (
+                {currentReferenceImageUrl ? (
                   <View style={styles.tryOnCompareItem}>
                     <Image
-                      source={{ uri: pendingTryOnHandUrl }}
+                      source={{ uri: currentReferenceImageUrl }}
                       style={[
                         styles.tryOnCompareImage,
                         { backgroundColor: colors.accentSoft },
                       ]}
                     />
                     <Text style={[styles.tryOnCompareLabel, { color: colors.subtext }]}>
-                      原手图
+                      参考款式
                     </Text>
                   </View>
                 ) : null}
                 <View style={styles.tryOnCompareItem}>
-                  <Image
-                    source={{ uri: currentResultImageUrl }}
-                    style={[
-                      styles.tryOnCompareImage,
-                      { backgroundColor: colors.accentSoft },
-                    ]}
-                  />
+                  <Pressable onPress={() => setEnlargedTryOnImageUrl(currentResultImageUrl)}>
+                    <Image
+                      source={{ uri: currentResultImageUrl }}
+                      style={[
+                        styles.tryOnCompareImage,
+                        { backgroundColor: colors.accentSoft },
+                      ]}
+                    />
+                  </Pressable>
                   <Text style={[styles.tryOnCompareLabel, { color: colors.subtext }]}>
                     焕甲后
                   </Text>
@@ -1391,6 +1399,25 @@ export function AskAIScreen() {
                 </>
               ) : null}
             </Pressable>
+          </Pressable>
+        </Modal>
+        <Modal
+          visible={!!enlargedTryOnImageUrl}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setEnlargedTryOnImageUrl(null)}
+        >
+          <Pressable
+            style={styles.imageZoomOverlay}
+            onPress={() => setEnlargedTryOnImageUrl(null)}
+          >
+            {enlargedTryOnImageUrl ? (
+              <Image
+                source={{ uri: enlargedTryOnImageUrl }}
+                style={styles.imageZoomPreview}
+                resizeMode="contain"
+              />
+            ) : null}
           </Pressable>
         </Modal>
         <Modal
@@ -2142,6 +2169,18 @@ const styles = StyleSheet.create({
   previewReason: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  imageZoomOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.86)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+  },
+  imageZoomPreview: {
+    width: "100%",
+    height: "82%",
+    borderRadius: 18,
   },
   historyOverlay: {
     flex: 1,

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -33,6 +34,7 @@ function joinMeta(parts: Array<string | null | undefined>) {
 export function MarketScreen() {
   const colors = useThemeColors();
   const navigation = useNavigation<any>();
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const pendingBookingStyleId = useMarketStore(
     (state) => state.pendingBookingStyleId,
   );
@@ -224,38 +226,56 @@ export function MarketScreen() {
       ) : null}
 
       <View style={styles.sortRow}>
-        {[
-          ["default", "综合排序"],
-          ["distance", "距离优先"],
-        ].map(([key, label]) => {
-          const active = sort === key;
-          return (
-            <Pressable
-              key={key}
-              style={[
-                styles.sortChip,
-                {
-                  backgroundColor: active ? colors.accentSoft : colors.surface,
-                },
-              ]}
-              onPress={() => setSort(key as "default" | "distance")}
-            >
-              <Text
-                style={[
-                  styles.sortChipText,
-                  { color: active ? colors.accent : colors.text },
-                ]}
-              >
-                {label}
-              </Text>
-              <Ionicons
-                name={active ? "checkmark" : "ellipse-outline"}
-                size={13}
-                color={active ? colors.accent : colors.subtext}
-              />
-            </Pressable>
-          );
-        })}
+        <Pressable
+          style={[styles.sortChip, { backgroundColor: colors.surface }]}
+          onPress={() => setSortDropdownOpen((open) => !open)}
+        >
+          <Text style={[styles.sortChipText, { color: colors.text }]}>
+            {sort === "distance" ? "距离优先" : "综合排序"}
+          </Text>
+          <Ionicons
+            name={sortDropdownOpen ? "chevron-up" : "chevron-down"}
+            size={14}
+            color={colors.subtext}
+          />
+        </Pressable>
+        {sortDropdownOpen ? (
+          <View
+            style={[
+              styles.sortDropdown,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            {[
+              ["default", "综合排序"],
+              ["distance", "距离优先"],
+            ].map(([key, label]) => {
+              const active = sort === key;
+              return (
+                <Pressable
+                  key={key}
+                  style={styles.sortDropdownItem}
+                  onPress={() => {
+                    setSort(key as "default" | "distance");
+                    setSortDropdownOpen(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.sortDropdownText,
+                      { color: active ? colors.accent : colors.text },
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                  {active ? (
+                    <Ionicons name="checkmark" size={15} color={colors.accent} />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
       </View>
 
       <Text style={[styles.resultHint, { color: colors.subtext }]}>
@@ -341,7 +361,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 8,
     alignItems: "flex-start",
-    gap: 8,
+    gap: 6,
+    zIndex: 5,
   },
   sortChip: {
     height: 38,
@@ -352,6 +373,29 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   sortChipText: { fontSize: 13, fontWeight: "700" },
+  sortDropdown: {
+    minWidth: 118,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 4,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  sortDropdownItem: {
+    height: 38,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  sortDropdownText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
   resultHint: {
     paddingHorizontal: 16,
     paddingTop: 8,

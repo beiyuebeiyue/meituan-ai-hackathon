@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { useEffect } from "react";
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api, resolveAssetUrl } from "../api/client";
 import { trackEvent } from "../utils/analytics";
@@ -20,6 +20,7 @@ export function TryOnResultScreen() {
   const route = useRoute<ScreenRoute>();
   const colors = useThemeColors();
   const queryClient = useQueryClient();
+  const [enlargedResultUrl, setEnlargedResultUrl] = useState<string | null>(null);
   const setPendingBookingStyleId = useMarketStore(
     (state) => state.setPendingBookingStyleId,
   );
@@ -71,6 +72,12 @@ export function TryOnResultScreen() {
       : query.data?.stage === "generating"
         ? "正在生成焕甲结果"
         : "AI 正在处理中，通常需要几秒钟";
+  const resultImageUrl = query.data?.result_image_url
+    ? resolveAssetUrl(query.data.result_image_url)
+    : null;
+  const referenceImageUrl = styleQuery.data?.image_url
+    ? resolveAssetUrl(styleQuery.data.image_url)
+    : null;
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.surfaceAlt }]}
@@ -126,7 +133,7 @@ export function TryOnResultScreen() {
               variant="ghost"
             />
           </>
-        ) : query.data?.status === "succeeded" && query.data.result_image_url ? (
+        ) : query.data?.status === "succeeded" && resultImageUrl ? (
           <>
             <View style={[styles.resultCard, { backgroundColor: colors.surface }]}>
               <View style={styles.resultHeader}>
@@ -149,12 +156,10 @@ export function TryOnResultScreen() {
                 ) : null}
               </View>
               <View style={styles.resultCompareRow}>
-                {query.data.source_hand_image_url ? (
+                {referenceImageUrl ? (
                   <View style={styles.resultCompareItem}>
                     <Image
-                      source={{
-                        uri: resolveAssetUrl(query.data.source_hand_image_url),
-                      }}
+                      source={{ uri: referenceImageUrl }}
                       style={[
                         styles.resultCompareImage,
                         { backgroundColor: colors.accentSoft },
@@ -166,18 +171,22 @@ export function TryOnResultScreen() {
                         { color: colors.subtext },
                       ]}
                     >
-                      原手图
+                      参考款式
                     </Text>
                   </View>
                 ) : null}
                 <View style={styles.resultCompareItem}>
-                  <Image
-                    source={{ uri: resolveAssetUrl(query.data.result_image_url) }}
-                    style={[
-                      styles.resultCompareImage,
-                      { backgroundColor: colors.accentSoft },
-                    ]}
-                  />
+                  <Pressable
+                    onPress={() => setEnlargedResultUrl(resultImageUrl)}
+                  >
+                    <Image
+                      source={{ uri: resultImageUrl }}
+                      style={[
+                        styles.resultCompareImage,
+                        { backgroundColor: colors.accentSoft },
+                      ]}
+                    />
+                  </Pressable>
                   <Text
                     style={[
                       styles.resultCompareLabel,
@@ -218,6 +227,25 @@ export function TryOnResultScreen() {
           </>
         )}
       </View>
+      <Modal
+        visible={!!enlargedResultUrl}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEnlargedResultUrl(null)}
+      >
+        <Pressable
+          style={styles.imageZoomOverlay}
+          onPress={() => setEnlargedResultUrl(null)}
+        >
+          {enlargedResultUrl ? (
+            <Image
+              source={{ uri: enlargedResultUrl }}
+              style={styles.imageZoomPreview}
+              resizeMode="contain"
+            />
+          ) : null}
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -258,6 +286,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     textAlign: "center",
+  },
+  imageZoomOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.86)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 18,
+  },
+  imageZoomPreview: {
+    width: "100%",
+    height: "82%",
+    borderRadius: 18,
   },
   typePill: {
     alignSelf: "flex-start",
