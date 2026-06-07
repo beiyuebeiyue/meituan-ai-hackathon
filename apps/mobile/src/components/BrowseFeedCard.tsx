@@ -3,7 +3,7 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveAssetUrl } from "../api/client";
 import { AuthorRoleBadge } from "./AuthorRoleBadge";
 import { NailStyle } from "../types/api";
-import { getNailTypeLabel } from "../utils/nailType";
+import { getNailTypeLabel, getNailTypeTone } from "../utils/nailType";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 const defaultAvatar = require("../../assets/profile/default_avatar.png");
@@ -19,6 +19,7 @@ export function BrowseFeedCard({ item, onPress, onToggleLike, showLike = true }:
   const colors = useThemeColors();
   const isDark = useIsDarkMode();
   const avatarSource = item.author_avatar_url ? { uri: resolveAssetUrl(item.author_avatar_url) } : defaultAvatar;
+  const nailTypeTone = getNailTypeTone(item.nail_type, isDark);
 
   return (
     <Pressable style={[styles.card, { backgroundColor: isDark ? "#1f1f24" : colors.surface }]} onPress={() => onPress(item)}>
@@ -27,8 +28,16 @@ export function BrowseFeedCard({ item, onPress, onToggleLike, showLike = true }:
         <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
           {item.title}
         </Text>
-        <View style={[styles.typePill, { backgroundColor: isDark ? "#2a2a30" : colors.surfaceAlt }]}>
-          <Text style={[styles.typePillText, { color: colors.subtext }]}>{getNailTypeLabel(item.nail_type)}</Text>
+        <View
+          style={[
+            styles.typePill,
+            {
+              backgroundColor: nailTypeTone.backgroundColor,
+              borderColor: nailTypeTone.borderColor,
+            },
+          ]}
+        >
+          <Text style={[styles.typePillText, { color: nailTypeTone.textColor }]}>{getNailTypeLabel(item.nail_type)}</Text>
         </View>
         <View style={styles.footer}>
           <View style={styles.authorWrap}>
@@ -82,6 +91,7 @@ const styles = StyleSheet.create({
   typePill: {
     alignSelf: "flex-start",
     borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },

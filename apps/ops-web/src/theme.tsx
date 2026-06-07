@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { App as AntApp, ConfigProvider, theme } from "antd";
 import { BrowserRouter } from "react-router-dom";
 
-export type OpsThemeMode = "light" | "dark";
+export type OpsThemeMode = "light";
 
 export const OpsThemeContext = React.createContext<{
   mode: OpsThemeMode;
@@ -14,48 +14,41 @@ export const OpsThemeContext = React.createContext<{
   toggleMode: () => undefined,
 });
 
-function getInitialTheme(): OpsThemeMode {
-  const savedTheme = window.localStorage.getItem("ops-theme");
-  if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
 export function OpsThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<OpsThemeMode>(getInitialTheme);
-  const isDark = mode === "dark";
+  const mode: OpsThemeMode = "light";
 
   useEffect(() => {
-    window.localStorage.setItem("ops-theme", mode);
-    document.documentElement.dataset.theme = mode;
-  }, [mode]);
+    window.localStorage.removeItem("ops-theme");
+    document.documentElement.dataset.theme = "light";
+  }, []);
 
   const value = useMemo(
     () => ({
       mode,
-      setMode,
-      toggleMode: () => setMode((current) => (current === "dark" ? "light" : "dark")),
+      setMode: () => undefined,
+      toggleMode: () => undefined,
     }),
-    [mode],
+    [],
   );
 
   return (
     <OpsThemeContext.Provider value={value}>
       <ConfigProvider
         theme={{
-          algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          algorithm: theme.defaultAlgorithm,
           token: {
-            colorPrimary: isDark ? "#f9fafb" : "#111827",
-            colorInfo: isDark ? "#93c5fd" : "#2563eb",
+            colorPrimary: "#111827",
+            colorInfo: "#2563eb",
             colorSuccess: "#10b981",
             colorWarning: "#f59e0b",
             colorError: "#ef4444",
-            colorLink: isDark ? "#f9fafb" : "#111827",
-            colorBgLayout: isDark ? "#0a0f1d" : "#f5f7fb",
-            colorBgContainer: isDark ? "#111827" : "#ffffff",
-            colorBgElevated: isDark ? "#172033" : "#ffffff",
-            colorBorder: isDark ? "#253047" : "#e6eaf0",
-            colorText: isDark ? "#f9fafb" : "#111827",
-            colorTextSecondary: isDark ? "#aeb8c8" : "#6b7280",
+            colorLink: "#111827",
+            colorBgLayout: "#f5f7fb",
+            colorBgContainer: "#ffffff",
+            colorBgElevated: "#ffffff",
+            colorBorder: "#e6eaf0",
+            colorText: "#111827",
+            colorTextSecondary: "#6b7280",
             borderRadius: 10,
             borderRadiusLG: 14,
             controlHeight: 36,
@@ -81,10 +74,10 @@ export function OpsThemeProvider({ children }: { children: React.ReactNode }) {
               itemMarginInline: 8,
             },
             Table: {
-              borderColor: isDark ? "#253047" : "#edf0f5",
-              headerBg: isDark ? "#172033" : "#f8fafc",
-              headerColor: isDark ? "#dbe4f0" : "#475569",
-              rowHoverBg: isDark ? "#172033" : "#f8fafc",
+              borderColor: "#edf0f5",
+              headerBg: "#f8fafc",
+              headerColor: "#475569",
+              rowHoverBg: "#f8fafc",
             },
             Tag: {
               borderRadiusSM: 999,

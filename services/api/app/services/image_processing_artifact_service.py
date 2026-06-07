@@ -29,8 +29,10 @@ class ImageProcessingArtifactService:
                 self.settings.image_pipeline_version,
                 self.settings.remote_gpu_tryon_url,
                 self.settings.openai_image_model,
-                "mediapipe",
-                "sam3.1",
+                "yolo",
+                "nail_yolo26",
+                str(self.settings.nail_yolo_imgsz),
+                str(self.settings.nail_yolo_confidence),
             ]
         )
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
@@ -91,8 +93,9 @@ class ImageProcessingArtifactService:
         artifact.roi_boxes_json = segmentation.roi_boxes
         artifact.quality_score = segmentation.confidence
         if segmentation.mask_path is not None:
-            artifact.mask_path = relative_to_base(segmentation.mask_path)
-            artifact.mask_url = public_url_for_path(segmentation.mask_path)
+            alpha_mask_path = self._create_alpha_mask_from_mask(segmentation.mask_path, artifact)
+            artifact.mask_path = relative_to_base(alpha_mask_path)
+            artifact.mask_url = public_url_for_path(alpha_mask_path)
             if create_cutout:
                 cutout_path = self._create_cutout_from_mask(image_path, segmentation.mask_path, artifact, "cutout")
                 artifact.cutout_path = relative_to_base(cutout_path)
@@ -183,4 +186,13 @@ class ImageProcessingArtifactService:
         target = self._artifact_dir(artifact) / f"{artifact.image_sha256[:16]}-{artifact.id}-{suffix}.png"
         target.parent.mkdir(parents=True, exist_ok=True)
         image.save(target)
+        return target
+
+    def _create_alpha_mask_from_mask(self, mask_path: Path, artifact: ImageProcessingArtifact) -> Path:
+        mask = Image.open(mask_path).convert("L")
+        mask_rgba = mask.convert("RGBA")
+        mask_rgba.putalpha(mask)
+        target = self._artifact_dir(artifact) / f"{artifact.image_sha256[:16]}-{artifact.id}-mask-alpha.png"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        mask_rgba.save(target, format="PNG")
         return target

@@ -4,7 +4,6 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getOpsToken, OPS_AUTH_CHANGED_EVENT } from "./api/client";
 import { AppLayout } from "./layouts/AppLayout";
-import { CouponsPage } from "./pages/CouponsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ChatbotPage } from "./pages/ChatbotPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -13,6 +12,7 @@ import { MonitorPage } from "./pages/MonitorPage";
 import { PostsPage } from "./pages/PostsPage";
 import { ProfileSettingsPage } from "./pages/ProfileSettingsPage";
 import { ReportsPage } from "./pages/ReportsPage";
+import { OpenSkillTasksPage } from "./pages/OpenSkillTasksPage";
 import { TrendNailsPage } from "./pages/TrendNailsPage";
 import { UsersPage } from "./pages/UsersPage";
 
@@ -44,9 +44,9 @@ export default function App() {
         { name: "merchants", list: "/merchants" },
         { name: "posts", list: "/posts" },
         { name: "trend-nails", list: "/trend-nails" },
-        { name: "coupons", list: "/coupons" },
         { name: "reports", list: "/reports" },
         { name: "chatbot", list: "/chatbot" },
+        { name: "openclaw-schedules", list: "/openclaw/schedules" },
         { name: "profile", list: "/profile/settings" },
       ]}
       options={{ syncWithLocation: true }}
@@ -63,9 +63,10 @@ export default function App() {
             <Route path="/merchants" element={<MerchantsPage />} />
             <Route path="/posts" element={<PostsPage />} />
             <Route path="/trend-nails" element={<TrendNailsPage />} />
-            <Route path="/coupons" element={<CouponsPage />} />
+            <Route path="/coupons" element={<Navigate to="/dashboard" replace />} />
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/chatbot" element={<ChatbotPage />} />
+            <Route path="/openclaw/schedules" element={<OpenSkillTasksPage />} />
             <Route path="/profile" element={<Navigate to="/profile/settings" replace />} />
             <Route path="/profile/settings" element={<ProfileSettingsPage />} />
           </Route>

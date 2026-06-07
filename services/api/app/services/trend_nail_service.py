@@ -35,14 +35,9 @@ class TrendNailService:
     def list_candidates(self, db: Session, *, limit: int = 20, refresh_xhs: bool = True) -> list[TrendNailStyleRead]:
         if refresh_xhs:
             self.xhs_styles.ensure_top_styles(db, limit=max(limit, 100))
-        styles = list(
-            db.scalars(
-                select(NailStyle)
-                .where(NailStyle.nail_type == "handmade")
-                .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
-                .limit(max(1, min(limit, 100)))
-            )
-        )
+        styles = self._candidate_styles(db, limit=limit, handmade_only=True)
+        if not styles:
+            styles = self._candidate_styles(db, limit=limit, handmade_only=False)
         return [self._style_read(db, style) for style in styles]
 
     def create_weekly_auto_campaign(
@@ -98,14 +93,9 @@ class TrendNailService:
         previous_week_start: datetime,
         current_week_start: datetime,
     ) -> list[NailStyle]:
-        styles = list(
-            db.scalars(
-                select(NailStyle)
-                .where(NailStyle.nail_type == "handmade")
-                .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
-                .limit(200)
-            )
-        )
+        styles = self._candidate_styles(db, limit=200, handmade_only=True)
+        if not styles:
+            styles = self._candidate_styles(db, limit=200, handmade_only=False)
         previous_week_date_keys = {
             (previous_week_start + timedelta(days=day_index)).strftime("%Y%m%d")
             for day_index in range((current_week_start.date() - previous_week_start.date()).days)
@@ -119,7 +109,7 @@ class TrendNailService:
 
     def create_campaign(self, db: Session, payload: OpsTrendCampaignCreateRequest, *, created_by: str) -> OpsTrendCampaignRead:
         style_ids = list(dict.fromkeys(payload.style_ids))
-        styles = list(db.scalars(select(NailStyle).where(NailStyle.id.in_(style_ids), NailStyle.nail_type == "handmade")))
+        styles = list(db.scalars(select(NailStyle).where(NailStyle.id.in_(style_ids), NailStyle.image_url != "")))
         if not styles:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="请选择至少一个手工甲款式")
 
@@ -179,6 +169,18 @@ class TrendNailService:
             styles=styles,
         )
 
+    def _candidate_styles(self, db: Session, *, limit: int, handmade_only: bool) -> list[NailStyle]:
+        statement = select(NailStyle).where(NailStyle.image_url != "")
+        if handmade_only:
+            statement = statement.where(NailStyle.nail_type == "handmade")
+        return list(
+            db.scalars(
+                statement.order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc()).limit(
+                    max(1, min(limit, 100))
+                )
+            )
+        )
+
     def list_merchant_notifications(self, db: Session, user: User) -> list[MerchantTrendNotificationRead]:
         require_merchant(user)
         shops = self.shop_service.list_for_merchant(db, user)
@@ -217,8 +219,8 @@ class TrendNailService:
     def claim_style(self, db: Session, user: User, *, style_id: str, campaign_id: str | None = None) -> MerchantTrendClaimRead:
         require_merchant(user)
         style = db.get(NailStyle, style_id)
-        if style is None or style.nail_type != "handmade":
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="手工甲款式不存在")
+        if style is None or not style.image_url:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="款式不存在")
         if campaign_id and db.get(TrendNailCampaign, campaign_id) is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="推送方案不存在")
 

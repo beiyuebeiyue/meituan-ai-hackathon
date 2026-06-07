@@ -22,6 +22,8 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import { DEFAULT_MARKET_CITY, findMarketCity } from "../utils/marketCities";
 import { trackEvent } from "../utils/analytics";
+import { getNailTypeLabel, getNailTypeTone } from "../utils/nailType";
+import { useIsDarkMode } from "../utils/theme";
 
 type FeedTab = "local" | "following" | "discover";
 type LocalLocationStatus = "pending" | "granted" | "denied" | "unavailable";
@@ -34,7 +36,15 @@ const DISCOVER_MUTED = "#9a9aa2";
 const DISCOVER_DIM = "#686872";
 const DISCOVER_BORDER = "#24242b";
 const DISCOVER_RED = "#ff2d55";
-const categoryTabs = ["推荐", "视频", "直播", "短剧", "美食", "穿搭", "旅行"] as const;
+const AI_GOLD = "#F6E38F";
+const LIGHT_DISCOVER_BG = "#ffffff";
+const LIGHT_DISCOVER_SURFACE = "#ffffff";
+const LIGHT_DISCOVER_SURFACE_ALT = "#f3f3f3";
+const LIGHT_DISCOVER_TEXT = "#111111";
+const LIGHT_DISCOVER_MUTED = "#777777";
+const LIGHT_DISCOVER_DIM = "#8f8f98";
+const LIGHT_DISCOVER_BORDER = "#eeeeee";
+const categoryTabs = ["综合", "全部类型", "法式", "猫眼", "裸粉", "通勤", "显白"] as const;
 const cardAspectPattern = [1.3, 0.75, 1.05, 1.35, 0.88, 1.18, 0.8] as const;
 
 type MasonryItem = {
@@ -65,6 +75,13 @@ function buildMasonryColumns(items: NailStyle[], columnWidth: number) {
   return columns;
 }
 
+function matchesCategory(item: NailStyle, category: (typeof categoryTabs)[number]) {
+  if (category === "综合" || category === "全部类型") return true;
+  const normalizedCategory = category.trim().toLowerCase();
+  const text = [item.title, item.description, ...(item.tags ?? [])].join(" ").toLowerCase();
+  return text.includes(normalizedCategory);
+}
+
 function DiscoverFeedCard({
   item,
   width,
@@ -72,6 +89,8 @@ function DiscoverFeedCard({
   showLike,
   onToggleLike,
   onPress,
+  colors,
+  isDark,
 }: {
   item: NailStyle;
   width: number;
@@ -79,29 +98,52 @@ function DiscoverFeedCard({
   showLike: boolean;
   onToggleLike: (item: NailStyle) => void;
   onPress: (item: NailStyle) => void;
+  colors: {
+    surface: string;
+    surfaceAlt: string;
+    text: string;
+    muted: string;
+    dim: string;
+  };
+  isDark: boolean;
 }) {
+  const nailTypeTone = getNailTypeTone(item.nail_type, isDark);
+
   return (
-    <Pressable style={[styles.card, { width }]} onPress={() => onPress(item)}>
+    <Pressable style={[styles.card, { width, backgroundColor: colors.surface }]} onPress={() => onPress(item)}>
       <Image
         source={{ uri: resolveAssetUrl(item.image_url) }}
-        style={[styles.cardImage, { width, height: imageHeight }]}
+        style={[styles.cardImage, { width, height: imageHeight, backgroundColor: colors.surfaceAlt }]}
         resizeMode="cover"
       />
       <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={2}>
+        <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
           {item.title}
         </Text>
+        <View
+          style={[
+            styles.discoverTypePill,
+            {
+              backgroundColor: nailTypeTone.backgroundColor,
+              borderColor: nailTypeTone.borderColor,
+            },
+          ]}
+        >
+          <Text style={[styles.discoverTypePillText, { color: nailTypeTone.textColor }]}>
+            {getNailTypeLabel(item.nail_type)}
+          </Text>
+        </View>
         <View style={styles.cardFooter}>
           <View style={styles.authorBlock}>
-            <Image source={avatarSource(item)} style={styles.authorAvatar} />
-            <Text style={styles.authorName} numberOfLines={1}>
+            <Image source={avatarSource(item)} style={[styles.authorAvatar, { backgroundColor: colors.surfaceAlt }]} />
+            <Text style={[styles.authorName, { color: colors.muted }]} numberOfLines={1}>
               {item.author_name}
             </Text>
           </View>
           {showLike ? (
             <Pressable style={styles.likeBlock} onPress={() => onToggleLike(item)} hitSlop={8}>
-              <Ionicons name={item.is_liked ? "heart" : "heart-outline"} size={15} color={item.is_liked ? DISCOVER_RED : "#8f8f98"} />
-              <Text style={styles.likeText}>{item.like_count}</Text>
+              <Ionicons name={item.is_liked ? "heart" : "heart-outline"} size={15} color={item.is_liked ? DISCOVER_RED : colors.dim} />
+              <Text style={[styles.likeText, { color: colors.dim }]}>{item.like_count}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -114,11 +156,22 @@ export function BrowseScreen() {
   const navigation = useNavigation<any>();
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
+  const isDarkMode = useIsDarkMode();
+  const discoverColors = {
+    bg: isDarkMode ? DISCOVER_BG : LIGHT_DISCOVER_BG,
+    surface: isDarkMode ? DISCOVER_SURFACE : LIGHT_DISCOVER_SURFACE,
+    surfaceAlt: isDarkMode ? DISCOVER_SURFACE_ALT : LIGHT_DISCOVER_SURFACE_ALT,
+    text: isDarkMode ? DISCOVER_TEXT : LIGHT_DISCOVER_TEXT,
+    muted: isDarkMode ? DISCOVER_MUTED : LIGHT_DISCOVER_MUTED,
+    dim: isDarkMode ? DISCOVER_DIM : LIGHT_DISCOVER_DIM,
+    border: isDarkMode ? DISCOVER_BORDER : LIGHT_DISCOVER_BORDER,
+  };
   const { width: screenWidth } = useWindowDimensions();
   const lastAutoRefreshKey = useRef("");
   const [tab, setTab] = useState<FeedTab>("discover");
-  const [activeCategory, setActiveCategory] = useState<(typeof categoryTabs)[number]>("推荐");
+  const [activeCategory, setActiveCategory] = useState<(typeof categoryTabs)[number]>("全部类型");
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const [localLikeState, setLocalLikeState] = useState<Record<string, boolean>>({});
   const [localCity, setLocalCity] = useState(DEFAULT_MARKET_CITY);
   const [localLocationStatus, setLocalLocationStatus] = useState<LocalLocationStatus>("pending");
   const queryClient = useQueryClient();
@@ -162,7 +215,6 @@ export function BrowseScreen() {
   const topTabs = [
     { key: "following", label: "关注" },
     { key: "discover", label: "发现" },
-    { key: "worldcup", label: "世界杯" },
     { key: "local", label: localTabLabel === "同城" ? "深圳" : localTabLabel },
   ] as const;
 
@@ -204,11 +256,31 @@ export function BrowseScreen() {
 
   const onToggleLike = (item: NailStyle) => {
     if (isMerchant) return;
+    if (tab === "discover") {
+      setLocalLikeState((current) => ({
+        ...current,
+        [item.id]: !(current[item.id] ?? item.is_liked),
+      }));
+      return;
+    }
     if (!hasToken) return;
     likeMutation.mutate(item);
   };
 
-  const feedItems = tab === "following" && !hasToken ? [] : tab === "local" && !canUseLocalFeed ? [] : query.data?.items ?? [];
+  const allFeedItems = useMemo(() => {
+    const items = tab === "following" && !hasToken ? [] : tab === "local" && !canUseLocalFeed ? [] : query.data?.items ?? [];
+    if (tab !== "discover") return items;
+    return items.map((item) => {
+      const isLiked = localLikeState[item.id] ?? item.is_liked;
+      const likeDelta = isLiked && !item.is_liked ? 1 : !isLiked && item.is_liked ? -1 : 0;
+      return {
+        ...item,
+        is_liked: isLiked,
+        like_count: Math.max(0, item.like_count + likeDelta),
+      };
+    });
+  }, [canUseLocalFeed, hasToken, localLikeState, query.data?.items, tab]);
+  const feedItems = useMemo(() => allFeedItems.filter((item) => matchesCategory(item, activeCategory)), [activeCategory, allFeedItems]);
   useEffect(() => {
     if (!feedItems.length) return;
     void Promise.all(
@@ -246,13 +318,13 @@ export function BrowseScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.topBar}>
+    <SafeAreaView style={[styles.container, { backgroundColor: discoverColors.bg }]} edges={["top"]}>
+      <View style={[styles.topBar, { backgroundColor: discoverColors.bg, borderBottomColor: discoverColors.border }]}>
         <Pressable
           style={styles.iconButton}
           onPress={() => navigation.navigate("MessagesInbox", { entryEdge: "left" })}
         >
-          <Ionicons name={hasUnreadMessages ? "chatbubble-ellipses-outline" : "chatbubble-outline"} size={24} color={DISCOVER_TEXT} />
+          <Ionicons name={hasUnreadMessages ? "chatbubble-ellipses-outline" : "chatbubble-outline"} size={24} color={discoverColors.text} />
           {hasStrangerUnread ? <View style={styles.dotBadge} /> : null}
           {!hasStrangerUnread && messageBadgeText ? (
             <View style={styles.countBadge}>
@@ -265,10 +337,6 @@ export function BrowseScreen() {
             <Pressable
               key={item.key}
               onPress={() => {
-                if (item.key === "worldcup") {
-                  setTab("discover");
-                  return;
-                }
                 setTab(item.key);
               }}
               style={styles.topTabButton}
@@ -276,7 +344,7 @@ export function BrowseScreen() {
               <Text
                 style={[
                   styles.topTabText,
-                  { color: tab === item.key ? DISCOVER_TEXT : DISCOVER_MUTED },
+                  { color: tab === item.key ? discoverColors.text : discoverColors.muted },
                 ]}
                 numberOfLines={1}
               >
@@ -285,24 +353,24 @@ export function BrowseScreen() {
               <View
                 style={[
                   styles.topTabUnderline,
-                  { backgroundColor: tab === item.key ? DISCOVER_RED : "transparent" },
+                  { backgroundColor: tab === item.key ? AI_GOLD : "transparent" },
                 ]}
               />
             </Pressable>
           ))}
         </View>
         <Pressable style={styles.iconButton} onPress={() => navigation.navigate("BrowseSearch")}>
-          <Ionicons name="search-outline" size={23} color={DISCOVER_TEXT} />
+          <Ionicons name="search-outline" size={23} color={discoverColors.text} />
         </Pressable>
       </View>
 
-      <View style={styles.categoryBar}>
+      <View style={[styles.categoryBar, { backgroundColor: discoverColors.bg }]}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContent}>
           {categoryTabs.map((item) => {
             const active = activeCategory === item;
             return (
               <Pressable key={item} style={styles.categoryItem} onPress={() => setActiveCategory(item)}>
-                <Text style={[styles.categoryText, { color: active ? DISCOVER_TEXT : DISCOVER_MUTED }]}>{item}</Text>
+                <Text style={[styles.categoryText, { color: active ? discoverColors.text : discoverColors.muted }]}>{item}</Text>
               </Pressable>
             );
           })}
@@ -313,40 +381,40 @@ export function BrowseScreen() {
         <RequireLogin onLogin={() => navigation.navigate("Login")} message="登录后可查看已关注作者发布的新美甲图" />
       ) : (
         <ScrollView
-          style={styles.feedScroll}
+          style={[styles.feedScroll, { backgroundColor: discoverColors.bg }]}
           contentContainerStyle={[styles.feedContent, { paddingHorizontal: gap, paddingBottom: scrollPaddingBottom }]}
           refreshControl={
             <RefreshControl
               refreshing={isPullRefreshing}
               onRefresh={handleRefresh}
-              tintColor={DISCOVER_RED}
-              colors={[DISCOVER_RED]}
-              progressBackgroundColor={DISCOVER_SURFACE}
+              tintColor={AI_GOLD}
+              colors={["#111111"]}
+              progressBackgroundColor={AI_GOLD}
             />
           }
         >
           {showInitialLoading ? (
             <View style={styles.emptyState}>
-              <ActivityIndicator size="small" color={DISCOVER_RED} />
-              <Text style={styles.emptyTitle}>正在加载美甲</Text>
-              <Text style={styles.emptyText}>请稍等，发现页会自动刷新。</Text>
+              <ActivityIndicator size="small" color={AI_GOLD} />
+              <Text style={[styles.emptyTitle, { color: discoverColors.text }]}>正在加载美甲</Text>
+              <Text style={[styles.emptyText, { color: discoverColors.muted }]}>请稍等，发现页会自动刷新。</Text>
             </View>
           ) : !feedItems.length ? (
             tab === "following" ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>你的关注页还是空的</Text>
-              <Text style={styles.emptyText}>去任意美甲详情页关注作者后，这里会优先显示对方发布的新图片。</Text>
+              <Text style={[styles.emptyTitle, { color: discoverColors.text }]}>你的关注页还是空的</Text>
+              <Text style={[styles.emptyText, { color: discoverColors.muted }]}>去任意美甲详情页关注作者后，这里会优先显示对方发布的新图片。</Text>
             </View>
           ) : tab === "local" ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>
+              <Text style={[styles.emptyTitle, { color: discoverColors.text }]}>
                 {canUseLocalFeed
                   ? "同城还没有商家作品"
                   : localLocationStatus === "pending"
                     ? "正在获取 GPS 定位"
                     : "开启 GPS 查看同城美甲"}
               </Text>
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: discoverColors.muted }]}>
                 {canUseLocalFeed
                   ? `当前城市：${localCity}。商家发布后会优先出现在这里。`
                   : localLocationStatus === "pending"
@@ -356,8 +424,8 @@ export function BrowseScreen() {
             </View>
           ) : tab === "discover" ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>没有匹配的美甲</Text>
-              <Text style={styles.emptyText}>换一个频道，或稍后回来查看更多作品。</Text>
+              <Text style={[styles.emptyTitle, { color: discoverColors.text }]}>没有匹配的美甲</Text>
+              <Text style={[styles.emptyText, { color: discoverColors.muted }]}>换一个标签，或回到“全部类型”查看更多作品。</Text>
             </View>
             ) : null
           ) : (
@@ -370,9 +438,13 @@ export function BrowseScreen() {
                       item={item}
                       width={columnWidth}
                       imageHeight={imageHeight}
+                      colors={discoverColors}
+                      isDark={isDarkMode}
                       onToggleLike={onToggleLike}
                       showLike={!isMerchant}
                       onPress={(selected) => {
+                        queryClient.setQueryData(["style", selected.id, authScope], selected);
+                        void Image.prefetch(resolveAssetUrl(selected.image_url));
                         void trackEvent("style_click", {
                           styleId: selected.id,
                           source: tab,
@@ -520,6 +592,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     lineHeight: 20,
+  },
+  discoverTypePill: {
+    alignSelf: "flex-start",
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  discoverTypePillText: {
+    fontSize: 10,
+    fontWeight: "800",
   },
   cardFooter: {
     minHeight: 28,

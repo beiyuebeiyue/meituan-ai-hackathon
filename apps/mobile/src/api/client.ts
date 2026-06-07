@@ -2,6 +2,12 @@ import { Platform } from "react-native";
 import { useAuthStore } from "../store/useAuthStore";
 import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import {
+  getMockDiscoverResponse,
+  getMockDiscoverStyle,
+  getMockStyleComments,
+  isMockDiscoverStyleId,
+} from "../data/mockDiscoverStyles";
+import {
   AIChatMessage,
   AIChatResponse,
   AuthResponse,
@@ -35,8 +41,8 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "https://dongli-mei
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, "");
 const AUTH_FAILURE_EXEMPT_PATHS = new Set(["/auth/login", "/auth/register"]);
 
-function withXhsPreference(path: string) {
-  const includeXhsPosts = useContentPreferenceStore.getState().includeXhsPosts;
+function withXhsPreference(path: string, includeOverride?: boolean) {
+  const includeXhsPosts = includeOverride ?? useContentPreferenceStore.getState().includeXhsPosts;
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}include_xhs_posts=${includeXhsPosts ? "true" : "false"}`;
 }
@@ -117,19 +123,31 @@ export const api = {
     return request<User>("/users/me", { method: "PUT", body: form });
   },
   getHot: () => request<NailStyleListResponse>(withXhsPreference("/nails/hot?page=1&page_size=20")),
-  getDiscover: () => request<NailStyleListResponse>(withXhsPreference("/nails/discover?page=1&page_size=20")),
-  getDefaultGalleryStyles: () => request<NailStyleListResponse>(withXhsPreference("/nails/discover?page=1&page_size=30")),
+  getDiscover: () => Promise.resolve(getMockDiscoverResponse(20)),
+  getDefaultGalleryStyles: () => Promise.resolve(getMockDiscoverResponse(30)),
   getShopStyles: (shopId: string) => request<NailStyleListResponse>(`/nails/by-shop/${shopId}?page=1&page_size=30`),
   searchStyles: (query: string) => request<NailStyleListResponse>(withXhsPreference(`/nails/search?query=${encodeURIComponent(query)}&page=1&page_size=20`)),
   searchUsers: (query: string) => request<{ items: UserSummary[] }>(`/users/search?query=${encodeURIComponent(query)}&limit=30`),
   getFollowingStyles: () => request<NailStyleListResponse>(withXhsPreference("/nails/following?page=1&page_size=20")),
   getLatest: () => request<NailStyleListResponse>(withXhsPreference("/nails/latest?page=1&page_size=20")),
   getLocalStyles: (city: string) => request<NailStyleListResponse>(withXhsPreference(`/nails/local?city=${encodeURIComponent(city)}&page=1&page_size=20`)),
-  getStyle: (styleId: string) => request<StyleDetail>(`/nails/${styleId}`),
+  getStyle: (styleId: string) => {
+    const mockStyle = getMockDiscoverStyle(styleId);
+    return mockStyle ? Promise.resolve(mockStyle) : request<StyleDetail>(`/nails/${styleId}`);
+  },
   recordStyleView: (styleId: string) => request<{ message: string }>(`/nails/${styleId}/views`, { method: "POST" }),
-  getStyleComments: (styleId: string) => request<{ items: StyleComment[] }>(`/nails/${styleId}/comments`),
-  likeStyle: (styleId: string) => request<{ message: string }>(`/nails/${styleId}/likes`, { method: "POST" }),
-  unlikeStyle: (styleId: string) => request<{ message: string }>(`/nails/${styleId}/likes`, { method: "DELETE" }),
+  getStyleComments: (styleId: string) => {
+    const mockComments = getMockStyleComments(styleId);
+    return mockComments ? Promise.resolve(mockComments) : request<{ items: StyleComment[] }>(`/nails/${styleId}/comments`);
+  },
+  likeStyle: (styleId: string) =>
+    isMockDiscoverStyleId(styleId)
+      ? Promise.resolve({ message: "点赞成功" })
+      : request<{ message: string }>(`/nails/${styleId}/likes`, { method: "POST" }),
+  unlikeStyle: (styleId: string) =>
+    isMockDiscoverStyleId(styleId)
+      ? Promise.resolve({ message: "已取消点赞" })
+      : request<{ message: string }>(`/nails/${styleId}/likes`, { method: "DELETE" }),
   createStyleComment: (styleId: string, content: string) =>
     request<StyleComment>(`/nails/${styleId}/comments`, {
       method: "POST",
@@ -315,17 +333,29 @@ export const api = {
   },
   materializeXhsRecommendationStyle: (noteId: string) =>
     request<{ style_id: string }>(`/ai/xhs-recommendations/${encodeURIComponent(noteId)}/style`, { method: "POST" }),
-  createTryOnJob: async (payload: { styleId: string; promptText: string; handImageUri?: string | null; savedHandPhotoId?: string | null }) => {
+  createTryOnJob: async (payload: {
+    styleId: string;
+    promptText: string;
+    handImageUri?: string | null;
+    savedHandPhotoId?: string | null;
+    prepareOnly?: boolean;
+  }) => {
     const form = new FormData();
     form.append("style_id", payload.styleId);
     form.append("prompt_text", payload.promptText);
+    form.append("prepare_only", payload.prepareOnly === false ? "false" : "true");
     if (payload.savedHandPhotoId) {
       form.append("saved_hand_photo_id", payload.savedHandPhotoId);
     } else if (payload.handImageUri) {
       form.append("hand_image", { uri: payload.handImageUri, name: "hand.jpg", type: "image/jpeg" } as never);
     }
-    return request<{ job_id: string; status: string; stage?: string }>("/tryon/jobs", { method: "POST", body: form });
+    return request<{ job_id: string; status: TryOnJob["status"]; stage?: TryOnJob["stage"]; source_hand_image_url?: string | null; mask_url?: string | null }>("/tryon/jobs", { method: "POST", body: form });
   },
+  submitTryOnJob: (jobId: string) =>
+    request<{ job_id: string; status: TryOnJob["status"]; stage?: TryOnJob["stage"]; source_hand_image_url?: string | null; mask_url?: string | null }>(
+      `/tryon/jobs/${jobId}/submit`,
+      { method: "POST" },
+    ),
   getTryOnJob: (jobId: string) => request<TryOnJob>(`/tryon/jobs/${jobId}`),
   getTryOnHistory: () => request<{ items: TryOnHistoryItem[] }>("/tryon/jobs"),
   deleteTryOnJob: (jobId: string) => request<{ message: string }>(`/tryon/jobs/${jobId}`, { method: "DELETE" }),

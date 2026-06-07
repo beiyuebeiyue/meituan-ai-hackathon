@@ -39,6 +39,9 @@ from app.schemas.ops import (
 )
 
 class OpsAdminService:
+    DEMO_MOMO_HAND_IMAGE_URL = "/demo-assets/momo-hand.png"
+    DEMO_MOMO_TRYON_RESULT_IMAGE_URL = "/demo-assets/momo-tryon-result.png"
+
     def _today_window(self) -> tuple[datetime, datetime, date, str]:
         settings = get_settings()
         tz_name = settings.ops_report_timezone
@@ -204,12 +207,29 @@ class OpsAdminService:
         return self._user_item(db, user)
 
     def _user_item(self, db: Session, user: User) -> OpsUserListItem:
+        latest_hand_image_url = db.scalar(
+            select(UserHandPhoto.image_url)
+            .where(UserHandPhoto.user_id == user.id)
+            .order_by(UserHandPhoto.created_at.desc())
+            .limit(1)
+        )
+        latest_tryon_result_image_url = db.scalar(
+            select(TryOnJob.result_image_url)
+            .where(TryOnJob.user_id == user.id, TryOnJob.result_image_url.is_not(None))
+            .order_by(TryOnJob.updated_at.desc())
+            .limit(1)
+        )
+        if user.uid == 1:
+            latest_hand_image_url = latest_hand_image_url or self.DEMO_MOMO_HAND_IMAGE_URL
+            latest_tryon_result_image_url = latest_tryon_result_image_url or self.DEMO_MOMO_TRYON_RESULT_IMAGE_URL
         return OpsUserListItem(
             id=user.id,
             uid=user.uid,
             username=user.username,
             phone=user.phone,
             avatar_url=user.avatar_url,
+            latest_hand_image_url=latest_hand_image_url,
+            latest_tryon_result_image_url=latest_tryon_result_image_url,
             last_login_ip_location=user.last_login_ip_location,
             role=user.role,
             created_at=user.created_at,

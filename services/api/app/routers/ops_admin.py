@@ -21,6 +21,7 @@ from app.schemas.ops import (
     OpsMerchantUserListItem,
     OpsMerchantUserListResponse,
     OpsMarkdownReportRead,
+    OpsOpenSkillScheduledTaskListResponse,
     OpsPostListItem,
     OpsPostListResponse,
     OpsReportRead,
@@ -35,6 +36,7 @@ from app.schemas.trends import OpsTrendCampaignCreateRequest, OpsTrendCampaignRe
 from app.services.ops_admin_service import OpsAdminService
 from app.services.analytics_service import AnalyticsService
 from app.services.ops_chat_service import OpsChatService
+from app.services.openclaw_schedule_service import OpenClawScheduleService
 from app.services.report_service import ReportService
 from app.services.trend_nail_service import TrendNailService
 
@@ -42,6 +44,7 @@ from app.services.trend_nail_service import TrendNailService
 router = APIRouter(prefix="/ops", tags=["ops-admin"])
 ops_admin_service = OpsAdminService()
 ops_chat_service = OpsChatService()
+openclaw_schedule_service = OpenClawScheduleService()
 report_service = ReportService()
 analytics_service = AnalyticsService()
 trend_nail_service = TrendNailService()
@@ -80,6 +83,13 @@ def chat_with_ops_ai(
     db: Session = Depends(get_db),
 ) -> OpsChatResponse:
     return ops_chat_service.chat(db, payload.messages)
+
+
+@router.get("/openclaw/scheduled-tasks", response_model=OpsOpenSkillScheduledTaskListResponse)
+def list_openclaw_scheduled_tasks(
+    _ops_admin: str = Depends(require_ops_admin),
+) -> OpsOpenSkillScheduledTaskListResponse:
+    return openclaw_schedule_service.list_tasks()
 
 
 @router.get("/trend-nails/candidates", response_model=OpsTrendNailCandidateListResponse)

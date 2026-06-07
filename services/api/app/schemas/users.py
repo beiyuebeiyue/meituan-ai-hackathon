@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.nails import NailStyleRead
 from app.schemas.posts import AuthorPostRead
@@ -30,6 +30,11 @@ class UserHandPhotoRead(BaseModel):
     id: str
     image_url: str
     processing_status: str | None = None
+    error_message: str | None = None
+    mask_url: str | None = None
+    cutout_url: str | None = None
+    roi_boxes: list[dict[str, int]] = Field(default_factory=list)
+    quality_score: float | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -23,7 +23,6 @@ import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 const fallbackAvatar = require("../../assets/profile/default_avatar.png");
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-const SHOP_COVER_TABS = ["封面", "效果展示", "门店环境", "相册"];
 const SHOP_SECTION_TABS = ["团购", "美甲师", "评价", "相关推荐"];
 const SHOP_TAGS = ["免费停车", "无隐性消费", "有沙发位", "支持预约"];
 
@@ -370,34 +369,7 @@ export function MarketShopDetailScreen() {
               </>
             ) : null}
           </View>
-          {isPlatformShop ? (
-            <View style={styles.coverTabs}>
-              {SHOP_COVER_TABS.map((tab, index) => (
-                <View
-                  key={tab}
-                  style={[
-                    styles.coverTab,
-                    index === 0 ? styles.coverTabActive : null,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.coverTabText,
-                      index === 0 ? styles.coverTabTextActive : null,
-                    ]}
-                  >
-                    {tab}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
-          <View
-            style={[
-              styles.heroInfo,
-              !isPlatformShop ? styles.heroInfoCompact : null,
-            ]}
-          >
+          <View style={styles.heroInfo}>
             <Text style={styles.shopName} numberOfLines={2}>
               {shop.name}
             </Text>
@@ -866,36 +838,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  coverTabs: {
-    position: "absolute",
-    left: 18,
-    right: 18,
-    bottom: 18,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(16,18,15,0.52)",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 5,
-  },
-  coverTab: {
-    flex: 1,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverTabActive: {
-    backgroundColor: "rgba(255,255,255,0.92)",
-  },
-  coverTabText: {
-    color: "rgba(255,255,255,0.84)",
-    fontSize: 12,
-    fontWeight: "900",
-  },
-  coverTabTextActive: {
-    color: "#2b211d",
-  },
   navPillText: {
     fontSize: 13,
     fontWeight: "900",
@@ -904,11 +846,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 20,
     right: 20,
-    bottom: 70,
-    gap: 8,
-  },
-  heroInfoCompact: {
     bottom: 24,
+    gap: 8,
   },
   shopName: {
     color: "#fff",

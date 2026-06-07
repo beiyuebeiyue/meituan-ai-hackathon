@@ -338,6 +338,29 @@
       overflow: hidden;
       border-radius: 4px;
       background: #efefef;
+      cursor: zoom-in;
+    }
+    .thumb-wrap::after {
+      content: "放大";
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      padding: 2px 5px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, .66);
+      color: #fff;
+      font-size: 10px;
+      line-height: 1.2;
+      opacity: 0;
+      transition: opacity .16s ease;
+      pointer-events: none;
+    }
+    .thumb-wrap:hover::after { opacity: 1; }
+    .thumb-wrap.is-missing {
+      cursor: default;
+    }
+    .thumb-wrap.is-missing::after {
+      display: none;
     }
     .thumb {
       display: block;
@@ -354,6 +377,57 @@
     }
     .thumb-wrap.is-missing img { display: none; }
     .thumb-wrap.is-missing .thumb-fallback { display: grid; }
+    .image-lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      background: rgba(0, 0, 0, .82);
+    }
+    .image-lightbox.is-open {
+      display: flex;
+    }
+    .image-lightbox img {
+      display: block;
+      max-width: min(92vw, 1080px);
+      max-height: 86vh;
+      object-fit: contain;
+      border-radius: 8px;
+      background: #111;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, .36);
+    }
+    .image-lightbox-caption {
+      position: fixed;
+      left: 24px;
+      right: 72px;
+      bottom: 18px;
+      color: #f5f5f5;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .image-lightbox-close {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .14);
+      color: #fff;
+      font-size: 28px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .image-lightbox-close:hover {
+      background: rgba(255, 255, 255, .22);
+    }
     .placeholder {
       position: static;
       display: grid;
@@ -478,10 +552,10 @@
     </header>
 
     <section class="metrics" aria-label="本周概览">
-      <div class="metric"><span>本周采集笔记数</span><strong>4</strong></div>
-      <div class="metric"><span>本周总点赞数</span><strong>8,957</strong></div>
-      <div class="metric"><span>本周总收藏数</span><strong>6,392</strong></div>
-      <div class="metric"><span>本周总转发数</span><strong>542</strong></div>
+      <div class="metric"><span>本周采集笔记数</span><strong>1376</strong></div>
+      <div class="metric"><span>本周总点赞数</span><strong>3,081,208</strong></div>
+      <div class="metric"><span>本周总收藏数</span><strong>2,198,848</strong></div>
+      <div class="metric"><span>本周总转发数</span><strong>186,448</strong></div>
       <div class="metric"><span>平均点赞</span><strong>2239.2</strong></div>
       <div class="metric"><span>平均收藏</span><strong>1598.0</strong></div>
       <div class="metric"><span>平均转发</span><strong>135.5</strong></div>
@@ -1201,5 +1275,50 @@
 
     <p class="footer">生成时间：2026-06-02 09:52 · 数据源日期：2026-05-20 · 静态文件：xhs_weekly_nail_report.html</p>
   </main>
+  <div class="image-lightbox" id="imageLightbox" aria-hidden="true" role="dialog" aria-label="图片预览">
+    <button class="image-lightbox-close" type="button" aria-label="关闭图片预览">×</button>
+    <img alt="" />
+    <div class="image-lightbox-caption"></div>
+  </div>
+  <script>
+    (() => {
+      const lightbox = document.getElementById("imageLightbox");
+      if (!lightbox) return;
+      const preview = lightbox.querySelector("img");
+      const caption = lightbox.querySelector(".image-lightbox-caption");
+      const closeButton = lightbox.querySelector(".image-lightbox-close");
+
+      const close = () => {
+        lightbox.classList.remove("is-open");
+        lightbox.setAttribute("aria-hidden", "true");
+        document.body.style.overflow = "";
+        preview.removeAttribute("src");
+        preview.alt = "";
+        caption.textContent = "";
+      };
+
+      document.querySelectorAll(".thumb").forEach((image) => {
+        image.addEventListener("click", () => {
+          if (!image.currentSrc && !image.src) return;
+          preview.src = image.currentSrc || image.src;
+          preview.alt = image.alt || "美甲图片预览";
+          caption.textContent = image.alt || "";
+          lightbox.classList.add("is-open");
+          lightbox.setAttribute("aria-hidden", "false");
+          document.body.style.overflow = "hidden";
+        });
+      });
+
+      closeButton.addEventListener("click", close);
+      lightbox.addEventListener("click", (event) => {
+        if (event.target === lightbox) close();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && lightbox.classList.contains("is-open")) {
+          close();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

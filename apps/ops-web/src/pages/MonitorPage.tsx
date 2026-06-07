@@ -1,4 +1,4 @@
-import { App, Card, Col, Empty, Row, Space, Spin, Tag, Typography } from "antd";
+import { Card, Col, Row, Space, Tag, Typography } from "antd";
 import type { CSSProperties } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapChart } from "echarts/charts";
@@ -11,28 +11,110 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { api, OpsDashboard, PopularNail } from "../api/client";
+import type { OpsDashboard, PopularNail } from "../api/client";
 import chinaGeoJson from "../assets/geo/china.json";
 
 echarts.use([CanvasRenderer, GeoComponent, MapChart, TooltipComponent, VisualMapComponent]);
 echarts.registerMap("china", chinaGeoJson as Parameters<typeof echarts.registerMap>[1]);
 
-const DASHBOARD_CACHE_TTL_MS = 5 * 60 * 1000;
-let dashboardCache: { data: OpsDashboard; cachedAt: number } | null = null;
-let dashboardRequest: Promise<OpsDashboard> | null = null;
-
 const accentColors = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16"];
 const provinceHeat = [
-  { name: "北京市", value: 74 },
-  { name: "上海市", value: 82 },
-  { name: "广东省", value: 96 },
-  { name: "四川省", value: 68 },
-  { name: "浙江省", value: 78 },
-  { name: "湖北省", value: 64 },
-  { name: "陕西省", value: 58 },
-  { name: "重庆市", value: 62 },
-  { name: "河南省", value: 46 },
+  { name: "北京市", value: 186 },
+  { name: "天津市", value: 92 },
+  { name: "河北省", value: 108 },
+  { name: "山西省", value: 74 },
+  { name: "内蒙古自治区", value: 62 },
+  { name: "辽宁省", value: 98 },
+  { name: "吉林省", value: 56 },
+  { name: "黑龙江省", value: 54 },
+  { name: "上海市", value: 228 },
+  { name: "江苏省", value: 196 },
+  { name: "浙江省", value: 212 },
+  { name: "安徽省", value: 114 },
+  { name: "福建省", value: 126 },
+  { name: "江西省", value: 78 },
+  { name: "山东省", value: 148 },
+  { name: "河南省", value: 118 },
+  { name: "湖北省", value: 132 },
+  { name: "湖南省", value: 106 },
+  { name: "广东省", value: 286 },
+  { name: "广西壮族自治区", value: 82 },
+  { name: "海南省", value: 66 },
+  { name: "重庆市", value: 136 },
+  { name: "四川省", value: 174 },
+  { name: "贵州省", value: 72 },
+  { name: "云南省", value: 76 },
+  { name: "西藏自治区", value: 18 },
+  { name: "陕西省", value: 108 },
+  { name: "甘肃省", value: 42 },
+  { name: "青海省", value: 24 },
+  { name: "宁夏回族自治区", value: 32 },
+  { name: "新疆维吾尔自治区", value: 46 },
+  { name: "台湾省", value: 38 },
+  { name: "香港特别行政区", value: 84 },
+  { name: "澳门特别行政区", value: 36 },
 ];
+
+const cityHeat = [
+  { name: "深圳", province: "广东", value: 96, change: "+18%" },
+  { name: "上海", province: "上海", value: 88, change: "+15%" },
+  { name: "广州", province: "广东", value: 82, change: "+13%" },
+  { name: "杭州", province: "浙江", value: 76, change: "+11%" },
+  { name: "北京", province: "北京", value: 72, change: "+10%" },
+  { name: "成都", province: "四川", value: 68, change: "+9%" },
+];
+
+const mockDashboard: OpsDashboard = {
+  report_date: "2026-06-06",
+  timezone: "Asia/Shanghai",
+  metrics: {
+    users: { total: 18642, today: 326 },
+    merchants: { total: 928, today: 18 },
+    images: { total: 42860, today: 1376 },
+    likes: { total: 318900, today: 18420 },
+    collects: { total: 126500, today: 6820 },
+    shares: { total: 43800, today: 2140 },
+    tryon_users: { total: 7260, today: 468 },
+    bookings: { total: 3610, today: 286 },
+    completed_bookings: { total: 2148, today: 142 },
+    revenue: { total: 1832600, today: 76800 },
+  },
+  popular_nails: [
+    {
+      note_id: "mock-1",
+      keyword: "猫眼",
+      title: "春夏清透猫眼",
+      desc: "高热度趋势",
+      tag_list: ["猫眼", "清透", "显白"],
+      image_list: [],
+      liked_count: 3260,
+      collected_count: 1280,
+      share_count: 420,
+    },
+    {
+      note_id: "mock-2",
+      keyword: "裸粉",
+      title: "裸粉通勤法式",
+      desc: "门店预约高频款",
+      tag_list: ["裸粉", "法式", "通勤"],
+      image_list: [],
+      liked_count: 2840,
+      collected_count: 1160,
+      share_count: 360,
+    },
+    {
+      note_id: "mock-3",
+      keyword: "碎钻",
+      title: "显白碎钻渐变",
+      desc: "转化表现稳定",
+      tag_list: ["碎钻", "渐变", "显白"],
+      image_list: [],
+      liked_count: 2380,
+      collected_count: 940,
+      share_count: 310,
+    },
+  ],
+};
 
 function formatNumber(value: number) {
   return value.toLocaleString("zh-CN");
@@ -95,56 +177,9 @@ function monitorValues(dashboard: OpsDashboard) {
   };
 }
 
-function isDashboardCacheFresh() {
-  return dashboardCache !== null && Date.now() - dashboardCache.cachedAt < DASHBOARD_CACHE_TTL_MS;
-}
-
-function loadDashboard() {
-  if (dashboardRequest) return dashboardRequest;
-  dashboardRequest = api
-    .getDashboard()
-    .then((data) => {
-      dashboardCache = { data, cachedAt: Date.now() };
-      return data;
-    })
-    .finally(() => {
-      dashboardRequest = null;
-    });
-  return dashboardRequest;
-}
-
 export function MonitorPage() {
-  const { message } = App.useApp();
-  const [dashboard, setDashboard] = useState<OpsDashboard | null>(() => dashboardCache?.data ?? null);
-  const [loading, setLoading] = useState(() => dashboardCache === null);
   const [remainingTime, setRemainingTime] = useState(activityCountdown);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (isDashboardCacheFresh()) {
-      setDashboard(dashboardCache?.data ?? null);
-      setLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setLoading(dashboardCache === null);
-    if (dashboardCache) setDashboard(dashboardCache.data);
-    loadDashboard()
-      .then((data) => {
-        if (!cancelled) setDashboard(data);
-      })
-      .catch((error) => {
-        if (!cancelled) message.error(error instanceof Error ? error.message : "加载失败");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [message]);
+  const dashboard = mockDashboard;
 
   useEffect(() => {
     const timer = window.setInterval(() => setRemainingTime(activityCountdown()), 100);
@@ -153,31 +188,62 @@ export function MonitorPage() {
 
   const tags = useMemo(() => tagDistribution(dashboard?.popular_nails ?? []), [dashboard]);
 
-  if (loading) return <Spin />;
-  if (!dashboard) return <Empty />;
-
   const values = monitorValues(dashboard);
   const forecast = series(values.todayRevenue);
+  const topProvince = provinceHeat.reduce((best, item) => (item.value > best.value ? item : best), provinceHeat[0]);
+  const activeProvinceCount = provinceHeat.filter((item) => item.value >= 80).length;
 
   return (
-    <Space direction="vertical" size={24} className="page-stack monitor-page">
+    <Space direction="vertical" size={18} className="page-stack monitor-page">
+      <div className="monitor-overview-grid">
+        <Metric label="今日交易总额" value={formatMoney(values.todayRevenue)} />
+        <Metric label="活跃省份" value={`${activeProvinceCount} 个`} />
+        <Metric label="最热区域" value={topProvince.name.replace(/省|市|自治区|特别行政区/g, "")} />
+        <Metric label="活动剩余时间" value={remainingTime} />
+      </div>
+
       <Row gutter={[24, 24]}>
-        <Col xs={24} xl={18}>
-          <Card className="monitor-card monitor-map-card" title="活动实时交易情况">
-            <div className="monitor-kpis">
-              <Metric label="今日交易总额" value={formatMoney(values.todayRevenue)} />
-              <Metric label="销售目标完成率" value={`${values.targetRate}%`} />
-              <Metric label="活动剩余时间" value={remainingTime} />
-              <Metric label="每秒交易总额" value={formatMoney(values.perSecond)} />
-            </div>
+        <Col xs={24} xl={16}>
+          <Card
+            className="monitor-card monitor-map-card"
+            title="全国交易热力"
+            extra={<Typography.Text type="secondary">省份数值为今日门店线索量</Typography.Text>}
+          >
             <ChinaHeatMap />
           </Card>
         </Col>
-        <Col xs={24} xl={6}>
-          <Space direction="vertical" size={24} className="full-width">
+        <Col xs={24} xl={8}>
+          <Space direction="vertical" size={16} className="full-width">
+            <Card className="monitor-card monitor-side-card monitor-city-card" title="重点城市">
+              <div className="monitor-city-list">
+                {cityHeat.map((city, index) => (
+                  <div className="monitor-city-row" key={city.name}>
+                    <div className="monitor-city-rank">{index + 1}</div>
+                    <div className="monitor-city-main">
+                      <div className="monitor-city-title">
+                        <strong>{city.name}</strong>
+                        <span>{city.province}</span>
+                      </div>
+                      <div className="monitor-city-bar">
+                        <span style={{ width: `${city.value}%`, backgroundColor: accentColors[index % accentColors.length] }} />
+                      </div>
+                    </div>
+                    <div className="monitor-city-value">
+                      <strong>{city.value}</strong>
+                      <span>{city.change}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
             <Card className="monitor-card monitor-side-card" title="活动情况预测">
-              <Typography.Text type="secondary">目标评估</Typography.Text>
-              <Typography.Title level={3}>有望达到预期</Typography.Title>
+              <div className="monitor-forecast-head">
+                <div>
+                  <Typography.Text type="secondary">目标评估</Typography.Text>
+                  <Typography.Title level={3}>有望达到预期</Typography.Title>
+                </div>
+                <Tag color="green">目标 {values.targetRate}%</Tag>
+              </div>
               <div className="monitor-forecast-labels">
                 <span>{formatNumber(Math.max(values.todayRevenue * 2, 142200))} 元</span>
                 <span>{formatNumber(Math.max(values.todayRevenue, 70800))} 元</span>
@@ -194,15 +260,17 @@ export function MonitorPage() {
                 <span>23:00</span>
               </div>
             </Card>
-            <Card className="monitor-card monitor-side-card" title="核销效率">
-              <Gauge value={values.verifyRate} />
-            </Card>
           </Space>
         </Col>
       </Row>
 
       <Row gutter={[24, 24]}>
-        <Col xs={24} xl={10}>
+        <Col xs={24} xl={8}>
+          <Card className="monitor-card monitor-bottom-card" title="核销效率">
+            <Gauge value={values.verifyRate} />
+          </Card>
+        </Col>
+        <Col xs={24} xl={8}>
           <Card className="monitor-card monitor-bottom-card" title="各品类占比">
             <div className="monitor-ring-row">
               <Ring value={75} label="美甲预约" color="#2563eb" />
@@ -211,7 +279,7 @@ export function MonitorPage() {
             </div>
           </Card>
         </Col>
-        <Col xs={24} xl={7}>
+        <Col xs={24} xl={8}>
           <Card className="monitor-card monitor-bottom-card" title="热门搜索">
             <div className="monitor-word-cloud">
               {tags.map((item, index) => (
@@ -226,15 +294,6 @@ export function MonitorPage() {
                   {item.name}
                 </span>
               ))}
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} xl={7}>
-          <Card className="monitor-card monitor-bottom-card" title="资源剩余">
-            <div className="monitor-water-wrap">
-              <div className="monitor-water" style={{ "--water-level": `${values.resourceRate}%` } as CSSProperties}>
-                <span>{values.resourceRate}%</span>
-              </div>
             </div>
           </Card>
         </Col>
@@ -270,9 +329,9 @@ function ChinaHeatMap() {
       visualMap: {
         show: false,
         min: 0,
-        max: 100,
+        max: 300,
         inRange: {
-          color: ["#eff6ff", "#bfdbfe", "#60a5fa", "#2563eb", "#f97316"],
+          color: ["#f8fafc", "#dbeafe", "#93c5fd", "#2563eb", "#f97316"],
         },
       },
       geo: {
@@ -293,6 +352,24 @@ function ChinaHeatMap() {
           label: {
             show: false,
             color: "#111827",
+          },
+        },
+        label: {
+          show: true,
+          color: "#111827",
+          fontSize: 9,
+          lineHeight: 12,
+          formatter: (params: { name?: string; value?: unknown }) => {
+            const item = provinceHeat.find((province) => province.name === params.name);
+            if (!item) return params.name ?? "";
+            const shortName = item.name
+              .replace("壮族自治区", "")
+              .replace("回族自治区", "")
+              .replace("维吾尔自治区", "")
+              .replace("特别行政区", "")
+              .replace("自治区", "")
+              .replace(/省|市/g, "");
+            return `${shortName}\n${item.value}`;
           },
         },
       },

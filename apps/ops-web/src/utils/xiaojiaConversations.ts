@@ -13,7 +13,7 @@ export const CONVERSATIONS_CHANGED_EVENT = "ops_xiaojia_conversations_changed";
 
 export const starterMessage: ChatMessage = {
   role: "assistant",
-  content: "你好，我是运营小嘉。可以帮你查看营收、用户增长、热门美甲、发券记录和日报总结。",
+  content: "你好，我是运营小嘉。可以帮你查看营收、用户增长、热门美甲和周报总结。",
 };
 
 export function nowIso() {
@@ -65,7 +65,7 @@ function seedConversations(): XiaojiaConversation[] {
         { role: "user", content: "总结一下上周的周报" },
         {
           role: "assistant",
-          content: "上周核心指标是用户增长、AI 焕手使用和预约完成率。热门美甲内容带来更多浏览，发券记录可继续和预约转化一起看，判断优惠券是否真正推动下单。",
+          content: "上周核心指标是用户增长、AI 焕手使用和预约完成率。热门美甲内容带来更多浏览，建议继续观察试戴、收藏和预约转化之间的关系。",
         },
       ],
     },

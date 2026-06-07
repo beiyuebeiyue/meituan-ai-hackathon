@@ -64,6 +64,8 @@ type ChatDebugEntry = {
   error?: string;
 };
 
+const AI_WAITING_MESSAGE = "正在帮你寻找您心怡的美甲，请耐心等待";
+
 function AnimatedPressable({
   children,
   disabled,
@@ -217,7 +219,7 @@ function RecommendationCard({
   const typeLabel = item.tags.length
     ? item.tags.slice(0, 4).join(" · ")
     : "平台精选";
-  const stats = `赞 ${item.liked_count} · 藏 ${item.collected_count} · 转 ${item.share_count}`;
+  const reason = cleanRecommendationReason(item.reason);
 
   return (
     <AnimatedPressable
@@ -278,18 +280,19 @@ function RecommendationCard({
             style={[styles.recommendationReason, { color: colors.subtext }]}
             numberOfLines={3}
           >
-            {item.reason}
+            {reason}
           </Text>
         </View>
-        <Text
-          style={[styles.recommendationStats, { color: colors.subtext }]}
-          numberOfLines={1}
-        >
-          {stats}
-        </Text>
       </View>
     </AnimatedPressable>
   );
+}
+
+function cleanRecommendationReason(reason: string) {
+  return reason
+    .replace(/；?热度参考赞\d+、藏\d+、转\d+/g, "")
+    .replace(/;?\s*热度参考赞\d+、藏\d+、转\d+/g, "")
+    .trim();
 }
 
 export function AskAIScreen() {
@@ -489,7 +492,9 @@ export function AskAIScreen() {
     enabled: !!token && !!activeJobId,
     refetchInterval: (queryState) => {
       const status = queryState.state.data?.status;
-      return status === "succeeded" || status === "failed" ? false : 2000;
+      return status === "succeeded" || status === "failed" || status === "awaiting_confirmation"
+        ? false
+        : 2000;
     },
   });
   const activeStyleQuery = useQuery({
@@ -569,7 +574,7 @@ export function AskAIScreen() {
     if (chatMutation.isPending && lastMessage.role === "user") {
       return [
         ...chatMessages,
-        { role: "assistant" as const, content: "" },
+        { role: "assistant" as const, content: AI_WAITING_MESSAGE },
       ].slice(-13);
     }
     if (
@@ -835,6 +840,12 @@ export function AskAIScreen() {
   const currentResultImageUrl = tryOnJobQuery.data?.result_image_url
     ? resolveAssetUrl(tryOnJobQuery.data.result_image_url)
     : null;
+  const pendingTryOnHandUrl = tryOnJobQuery.data?.source_hand_image_url
+    ? resolveAssetUrl(tryOnJobQuery.data.source_hand_image_url)
+    : handImageUri;
+  const pendingTryOnMaskUrl = tryOnJobQuery.data?.mask_url
+    ? resolveAssetUrl(tryOnJobQuery.data.mask_url)
+    : null;
   const showingHandChooser = needsHandFor !== null;
   const composerBottomInset = Math.max(tabBarHeight - 74, 12);
   const scrollBottomPadding = composerHeight + 18;
@@ -1019,7 +1030,88 @@ export function AskAIScreen() {
             </View>
           ) : null}
 
-          {tryOnJobQuery.data?.status === "processing" || isStartingTryOn ? (
+          {tryOnJobQuery.data?.status === "awaiting_confirmation" ? (
+            <View
+              style={[styles.reviewCard, { backgroundColor: colors.surface }]}
+            >
+              <View style={styles.reviewHeader}>
+                <View
+                  style={[
+                    styles.reviewIcon,
+                    { backgroundColor: colors.accentSoft },
+                  ]}
+                >
+                  <Ionicons name="shield-checkmark" size={20} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.reviewTitle, { color: colors.text }]}>
+                    已完成手图分析
+                  </Text>
+                  <Text style={[styles.reviewText, { color: colors.subtext }]}>
+                    系统已经生成指甲区域 mask。测试阶段先停在这里，不会把请求发送到 EvoLink，也不会产生模型费用。
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.reviewPreviewRow}>
+                {pendingTryOnHandUrl ? (
+                  <View style={styles.reviewPreviewItem}>
+                    <Image
+                      source={{ uri: pendingTryOnHandUrl }}
+                      style={[
+                        styles.reviewPreviewImage,
+                        { backgroundColor: colors.accentSoft },
+                      ]}
+                    />
+                    <Text style={[styles.reviewPreviewLabel, { color: colors.subtext }]}>
+                      原始手图
+                    </Text>
+                  </View>
+                ) : null}
+                {pendingTryOnMaskUrl ? (
+                  <View style={styles.reviewPreviewItem}>
+                    <Image
+                      source={{ uri: pendingTryOnMaskUrl }}
+                      style={[
+                        styles.reviewPreviewImage,
+                        { backgroundColor: colors.accentSoft },
+                      ]}
+                    />
+                    <Text style={[styles.reviewPreviewLabel, { color: colors.subtext }]}>
+                      指甲 mask
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={styles.reviewChecklist}>
+                <Text style={[styles.reviewChecklistItem, { color: colors.text }]}>
+                  手图上传完成
+                </Text>
+                <Text style={[styles.reviewChecklistItem, { color: colors.text }]}>
+                  YOLO 指甲分割完成
+                </Text>
+                <Text style={[styles.reviewChecklistItem, { color: colors.text }]}>
+                  EvoLink 请求已拦截
+                </Text>
+              </View>
+              <View style={styles.resultActions}>
+                <PrimaryButton
+                  label="暂不发送"
+                  variant="ghost"
+                  onPress={() => {
+                    setActiveJobId(null);
+                    setAssistantLine("好的，我先不发送生成请求。你可以继续换款式或换手图测试。");
+                  }}
+                  style={{ flex: 1 }}
+                />
+                <PrimaryButton
+                  label="发送生成（测试阶段关闭）"
+                  disabled
+                  onPress={() => undefined}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          ) : tryOnJobQuery.data?.status === "processing" || isStartingTryOn ? (
             <View
               style={[
                 styles.processingCard,
@@ -1289,13 +1381,13 @@ export function AskAIScreen() {
                       style={[styles.previewReason, { color: colors.subtext }]}
                       numberOfLines={2}
                     >
-                      {previewItem.reason}
+                      {cleanRecommendationReason(previewItem.reason)}
                     </Text>
                     <PrimaryButton
                       label={
                         materializingNoteId === previewItem.note_id
                           ? "正在准备焕甲..."
-                          : "焕甲试戴"
+                          : "焕甲"
                       }
                       onPress={() =>
                         void startTryOnFromRecommendation(previewItem)
@@ -1859,6 +1951,57 @@ const styles = StyleSheet.create({
   processingText: {
     textAlign: "center",
     lineHeight: 21,
+  },
+  reviewCard: {
+    borderRadius: 26,
+    padding: 18,
+    gap: 16,
+  },
+  reviewHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  reviewIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reviewTitle: {
+    fontSize: 21,
+    fontWeight: "800",
+  },
+  reviewText: {
+    marginTop: 5,
+    fontSize: 14,
+    lineHeight: 21,
+  },
+  reviewPreviewRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  reviewPreviewItem: {
+    flex: 1,
+    gap: 7,
+  },
+  reviewPreviewImage: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 18,
+  },
+  reviewPreviewLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  reviewChecklist: {
+    gap: 8,
+  },
+  reviewChecklistItem: {
+    fontSize: 14,
+    fontWeight: "700",
   },
   resultCard: {
     borderRadius: 26,

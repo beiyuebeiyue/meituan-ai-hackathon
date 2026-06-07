@@ -17,7 +17,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../api/client";
-import { PrimaryButton } from "../components/PrimaryButton";
 import { RequireLogin } from "../components/RequireLogin";
 import { useAuthStore } from "../store/useAuthStore";
 import { Booking } from "../types/api";
@@ -30,6 +29,7 @@ const bookingStatusLabel: Record<Booking["status"], string> = {
   completed: "订单完成",
   cancelled: "订单取消",
 };
+const PUBLISH_ROSE = "#ff2d55";
 
 export function PublishScreen() {
   const navigation = useNavigation();
@@ -323,36 +323,32 @@ export function PublishScreen() {
             ]}
           >
             <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>
-                标题
-              </Text>
               <TextInput
-                placeholder="裸粉猫眼"
+                placeholder="添加标题"
                 placeholderTextColor={colors.subtext}
                 value={title}
                 onChangeText={setTitle}
                 style={[
-                  styles.input,
-                  { backgroundColor: colors.background, color: colors.text },
+                  styles.titleInput,
+                  { color: colors.text },
                 ]}
               />
             </View>
-            <View style={styles.fieldBlock}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>
-                正文
-              </Text>
-              <TextInput
-                placeholder="简单写几句感受"
-                placeholderTextColor={colors.subtext}
-                value={description}
-                onChangeText={setDescription}
-                style={[
-                  styles.input,
-                  styles.textarea,
-                  { backgroundColor: colors.background, color: colors.text },
-                ]}
-                multiline
-              />
+            <View style={styles.descriptionBlock}>
+              <View style={styles.descriptionAccent} />
+              <View style={styles.descriptionInputWrap}>
+                <TextInput
+                  placeholder="展开说说"
+                  placeholderTextColor={colors.subtext}
+                  value={description}
+                  onChangeText={setDescription}
+                  style={[
+                    styles.descriptionInput,
+                    { color: colors.text },
+                  ]}
+                  multiline
+                />
+              </View>
             </View>
             <View style={styles.fieldBlock}>
               <Text style={[styles.fieldLabel, { color: colors.text }]}>
@@ -479,27 +475,23 @@ export function PublishScreen() {
             </View>
           ) : null}
 
-          <View
+          <Pressable
             style={[
-              styles.submitCard,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              styles.publishButton,
+              {
+                backgroundColor: PUBLISH_ROSE,
+              },
+              (!canSubmit || mutation.isPending) && styles.publishButtonDisabled,
             ]}
-          >
-            <View style={styles.submitCopy}>
-              <Text style={[styles.submitTitle, { color: colors.text }]}>
-                准备发布
-              </Text>
-              <Text style={[styles.submitHint, { color: colors.subtext }]}>
-                需要图片和标题
-              </Text>
-            </View>
-            <PrimaryButton
-              label="提交发布"
               onPress={() => mutation.mutate()}
-              loading={mutation.isPending}
-              disabled={!canSubmit}
-            />
-          </View>
+            disabled={!canSubmit || mutation.isPending}
+          >
+            {mutation.isPending ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text style={styles.publishButtonText}>发布</Text>
+            )}
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -589,8 +581,9 @@ const styles = StyleSheet.create({
   },
   formCard: {
     borderRadius: 26,
-    padding: 14,
-    gap: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+    gap: 18,
     borderWidth: StyleSheet.hairlineWidth,
   },
   fieldBlock: { gap: 8 },
@@ -692,16 +685,55 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
+  titleInput: {
+    minHeight: 58,
+    paddingVertical: 6,
+    fontSize: 28,
+    fontWeight: "900",
+    letterSpacing: -0.4,
+  },
+  descriptionBlock: {
+    minHeight: 84,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  descriptionAccent: {
+    width: 4,
+    height: 48,
+    marginTop: 8,
+    borderRadius: 999,
+    backgroundColor: PUBLISH_ROSE,
+  },
+  descriptionInputWrap: {
+    flex: 1,
+  },
+  descriptionInput: {
+    minHeight: 84,
+    paddingTop: 0,
+    paddingBottom: 10,
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: "800",
+    textAlignVertical: "top",
+  },
   textarea: { minHeight: 110, textAlignVertical: "top" },
   tagPreviewRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tagPreviewText: { fontSize: 13, fontWeight: "900" },
-  submitCard: {
-    borderRadius: 26,
-    padding: 14,
-    gap: 12,
-    borderWidth: StyleSheet.hairlineWidth,
+  publishButton: {
+    minHeight: 52,
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  submitCopy: { gap: 4 },
-  submitTitle: { fontSize: 16, fontWeight: "900" },
-  submitHint: { fontSize: 12, fontWeight: "700" },
+  publishButtonDisabled: {
+    opacity: 0.55,
+  },
+  publishButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "900",
+  },
 });

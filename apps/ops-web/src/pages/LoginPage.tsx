@@ -24,7 +24,7 @@ export function LoginPage() {
         </div>
         <Form<LoginValues>
           layout="vertical"
-          initialValues={{ username: "admin", password: "admin" }}
+          initialValues={{ username: "admin", password: "JRLoZdHl8pFXIJ3gJuXu" }}
           onFinish={async (values) => {
             try {
               const token = await api.login(values.username, values.password);

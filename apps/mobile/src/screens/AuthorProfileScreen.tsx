@@ -176,6 +176,7 @@ export function AuthorProfileScreen({
     : colors.subtext;
 
   const resolvedAuthorId = authorId ?? route.params?.authorId;
+  const dismiss = () => dismissOverlay?.() ?? navigation.goBack();
 
   const query = useQuery({
     queryKey: ["author-profile", resolvedAuthorId, authScope],
@@ -532,6 +533,25 @@ export function AuthorProfileScreen({
     }
   };
 
+  if (!resolvedAuthorId || query.isError) {
+    return (
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+      >
+        <View style={styles.loadingWrap}>
+          <Text style={[styles.loadingText, { color: colors.subtext }]}>
+            {!resolvedAuthorId ? "作者信息缺失，无法打开主页。" : "作者主页加载失败。"}
+          </Text>
+          <PrimaryButton
+            label="返回"
+            onPress={dismiss}
+            style={styles.loadingBackButton}
+          />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!query.data) {
     return (
       <SafeAreaView
@@ -866,7 +886,7 @@ export function AuthorProfileScreen({
                   styles.topButton,
                   shouldCompactSelfProfile && styles.compactTopButton,
                 ]}
-                onPress={() => dismissOverlay?.() ?? navigation.goBack()}
+                onPress={dismiss}
               >
                 <Ionicons name="chevron-back" size={28} color={colors.text} />
               </Pressable>
@@ -1906,8 +1926,9 @@ export function AuthorProfileScreen({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+  loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: 14, paddingHorizontal: 28 },
   loadingText: { fontSize: 15 },
+  loadingBackButton: { minWidth: 120 },
   contentList: { flex: 1 },
   list: { paddingBottom: 120, paddingHorizontal: 14, gap: 14 },
   compactList: { paddingHorizontal: 10, gap: 10 },

@@ -7,10 +7,23 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.user import User
 from app.models.user_hand_photo import UserHandPhoto
-from app.utils.files import delete_local_file, public_url_for_path, relative_to_base, save_user_upload_file, user_upload_dir
+from app.models.image_processing_artifact import ImageProcessingArtifact
+from app.providers.hand_landmarker_provider import HandDetectionResult
+from app.providers.nail_segmentation_provider import NailSegmentationNoNailsError
+from app.services.image_processing_artifact_service import ImageProcessingArtifactService
+from app.services.segmentation_service import SegmentationService, get_segmentation_service
+from app.utils.files import delete_local_file, public_url_for_path, relative_to_base, resolve_local_path, save_user_upload_file, user_upload_dir
 
 
 class UserHandPhotoService:
+    def __init__(
+        self,
+        artifact_service: ImageProcessingArtifactService | None = None,
+        segmentation_service: SegmentationService | None = None,
+    ) -> None:
+        self.artifact_service = artifact_service or ImageProcessingArtifactService()
+        self.segmentation_service = segmentation_service or get_segmentation_service()
+
     @property
     def settings(self):
         return get_settings()
@@ -39,6 +52,7 @@ class UserHandPhotoService:
         )
         if existing is not None:
             saved_path.unlink(missing_ok=True)
+            self.ensure_segmented(db, existing)
             return existing
 
         hand_photo = UserHandPhoto(
@@ -50,7 +64,35 @@ class UserHandPhotoService:
         db.add(hand_photo)
         db.commit()
         db.refresh(hand_photo)
+        self.ensure_segmented(db, hand_photo)
         return hand_photo
+
+    def ensure_segmented(self, db: Session, hand_photo: UserHandPhoto) -> ImageProcessingArtifact | None:
+        image_path = resolve_local_path(hand_photo.image_path)
+        if image_path is None or not image_path.exists():
+            return None
+
+        artifact = self.artifact_service.get_or_create(db, image_path, "user_hand")
+        if artifact.status == "succeeded":
+            return artifact
+
+        self.artifact_service.mark_processing(db, artifact)
+        try:
+            detection = HandDetectionResult(landmarks=[], fingertip_rois=[])
+            segmentation = self.segmentation_service.segment(image_path)
+            if not segmentation.roi_boxes:
+                raise NailSegmentationNoNailsError("没有检测到清晰的指甲，请重新上传一张手部照片")
+            return self.artifact_service.mark_succeeded_from_local(
+                db,
+                artifact,
+                image_path,
+                detection,
+                segmentation,
+                create_cutout=True,
+            )
+        except Exception as exc:
+            self.artifact_service.mark_failed(db, artifact, str(exc))
+            return artifact
 
     def delete_for_user(self, db: Session, user: User, hand_photo_id: str) -> None:
         hand_photo = self.get_for_user(db, user, hand_photo_id)

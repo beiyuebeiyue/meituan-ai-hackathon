@@ -15,6 +15,10 @@ class SegmentationResult:
     confidence: float
 
 
+class NailSegmentationNoNailsError(RuntimeError):
+    pass
+
+
 class NailSegmentationProvider:
     def segment(self, image_path: Path, detection: HandDetectionResult) -> SegmentationResult:
         image = Image.open(image_path).convert("RGBA")

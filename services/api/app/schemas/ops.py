@@ -193,12 +193,35 @@ class OpsChatResponse(BaseModel):
     model: str
 
 
+class OpsOpenSkillScheduledTaskRead(BaseModel):
+    id: str
+    name: str
+    skill_name: str
+    description: str
+    schedule_label: str
+    cron: str
+    timezone: str
+    enabled: bool
+    status: str
+    next_run_at: datetime | None = None
+    last_run_at: datetime | None = None
+    last_status: str | None = None
+    last_message: str = ""
+    log_path: str = ""
+
+
+class OpsOpenSkillScheduledTaskListResponse(BaseModel):
+    items: list[OpsOpenSkillScheduledTaskRead]
+
+
 class OpsUserListItem(BaseModel):
     id: str
     uid: int
     username: str
     phone: str | None = None
     avatar_url: str | None = None
+    latest_hand_image_url: str | None = None
+    latest_tryon_result_image_url: str | None = None
     last_login_ip_location: str | None = None
     role: str
     created_at: datetime

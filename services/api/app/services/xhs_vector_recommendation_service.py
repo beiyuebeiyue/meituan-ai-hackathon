@@ -86,15 +86,17 @@ class XhsVectorRecommendationService:
     ) -> list[AIHotXhsRecommendationItem]:
         settings = get_settings()
         root = settings.xhs_crawler_assets_path
-        bundle = _load_embedding_bundle(str(root), _assets_mtime(root))
         requested_colors = _requested_colors(query, filters)
+        if requested_colors and _is_color_only_query(query):
+            bundle = _load_feature_bundle(str(root), _feature_assets_mtime(root))
+            allowed_note_ids = _color_filtered_note_ids(bundle, requested_colors, allowed_note_ids)
+            return _recommend_by_features(bundle, query, limit, hand_features, allowed_note_ids, requested_colors)
+
+        bundle = _load_embedding_bundle(str(root), _assets_mtime(root))
         allowed_note_ids = _color_filtered_note_ids(bundle, requested_colors, allowed_note_ids)
         dimension = int(bundle.manifest.get("dimension") or 0)
         if dimension <= 0:
             raise XhsVectorRecommendationError("embedding manifest missing dimension")
-
-        if requested_colors and _is_color_only_query(query):
-            return _recommend_by_features(bundle, query, limit, hand_features, allowed_note_ids, requested_colors)
 
         vector = self._embed_text(query.strip() or "美甲款式推荐", dimension)
         search_k = min(int(bundle.index.ntotal), max(settings.xhs_embedding_search_top_k, limit * 20))
@@ -193,6 +195,15 @@ def _assets_mtime(root: Path) -> int:
     return max((path.stat().st_mtime_ns for path in paths if path.exists()), default=0)
 
 
+def _feature_assets_mtime(root: Path) -> int:
+    paths = [
+        root / "xhs_image_features.json",
+        root / "xhs_note_registry.json",
+        *root.glob("[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]/xhs_note_digest.json"),
+    ]
+    return max((path.stat().st_mtime_ns for path in paths if path.exists()), default=0)
+
+
 @lru_cache(maxsize=4)
 def _load_embedding_bundle(root_value: str, mtime_ns: int) -> _EmbeddingBundle:
     del mtime_ns
@@ -225,6 +236,20 @@ def _load_embedding_bundle(root_value: str, mtime_ns: int) -> _EmbeddingBundle:
         index=index,
         metadata_by_row=metadata_by_row,
         manifest=manifest,
+        root=root,
+        digest_index=_build_digest_index(root),
+        features_by_note_id=_load_feature_index(root),
+    )
+
+
+@lru_cache(maxsize=4)
+def _load_feature_bundle(root_value: str, mtime_ns: int) -> _EmbeddingBundle:
+    del mtime_ns
+    root = Path(root_value)
+    return _EmbeddingBundle(
+        index=None,
+        metadata_by_row={},
+        manifest={},
         root=root,
         digest_index=_build_digest_index(root),
         features_by_note_id=_load_feature_index(root),
@@ -292,7 +317,30 @@ def _is_color_only_query(query: str) -> bool:
     for aliases in BASIC_COLOR_ALIASES.values():
         for alias in sorted(aliases, key=len, reverse=True):
             text = text.replace(alias, "")
-    for token in ("给我", "帮我", "推荐", "找", "几款", "一些", "看看", "有没有", "美甲", "款式", "的", "一下", "下"):
+    for token in (
+        "给我",
+        "帮我",
+        "推荐",
+        "找",
+        "几款",
+        "一些",
+        "看看",
+        "有没有",
+        "美甲",
+        "款式",
+        "的",
+        "一下",
+        "下",
+        "温柔",
+        "显白",
+        "日常",
+        "通勤",
+        "约会",
+        "短甲",
+        "长甲",
+        "低调",
+        "高级",
+    ):
         text = text.replace(token, "")
     return not text.strip()
 
@@ -307,14 +355,22 @@ def _recommend_by_features(
 ) -> list[AIHotXhsRecommendationItem]:
     ranked: list[dict[str, Any]] = []
     hot_intent = _has_hot_intent(query)
-    for metadata in bundle.metadata_by_row.values():
-        note_id = str(metadata.get("note_id") or "").strip()
+    feature_items = bundle.features_by_note_id.items()
+    if not bundle.features_by_note_id:
+        feature_items = (
+            (
+                str(metadata.get("note_id") or "").strip(),
+                _features(metadata),
+            )
+            for metadata in bundle.metadata_by_row.values()
+        )
+
+    for note_id, features in feature_items:
         if not note_id or (allowed_note_ids is not None and note_id not in allowed_note_ids):
             continue
         note = bundle.digest_index.get(note_id)
         if not note or _is_foot_nail_note(note):
             continue
-        features = bundle.features_by_note_id.get(note_id) or _features(metadata)
         nail_features = _nail_features(features)
         if not _nail_matches_colors(nail_features, requested_colors):
             continue
@@ -461,8 +517,6 @@ def _reason(
         parts.append(f"适合“{query.strip() or '美甲推荐'}”这个需求")
     if hand_features:
         parts.append("已匹配你的肤色倾向和手指形态")
-    if hot_intent:
-        parts.append(f"热度参考赞{liked_count}、藏{collected_count}、转{share_count}")
     return "；".join(parts)
 
 

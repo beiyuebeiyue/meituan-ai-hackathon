@@ -32,7 +32,7 @@ export function TryOnResultScreen() {
     queryFn: () => api.getTryOnJob(route.params.jobId),
     refetchInterval: (queryState) => {
       const data = queryState.state.data;
-      return data?.status === "succeeded" || data?.status === "failed"
+      return data?.status === "succeeded" || data?.status === "failed" || data?.status === "awaiting_confirmation"
         ? false
         : 2000;
     },
@@ -90,7 +90,57 @@ export function TryOnResultScreen() {
       style={[styles.container, { backgroundColor: colors.surfaceAlt }]}
     >
       <View style={styles.content}>
-        {query.data?.status === "succeeded" && query.data.result_image_url ? (
+        {query.data?.status === "awaiting_confirmation" ? (
+          <>
+            <View style={[styles.reviewCard, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.reviewTitle, { color: colors.text }]}>
+                已完成手图分析
+              </Text>
+              <Text style={[styles.reviewText, { color: colors.subtext }]}>
+                指甲区域 mask 已经生成。测试阶段先停在这里，不会发送到 EvoLink，也不会产生模型费用。
+              </Text>
+              <View style={styles.previewRow}>
+                {query.data.source_hand_image_url ? (
+                  <View style={styles.previewItem}>
+                    <Image
+                      source={{ uri: resolveAssetUrl(query.data.source_hand_image_url) }}
+                      style={[styles.previewImage, { backgroundColor: colors.accentSoft }]}
+                    />
+                    <Text style={[styles.previewLabel, { color: colors.subtext }]}>
+                      原始手图
+                    </Text>
+                  </View>
+                ) : null}
+                {query.data.mask_url ? (
+                  <View style={styles.previewItem}>
+                    <Image
+                      source={{ uri: resolveAssetUrl(query.data.mask_url) }}
+                      style={[styles.previewImage, { backgroundColor: colors.accentSoft }]}
+                    />
+                    <Text style={[styles.previewLabel, { color: colors.subtext }]}>
+                      指甲 mask
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <View style={styles.checkList}>
+                <Text style={[styles.checkItem, { color: colors.text }]}>手图已保存</Text>
+                <Text style={[styles.checkItem, { color: colors.text }]}>YOLO 指甲分割完成</Text>
+                <Text style={[styles.checkItem, { color: colors.text }]}>EvoLink 生成请求已拦截</Text>
+              </View>
+            </View>
+            <PrimaryButton
+              label="暂不发送，返回继续挑选"
+              onPress={() => dismissOverlay?.() ?? navigation.goBack()}
+            />
+            <PrimaryButton
+              label="发送生成（测试阶段关闭）"
+              onPress={() => undefined}
+              disabled
+              variant="ghost"
+            />
+          </>
+        ) : query.data?.status === "succeeded" && query.data.result_image_url ? (
           <>
             <Image
               source={{ uri: resolveAssetUrl(query.data.result_image_url) }}
@@ -169,5 +219,43 @@ const styles = StyleSheet.create({
     borderRadius: 26,
   },
   loadingText: {},
+  reviewCard: {
+    borderRadius: 26,
+    padding: 18,
+    gap: 14,
+  },
+  reviewTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  reviewText: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  previewRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  previewItem: {
+    flex: 1,
+    gap: 7,
+  },
+  previewImage: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 18,
+  },
+  previewLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  checkList: {
+    gap: 8,
+  },
+  checkItem: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
   error: { color: "#111111", lineHeight: 22 },
 });

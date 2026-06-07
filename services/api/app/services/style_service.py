@@ -4,8 +4,8 @@ from pathlib import Path
 import re
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
 from app.models.nail_style import NailStyle
@@ -44,11 +44,9 @@ class StyleService:
             NailStyle.popularity_score.desc(),
             NailStyle.created_at.desc(),
         )
-        matched = self.filter_visible_styles(db, list(db.scalars(statement)), viewer, include_xhs_posts=include_xhs_posts)
-        total = len(matched)
-        offset = (page - 1) * page_size
-        items = matched[offset : offset + page_size]
-        return items, total
+        if viewer is None:
+            return self._page_statement(db, statement, page, page_size, include_xhs_posts)
+        return self._page_filtered_statement(db, statement, page, page_size, viewer, include_xhs_posts)
 
     def list_latest(
         self,
@@ -60,11 +58,9 @@ class StyleService:
     ) -> tuple[list[NailStyle], int]:
         self.ensure_xhs_styles(db, include_xhs_posts)
         statement = self._visible_list_statement(include_xhs_posts).order_by(NailStyle.created_at.desc())
-        matched = self.filter_visible_styles(db, list(db.scalars(statement)), viewer, include_xhs_posts=include_xhs_posts)
-        total = len(matched)
-        offset = (page - 1) * page_size
-        items = matched[offset : offset + page_size]
-        return items, total
+        if viewer is None:
+            return self._page_statement(db, statement, page, page_size, include_xhs_posts)
+        return self._page_filtered_statement(db, statement, page, page_size, viewer, include_xhs_posts)
 
     def list_following(
         self,
@@ -130,17 +126,68 @@ class StyleService:
             .where(NailStyle.shop_id == shop_id)
             .order_by(NailStyle.is_trending.desc(), NailStyle.popularity_score.desc(), NailStyle.created_at.desc())
         )
-        matched = self.filter_visible_styles(db, list(db.scalars(statement)), viewer, include_xhs_posts=include_xhs_posts)
-        total = len(matched)
-        offset = (page - 1) * page_size
-        items = matched[offset : offset + page_size]
-        return items, total
+        if viewer is None:
+            return self._page_statement(db, statement, page, page_size, include_xhs_posts, shop_id=shop_id)
+        return self._page_filtered_statement(db, statement, page, page_size, viewer, include_xhs_posts, shop_id=shop_id)
 
     def _visible_list_statement(self, include_xhs_posts: bool):
-        statement = select(NailStyle)
+        statement = select(NailStyle).options(
+            selectinload(NailStyle.shop).selectinload(MerchantShop.merchant),
+        )
         if not include_xhs_posts:
             statement = statement.where(NailStyle.source_type != "xhs_note")
         return statement
+
+    def _page_statement(
+        self,
+        db: Session,
+        statement,
+        page: int,
+        page_size: int,
+        include_xhs_posts: bool,
+        shop_id: str | None = None,
+    ) -> tuple[list[NailStyle], int]:
+        total = self._count_styles(db, include_xhs_posts, shop_id=shop_id)
+        offset = (page - 1) * page_size
+        items = list(db.scalars(statement.offset(offset).limit(page_size)))
+        return items, total
+
+    def _page_filtered_statement(
+        self,
+        db: Session,
+        statement,
+        page: int,
+        page_size: int,
+        viewer: User,
+        include_xhs_posts: bool,
+        shop_id: str | None = None,
+    ) -> tuple[list[NailStyle], int]:
+        total = self._count_styles(db, include_xhs_posts, shop_id=shop_id)
+        offset = (page - 1) * page_size
+        batch_size = max(page_size * 3, 30)
+        cursor = offset
+        items: list[NailStyle] = []
+        for _ in range(4):
+            candidates = list(db.scalars(statement.offset(cursor).limit(batch_size)))
+            if not candidates:
+                break
+            items.extend(
+                style
+                for style in candidates
+                if self.is_style_visible(db, style, viewer, include_xhs_posts=include_xhs_posts)
+            )
+            if len(items) >= page_size:
+                break
+            cursor += len(candidates)
+        return items[:page_size], total
+
+    def _count_styles(self, db: Session, include_xhs_posts: bool, shop_id: str | None = None) -> int:
+        count_statement = select(func.count()).select_from(NailStyle)
+        if not include_xhs_posts:
+            count_statement = count_statement.where(NailStyle.source_type != "xhs_note")
+        if shop_id is not None:
+            count_statement = count_statement.where(NailStyle.shop_id == shop_id)
+        return int(db.scalar(count_statement) or 0)
 
     def search_styles(
         self,
@@ -157,54 +204,45 @@ class StyleService:
         if not tokens:
             return self.list_latest(db, page, page_size, viewer=viewer, include_xhs_posts=include_xhs_posts)
 
-        ordered_styles = self.filter_visible_styles(
-            db,
-            list(
-                db.scalars(
-                    select(NailStyle).order_by(
-                        NailStyle.is_trending.desc(),
-                        NailStyle.popularity_score.desc(),
-                        NailStyle.created_at.desc(),
-                    )
-                )
-            ),
-            viewer,
-            include_xhs_posts=include_xhs_posts,
+        token_conditions = [_search_token_condition(token) for token in tokens]
+        statement = (
+            self._visible_list_statement(include_xhs_posts)
+            .where(*token_conditions)
+            .order_by(
+                NailStyle.is_trending.desc(),
+                NailStyle.popularity_score.desc(),
+                NailStyle.created_at.desc(),
+            )
         )
-
-        scored: list[tuple[float, NailStyle]] = []
-        for style in ordered_styles:
-            title = (style.title or "").lower()
-            description = (style.description or "").lower()
-            tags = [str(tag).lower() for tag in (style.tags_json or [])]
-
-            token_score = 0.0
-            matched_all = True
-            for token in tokens:
-                token_matched = False
-                if token in title:
-                    token_score += 5.0
-                    token_matched = True
-                if token in description:
-                    token_score += 3.0
-                    token_matched = True
-                if any(token in tag for tag in tags):
-                    token_score += 4.0
-                    token_matched = True
-                if any(tag == token for tag in tags):
-                    token_score += 1.0
-                if not token_matched:
-                    matched_all = False
-                    break
-
-            if matched_all:
-                scored.append((token_score + style.popularity_score * 0.01, style))
-
-        scored.sort(key=lambda item: (item[0], item[1].is_trending, item[1].popularity_score, item[1].created_at), reverse=True)
-        total = len(scored)
+        total = self._count_search_styles(db, include_xhs_posts, token_conditions)
         offset = (page - 1) * page_size
-        items = [style for _, style in scored[offset : offset + page_size]]
+        if viewer is None:
+            items = list(db.scalars(statement.offset(offset).limit(page_size)))
+            return items, total
+
+        items: list[NailStyle] = []
+        batch_size = max(page_size * 3, 30)
+        cursor = offset
+        for _ in range(4):
+            candidates = list(db.scalars(statement.offset(cursor).limit(batch_size)))
+            if not candidates:
+                break
+            items.extend(
+                style
+                for style in candidates
+                if self.is_style_visible(db, style, viewer, include_xhs_posts=include_xhs_posts)
+            )
+            if len(items) >= page_size:
+                break
+            cursor += len(candidates)
+        items = items[:page_size]
         return items, total
+
+    def _count_search_styles(self, db: Session, include_xhs_posts: bool, token_conditions: list) -> int:
+        count_statement = select(func.count()).select_from(NailStyle).where(*token_conditions)
+        if not include_xhs_posts:
+            count_statement = count_statement.where(NailStyle.source_type != "xhs_note")
+        return int(db.scalar(count_statement) or 0)
 
     def get_style(self, db: Session, style_id: str, viewer: User | None = None) -> NailStyle:
         style = db.get(NailStyle, style_id)
@@ -230,6 +268,25 @@ class StyleService:
 
     def get_comment_count(self, db: Session, style_id: str) -> int:
         return db.scalar(select(func.count()).select_from(StyleComment).where(StyleComment.nail_style_id == style_id)) or 0
+
+    def get_like_counts_map(self, db: Session, style_ids: list[str]) -> dict[str, int]:
+        return self._count_map(db, UserStyleLike.nail_style_id, style_ids)
+
+    def get_favorite_counts_map(self, db: Session, style_ids: list[str]) -> dict[str, int]:
+        return self._count_map(db, UserFavorite.nail_style_id, style_ids)
+
+    def get_comment_counts_map(self, db: Session, style_ids: list[str]) -> dict[str, int]:
+        return self._count_map(db, StyleComment.nail_style_id, style_ids)
+
+    def _count_map(self, db: Session, column, style_ids: list[str]) -> dict[str, int]:
+        if not style_ids:
+            return {}
+        rows = db.execute(
+            select(column, func.count().label("count"))
+            .where(column.in_(style_ids))
+            .group_by(column)
+        ).all()
+        return {str(row[0]): int(row[1] or 0) for row in rows}
 
     def record_view(self, db: Session, style: NailStyle, viewer: User) -> bool:
         db.add(UserStyleView(user_id=viewer.id, nail_style_id=style.id))
@@ -277,6 +334,37 @@ class StyleService:
             return style.shop.merchant
         settings = get_settings()
         return db.scalar(select(User).where(User.phone == settings.default_admin_phone))
+
+    def resolve_style_author_users(self, db: Session, styles: list[NailStyle]) -> dict[str, User | None]:
+        if not styles:
+            return {}
+
+        author_ids = {
+            author_id
+            for style in styles
+            if isinstance(style.style_metadata_json, dict)
+            and isinstance((author_id := style.style_metadata_json.get("author_user_id")), str)
+        }
+        users_by_id = {
+            user.id: user
+            for user in db.scalars(select(User).where(User.id.in_(author_ids)))
+        } if author_ids else {}
+
+        fallback_author: User | None = None
+        authors: dict[str, User | None] = {}
+        for style in styles:
+            author_id = style.style_metadata_json.get("author_user_id") if isinstance(style.style_metadata_json, dict) else None
+            if isinstance(author_id, str) and author_id in users_by_id:
+                authors[style.id] = users_by_id[author_id]
+                continue
+            if style.shop is not None and style.shop.merchant is not None:
+                authors[style.id] = style.shop.merchant
+                continue
+            if fallback_author is None:
+                settings = get_settings()
+                fallback_author = db.scalar(select(User).where(User.phone == settings.default_admin_phone))
+            authors[style.id] = fallback_author
+        return authors
 
     def resolve_style_author(self, db: Session, style: NailStyle) -> tuple[str, str | None]:
         author = self.resolve_style_author_user(db, style)
@@ -343,8 +431,7 @@ class StyleService:
     ) -> bool:
         if not include_xhs_posts and style.source_type == "xhs_note":
             return False
-        author = self.resolve_style_author_user(db, style)
-        if viewer is not None and author is not None:
+        if viewer is not None and (author := self.resolve_style_author_user(db, style)) is not None:
             if self.block_service.has_blocked(db, author.id, viewer.id):
                 return False
             if self.block_service.has_blocked(db, viewer.id, author.id):
@@ -413,3 +500,13 @@ class StyleService:
 
     def style_image_path(self, style: NailStyle) -> Path:
         return Path(style.local_image_path)
+
+
+def _search_token_condition(token: str):
+    pattern = f"%{token}%"
+    tags_text = cast(NailStyle.tags_json, String)
+    return or_(
+        NailStyle.title.ilike(pattern),
+        NailStyle.description.ilike(pattern),
+        tags_text.ilike(pattern),
+    )

@@ -48,13 +48,20 @@ def create_app() -> FastAPI:
 
         with database.session() as session:
             admin_user = AuthService().ensure_default_admin(session)
+            seed_service = SeedService()
             if settings.enable_packaged_seed_styles:
-                SeedService().ensure_packaged_seed_styles(session, author_user_id=admin_user.id if admin_user else None)
+                seed_service.ensure_packaged_seed_styles(session, author_user_id=admin_user.id if admin_user else None)
+            seed_service.normalize_demo_nail_types(session)
             MerchantShopService().ensure_default_admin_shop(session, admin_user)
         from app.tasks.trend_tasks import start_weekly_trend_campaign_scheduler
 
         start_weekly_trend_campaign_scheduler()
 
+    app.mount(
+        f"{settings.public_files_prefix}/seed",
+        StaticFiles(directory=str(settings.packaged_seed_path), check_dir=False),
+        name="seed-files",
+    )
     app.mount(
         settings.public_files_prefix,
         StaticFiles(directory=str(settings.base_dir / "data")),
@@ -69,6 +76,11 @@ def create_app() -> FastAPI:
         "/xhs-daily-report-assets",
         StaticFiles(directory=str(settings.xhs_daily_report_assets_path), check_dir=False),
         name="xhs-daily-report-assets",
+    )
+    app.mount(
+        "/demo-assets",
+        StaticFiles(directory=str(Path(__file__).resolve().parent / "static" / "demo"), check_dir=False),
+        name="demo-assets",
     )
 
     @app.get("/xhs-weekly-nail-report.html")
@@ -97,10 +109,11 @@ def create_app() -> FastAPI:
     @app.websocket("/openclaw-gateway/{full_path:path}")
     async def proxy_openclaw_gateway_websocket(websocket: WebSocket, full_path: str = "") -> None:
         target_url = _openclaw_target_url(settings.openclaw_base_url, full_path, websocket.url.query, websocket=True)
+        target_origin = websocket.headers.get("origin") or _openclaw_origin(settings.openclaw_base_url)
         headers = _proxy_headers(websocket.headers, exclude=WEBSOCKET_HANDSHAKE_HEADERS)
         await websocket.accept()
         try:
-            async with websockets.connect(target_url, additional_headers=headers, open_timeout=10) as upstream:
+            async with websockets.connect(target_url, additional_headers=headers, origin=target_origin, open_timeout=10) as upstream:
                 browser_to_upstream = asyncio.create_task(_websocket_browser_to_upstream(websocket, upstream))
                 upstream_to_browser = asyncio.create_task(_websocket_upstream_to_browser(websocket, upstream))
                 done, pending = await asyncio.wait(
@@ -136,7 +149,11 @@ def create_app() -> FastAPI:
             for key, value in upstream.headers.items()
             if key.lower() not in {"connection", "content-encoding", "content-length", "transfer-encoding"}
         }
-        return Response(content=upstream.content, status_code=upstream.status_code, headers=response_headers)
+        content = upstream.content
+        if _is_openclaw_control_html(response_headers):
+            content = _inject_openclaw_gateway_bootstrap(content)
+            response_headers = _relax_openclaw_control_csp(response_headers)
+        return Response(content=content, status_code=upstream.status_code, headers=response_headers)
 
     from app.routers import (
         admin,
@@ -237,6 +254,11 @@ def _openclaw_target_url(base_url: str, full_path: str, query: str = "", websock
     return urlunsplit((scheme, parsed.netloc, f"/{path}" if path else "/", query, ""))
 
 
+def _openclaw_origin(base_url: str) -> str:
+    parsed = urlsplit(base_url.rstrip("/"))
+    return urlunsplit((parsed.scheme, parsed.netloc, "", "", ""))
+
+
 WEBSOCKET_HANDSHAKE_HEADERS = {
     "content-length",
     "origin",
@@ -253,6 +275,103 @@ def _proxy_headers(headers, exclude: set[str] | None = None) -> dict[str, str]:
     if exclude:
         ignored.update(exclude)
     return {key: value for key, value in headers.items() if key.lower() not in ignored}
+
+
+def _is_openclaw_control_html(headers: dict[str, str]) -> bool:
+    return any(key.lower() == "content-type" and "text/html" in value.lower() for key, value in headers.items())
+
+
+def _relax_openclaw_control_csp(headers: dict[str, str]) -> dict[str, str]:
+    next_headers = dict(headers)
+    for key, value in list(next_headers.items()):
+        if key.lower() != "content-security-policy":
+            continue
+        directives = [part.strip() for part in value.split(";") if part.strip()]
+        next_directives = [
+            "script-src 'self' 'unsafe-inline'" if directive.startswith("script-src ") else directive
+            for directive in directives
+        ]
+        next_headers[key] = "; ".join(next_directives)
+        return next_headers
+    return next_headers
+
+
+def _inject_openclaw_gateway_bootstrap(content: bytes) -> bytes:
+    try:
+        html = content.decode("utf-8")
+    except UnicodeDecodeError:
+        return content
+
+    marker = "</head>"
+    if marker not in html or "openclaw-gateway-bootstrap" in html:
+        return content
+
+    base_path = "/openclaw-gateway"
+    script = f"""
+    <script id="openclaw-gateway-bootstrap">
+      (function () {{
+        var basePath = {base_path!r};
+        window.__OPENCLAW_CONTROL_UI_BASE_PATH__ = basePath;
+        try {{
+          var gatewayUrl = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + basePath;
+          var settingsPrefix = "openclaw.control.settings.v1";
+          var storageKey = settingsPrefix + ":" + gatewayUrl;
+          var defaultSettings = {{
+            gatewayUrl: gatewayUrl,
+            sessionKey: "main",
+            lastActiveSessionKey: "main",
+            theme: "claw",
+            themeMode: "system",
+            chatFocusMode: false,
+            chatShowThinking: true,
+            chatShowToolCalls: true,
+            splitRatio: 0.6,
+            navCollapsed: false,
+            navWidth: 220,
+            navGroupsCollapsed: {{}},
+            borderRadius: 50,
+            sessionsByGateway: {{}}
+          }};
+          defaultSettings.sessionsByGateway[gatewayUrl] = {{
+            sessionKey: "main",
+            lastActiveSessionKey: "main"
+          }};
+          var keys = Object.keys(localStorage).filter(function (key) {{
+            return key === settingsPrefix || key.indexOf(settingsPrefix + ":") === 0;
+          }});
+          if (keys.length === 0) {{
+            localStorage.setItem(storageKey, JSON.stringify(defaultSettings));
+            localStorage.setItem(settingsPrefix, JSON.stringify(defaultSettings));
+            return;
+          }}
+          keys.forEach(function (key) {{
+            var raw = localStorage.getItem(key);
+            if (!raw) return;
+            var value = JSON.parse(raw);
+            if (!value || typeof value !== "object") return;
+            var current = typeof value.gatewayUrl === "string" ? value.gatewayUrl : "";
+            var shouldPatch = !current ||
+              /localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0|host\\.docker\\.internal|100\\.x\\.y\\.z/i.test(current) ||
+              current.indexOf(location.host) === -1 ||
+              current.indexOf(basePath) === -1;
+            if (!shouldPatch) return;
+            value.gatewayUrl = gatewayUrl;
+            value.sessionKey = value.sessionKey || "main";
+            value.lastActiveSessionKey = value.lastActiveSessionKey || value.sessionKey || "main";
+            value.sessionsByGateway = value.sessionsByGateway || {{}};
+            value.sessionsByGateway[gatewayUrl] = {{
+              sessionKey: value.sessionKey,
+              lastActiveSessionKey: value.lastActiveSessionKey
+            }};
+            localStorage.setItem(key, JSON.stringify(value));
+            localStorage.setItem(storageKey, JSON.stringify(value));
+            localStorage.setItem(settingsPrefix, JSON.stringify(value));
+          }});
+        }} catch (error) {{}}
+      }})();
+    </script>
+    """
+    return html.replace(marker, f"{script}\n{marker}", 1).encode("utf-8")
 
 
 async def _websocket_browser_to_upstream(websocket: WebSocket, upstream) -> None:

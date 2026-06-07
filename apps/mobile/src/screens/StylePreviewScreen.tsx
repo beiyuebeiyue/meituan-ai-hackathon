@@ -33,7 +33,8 @@ import { useTryOnLauncher } from "../hooks/useTryOnLauncher";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useAuthStore } from "../store/useAuthStore";
 import { StyleDetail } from "../types/api";
-import { getNailTypeLabel } from "../utils/nailType";
+import { isMockDiscoverStyleId } from "../data/mockDiscoverStyles";
+import { getNailTypeLabel, getNailTypeTone } from "../utils/nailType";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 type ScreenRoute = RouteProp<RootStackParamList, "StylePreview">;
@@ -256,6 +257,7 @@ export function StylePreviewScreen() {
 
   useEffect(() => {
     if (!token) return;
+    if (isMockDiscoverStyleId(route.params.styleId)) return;
     if (recordedViewStyleIdRef.current === route.params.styleId) return;
     recordedViewStyleIdRef.current = route.params.styleId;
     void api.recordBrowseHistory(route.params.styleId).then(() => {
@@ -530,6 +532,7 @@ export function StylePreviewScreen() {
       query.data.manage_post_id,
     );
     const descriptionText = query.data.description.trim();
+    const nailTypeTone = getNailTypeTone(query.data.nail_type, isDark);
 
     return (
       <SafeAreaView
@@ -684,11 +687,14 @@ export function StylePreviewScreen() {
                 <View
                   style={[
                     styles.nailTypePill,
-                    { backgroundColor: lightCardBackground },
+                    {
+                      backgroundColor: nailTypeTone.backgroundColor,
+                      borderColor: nailTypeTone.borderColor,
+                    },
                   ]}
                 >
                   <Text
-                    style={[styles.nailTypeText, { color: colors.subtext }]}
+                    style={[styles.nailTypeText, { color: nailTypeTone.textColor }]}
                   >
                     {getNailTypeLabel(query.data.nail_type)}
                   </Text>
@@ -1394,6 +1400,7 @@ const styles = StyleSheet.create({
   },
   nailTypePill: {
     borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },

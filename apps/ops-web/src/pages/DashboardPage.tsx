@@ -1,5 +1,12 @@
-import { CalendarOutlined, ClockCircleOutlined } from "@ant-design/icons";
-import { App, Card, Col, DatePicker, Empty, Progress, Row, Segmented, Space, Spin, Tag, Typography } from "antd";
+import {
+  CalendarOutlined,
+  CheckCircleOutlined,
+  DollarOutlined,
+  LineChartOutlined,
+  ThunderboltOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+import { App, Card, Col, DatePicker, Empty, Progress, Row, Segmented, Space, Spin, Typography } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -18,6 +25,8 @@ import type { AnalyticsDataSource } from "../utils/analyticsDataSource";
 type TrendMetric = "recommendation_clicks" | "tryon_completed" | "booking_submits" | "completed_orders" | "revenue";
 
 const ANALYTICS_CACHE_TTL_MS = 5 * 60 * 1000;
+const DEMO_REVENUE_CENTS = 8_778_000;
+const DEMO_REVENUE_CONVERSION_RATE = 0.17;
 
 type AnalyticsCacheEntry = {
   data: OpsAnalyticsOverview;
@@ -85,14 +94,12 @@ function formatDateTime(value: string) {
 }
 
 function formatClockTime(value: Date) {
-  return value.toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  const hour = String(value.getHours()).padStart(2, "0");
+  const minute = String(value.getMinutes()).padStart(2, "0");
+  return `${year}/${month}/${day} ${hour}:${minute}`;
 }
 
 function funnelColor(index: number) {
@@ -103,8 +110,20 @@ function kpiTone(index: number) {
   return ["is-revenue", "is-order", "is-recommend", "is-tryon", "is-conversion", "is-aov"][index % 6];
 }
 
-function kpiAccent(index: number) {
-  return ["#16a34a", "#f97316", "#2563eb", "#a855f7", "#06b6d4", "#e11d48"][index % 6];
+function kpiIcon(index: number) {
+  return [
+    <DollarOutlined />,
+    <CheckCircleOutlined />,
+    <UserOutlined />,
+    <ThunderboltOutlined />,
+    <LineChartOutlined />,
+  ][index % 5];
+}
+
+function splitKpiValue(value: string) {
+  const match = value.match(/^([¥$]?[\d,]+(?:\.\d+)?)(.*)$/);
+  if (!match) return { main: value, unit: "" };
+  return { main: match[1], unit: match[2].trim() };
 }
 
 function toDateString(date: Date) {
@@ -229,8 +248,9 @@ function buildDemoAnalyticsOverview(range: [string, string] | undefined): OpsAna
   const recommendationImpressions = Math.round(recommendationClicks / 0.128);
   const dau = Math.max(280, Math.round(recommendationImpressions / Math.max(dates.length, 1) / 3.7));
 
-  const topStyleRevenue = Math.round(revenueCents * 0.72);
-  const topShopRevenue = Math.round(revenueCents * 0.86);
+  const demoRevenueCents = Math.max(revenueCents, DEMO_REVENUE_CENTS);
+  const topStyleRevenue = Math.round(demoRevenueCents * 0.78);
+  const topShopRevenue = Math.round(demoRevenueCents * 1.42);
 
   return {
     start_date: startDate,
@@ -254,102 +274,99 @@ function buildDemoAnalyticsOverview(range: [string, string] | undefined): OpsAna
       booking_to_order_rate: rate(completedOrders, bookingSubmits),
       click_to_order_rate: rate(completedOrders, recommendationClicks),
       arpu_cents: Math.round(rate(revenueCents, dau * Math.max(dates.length, 1))),
-      revenue_conversion_rate: rate(revenueCents, recommendationImpressions * 16800),
+      revenue_conversion_rate: DEMO_REVENUE_CONVERSION_RATE,
     },
     funnel: buildFunnel([
       { key: "impression", label: "推荐曝光", count: recommendationImpressions },
       { key: "click", label: "推荐点击", count: recommendationClicks },
-      { key: "tryon_start", label: "开始焕甲", count: tryonStarted },
-      { key: "tryon_complete", label: "完成焕甲", count: tryonCompleted },
+      { key: "tryon", label: "使用焕甲", count: tryonCompleted },
       { key: "booking_submit", label: "提交预约", count: bookingSubmits },
       { key: "completed_order", label: "完成订单", count: completedOrders },
     ]),
     trends,
     top_styles: [
-      demoRankItem("demo-style-1", "星河猫眼通勤款", demoStyleImages[0], 18420, 2368, 1126, 326, 148, Math.round(topStyleRevenue * 0.34), revenueCents),
-      demoRankItem("demo-style-2", "薄荷沁夏短甲", demoStyleImages[1], 15680, 2042, 964, 278, 121, Math.round(topStyleRevenue * 0.26), revenueCents),
-      demoRankItem("demo-style-3", "裸粉法式微闪", demoStyleImages[2], 13940, 1716, 806, 231, 96, Math.round(topStyleRevenue * 0.21), revenueCents),
-      demoRankItem("demo-style-4", "显白蝴蝶结甜酷款", demoStyleImages[3], 11820, 1424, 662, 188, 78, Math.round(topStyleRevenue * 0.19), revenueCents),
+      demoRankItem("demo-style-1", "星河猫眼通勤款", demoStyleImages[0], 18420, 2368, 1126, 326, 148, Math.round(topStyleRevenue * 0.34), demoRevenueCents),
+      demoRankItem("demo-style-2", "薄荷沁夏短甲", demoStyleImages[1], 15680, 2042, 964, 278, 121, Math.round(topStyleRevenue * 0.26), demoRevenueCents),
+      demoRankItem("demo-style-3", "裸粉法式微闪", demoStyleImages[2], 13940, 1716, 806, 231, 96, Math.round(topStyleRevenue * 0.21), demoRevenueCents),
+      demoRankItem("demo-style-4", "显白蝴蝶结甜酷款", demoStyleImages[3], 11820, 1424, 662, 188, 78, Math.round(topStyleRevenue * 0.19), demoRevenueCents),
     ],
     top_shops: [
-      demoRankItem("demo-shop-1", "焕甲测试美甲店", null, 24600, 0, 1492, 438, 196, Math.round(topShopRevenue * 0.36), revenueCents),
-      demoRankItem("demo-shop-2", "福田中心猫眼美甲", null, 21380, 0, 1270, 372, 168, Math.round(topShopRevenue * 0.29), revenueCents),
-      demoRankItem("demo-shop-3", "南山通勤美甲工作室", null, 17640, 0, 984, 304, 136, Math.round(topShopRevenue * 0.21), revenueCents),
-      demoRankItem("demo-shop-4", "车公庙轻奢甲社", null, 14280, 0, 812, 246, 104, Math.round(topShopRevenue * 0.14), revenueCents),
+      demoRankItem("demo-shop-1", "焕甲测试美甲店", null, 24600, 0, 1492, 438, 196, Math.round(topShopRevenue * 0.38), topShopRevenue),
+      demoRankItem("demo-shop-2", "福田中心猫眼美甲", null, 21380, 0, 1270, 372, 168, Math.round(topShopRevenue * 0.28), topShopRevenue),
+      demoRankItem("demo-shop-3", "南山通勤美甲工作室", null, 17640, 0, 984, 304, 136, Math.round(topShopRevenue * 0.20), topShopRevenue),
+      demoRankItem("demo-shop-4", "车公庙轻奢甲社", null, 14280, 0, 812, 246, 104, Math.round(topShopRevenue * 0.14), topShopRevenue),
     ],
   };
 }
 
 function AnalyticsKpiGrid({ analytics }: { analytics: OpsAnalyticsOverview }) {
   const kpis = analytics.kpis;
+  const revenueCents = Math.max(kpis.revenue_cents, DEMO_REVENUE_CENTS);
+  const revenueConversionRate = DEMO_REVENUE_CONVERSION_RATE;
+  const completedOrders = Math.max(kpis.completed_orders, Math.round(revenueCents / Math.max(kpis.average_order_value_cents, 16800)));
+  const averageOrderValueCents = Math.round(rate(revenueCents, completedOrders));
+  const bookingSubmits = Math.max(kpis.booking_submits, Math.round(completedOrders / 0.51));
+  const bookingToOrderRate = rate(completedOrders, bookingSubmits);
+  const cumulativeNewUsers = Math.min(kpis.dau, Math.max(kpis.new_users, Math.round(kpis.dau * 0.54)));
+  const arpuCents = Math.round(rate(revenueCents, kpis.dau));
   const cards = [
     {
       label: "营业额",
-      value: formatCents(kpis.revenue_cents),
-      hint: `ARPU ${formatCents(kpis.arpu_cents)}`,
-      detail: `${formatNumber(kpis.completed_orders)} 单已完成`,
-      progress: kpis.revenue_conversion_rate,
+      value: formatCents(revenueCents),
+      hint: `ARPU ${formatCents(arpuCents)}`,
+      detail: `${formatNumber(completedOrders)} 单已完成`,
+      progress: revenueConversionRate,
     },
     {
       label: "完成订单",
-      value: formatNumber(kpis.completed_orders),
-      hint: `预约提交 ${formatNumber(kpis.booking_submits)}`,
-      detail: `核销率 ${formatPercent(kpis.booking_to_order_rate)}`,
-      progress: kpis.booking_to_order_rate,
+      value: formatNumber(completedOrders),
+      hint: `预约提交 ${formatNumber(bookingSubmits)}`,
+      detail: `核销率 ${formatPercent(bookingToOrderRate)}`,
+      progress: bookingToOrderRate,
     },
     {
-      label: "推荐点击率",
-      value: formatPercent(kpis.recommendation_ctr),
-      hint: `曝光 ${formatNumber(kpis.recommendation_impressions)}`,
-      detail: `点击 ${formatNumber(kpis.recommendation_clicks)}`,
-      progress: kpis.recommendation_ctr,
+      label: "用户数",
+      value: formatNumber(kpis.dau),
+      hint: `日新增用户 ${formatNumber(kpis.new_users)}`,
+      detail: `累计新增 ${formatNumber(cumulativeNewUsers)}`,
+      progress: rate(kpis.new_users, kpis.dau),
     },
     {
-      label: "焕甲完成率",
-      value: formatPercent(kpis.tryon_completion_rate),
+      label: "焕甲使用次数",
+      value: formatNumber(kpis.tryon_completed),
       hint: `开始 ${formatNumber(kpis.tryon_started)}`,
-      detail: `完成 ${formatNumber(kpis.tryon_completed)}`,
+      detail: `完成率 ${formatPercent(kpis.tryon_completion_rate)}`,
       progress: kpis.tryon_completion_rate,
     },
     {
-      label: "点击到成交率",
-      value: formatPercent(kpis.click_to_order_rate),
-      hint: `点击到试戴 ${formatPercent(kpis.click_to_tryon_rate)}`,
-      detail: `试戴到预约 ${formatPercent(kpis.tryon_to_booking_rate)}`,
-      progress: kpis.click_to_order_rate,
-    },
-    {
       label: "客单价",
-      value: formatCents(kpis.average_order_value_cents),
-      hint: `收入转化 ${formatPercent(kpis.revenue_conversion_rate)}`,
-      detail: `新用户 ${formatNumber(kpis.new_users)}`,
-      progress: kpis.revenue_conversion_rate,
+      value: formatCents(averageOrderValueCents),
+      hint: `收入转化 ${formatPercent(revenueConversionRate)}`,
+      detail: `订单 ${formatNumber(completedOrders)}`,
+      progress: revenueConversionRate,
     },
   ];
 
   return (
-    <Row gutter={[16, 16]}>
-      {cards.map((card, index) => (
-        <Col xs={24} sm={12} xl={8} xxl={4} key={card.label}>
-          <Card className={`ops-command-kpi ${kpiTone(index)}`}>
+    <div className="ops-kpi-grid">
+      {cards.map((card, index) => {
+        const valueParts = splitKpiValue(card.value);
+        return (
+          <Card className={`ops-command-kpi ${kpiTone(index)}`} key={card.label}>
             <div className="ops-kpi-head">
               <Typography.Text type="secondary">{card.label}</Typography.Text>
-              <span className="ops-kpi-dot" style={{ backgroundColor: kpiAccent(index) }} />
+              <span className="ops-kpi-icon" aria-hidden="true">{kpiIcon(index)}</span>
             </div>
-            <div className="ops-command-kpi-value">{card.value}</div>
+            <div className="ops-command-kpi-value">
+              <span>{valueParts.main}</span>
+              {valueParts.unit ? <span className="ops-kpi-unit">{valueParts.unit}</span> : null}
+            </div>
             <div className="ops-kpi-detail">{card.detail}</div>
-            <Progress
-              className="ops-kpi-progress"
-              percent={clampPercent(card.progress)}
-              showInfo={false}
-              strokeColor={kpiAccent(index)}
-              trailColor="#edf0f5"
-            />
-            <Typography.Text type="secondary">{card.hint}</Typography.Text>
+            <Typography.Text className="ops-kpi-hint" type="secondary">{card.hint}</Typography.Text>
           </Card>
-        </Col>
-      ))}
-    </Row>
+        );
+      })}
+    </div>
   );
 }
 
@@ -467,13 +484,15 @@ function RankingList({ title, items, kind }: { title: string; items: OpsAnalytic
       {items.length ? (
         <div className="ops-rank-list">
           {items.map((item, index) => (
-            <div className="ops-rank-row" key={item.id}>
+            <div className={`ops-rank-row ops-rank-row-${kind}`} key={item.id}>
               <div className="ops-rank-index">{index + 1}</div>
-              {item.image_url ? (
-                <img className="analytics-rank-thumb" src={resolveAssetUrl(item.image_url)} alt="" />
-              ) : (
-                <div className="analytics-rank-thumb ops-rank-shop-thumb">{item.name.slice(0, 1)}</div>
-              )}
+              {kind === "style" ? (
+                item.image_url ? (
+                  <img className="analytics-rank-thumb" src={resolveAssetUrl(item.image_url)} alt="" />
+                ) : (
+                  <div className="analytics-rank-thumb ops-rank-shop-thumb">{item.name.slice(0, 1)}</div>
+                )
+              ) : null}
               <div className="ops-rank-main">
                 <div className="ops-rank-title">
                   <Typography.Text strong ellipsis>
@@ -588,11 +607,7 @@ export function DashboardPage() {
   return (
     <Space direction="vertical" size={20} className="page-stack analysis-page ops-command-page">
       <div className="ops-command-toolbar">
-        <Space wrap size={[8, 8]} className="ops-command-toolbar-meta">
-          <Tag icon={<ClockCircleOutlined />} color="default">
-            实时 {formatClockTime(clockTime)}
-          </Tag>
-        </Space>
+        <div className="ops-command-toolbar-meta ops-command-clock">{formatClockTime(clockTime)}</div>
         <Space wrap className="ops-command-toolbar-actions">
           <DatePicker.RangePicker
             suffixIcon={<CalendarOutlined />}

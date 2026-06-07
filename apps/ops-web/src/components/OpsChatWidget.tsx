@@ -1,4 +1,4 @@
-import { CloseOutlined, MessageOutlined, PlusOutlined, SendOutlined } from "@ant-design/icons";
+import { CloseOutlined, PlusOutlined, SendOutlined } from "@ant-design/icons";
 import { App, Button, Card, Input, List, Popover, Space, Tooltip, Typography } from "antd";
 import Lottie from "lottie-react";
 import { useEffect, useRef, useState } from "react";
@@ -190,7 +190,7 @@ export function OpsChatWidget() {
   );
 
   return (
-    <div className="ops-chat">
+    <div className={`ops-chat ${open ? "is-open" : "is-closed"}`}>
       {open && (
         <Card
           className="ops-chat-panel"
@@ -242,11 +242,14 @@ export function OpsChatWidget() {
           </Popover>
         </Card>
       )}
-      {!open && (
-        <Button className="ops-chat-launcher" type="primary" icon={<MessageOutlined />} onClick={() => setOpen(true)}>
-          运营小嘉
-        </Button>
-      )}
+      <Button
+        className="ops-chat-launcher"
+        type="primary"
+        aria-label={open ? "关闭运营小嘉" : "打开运营小嘉"}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="ops-chat-launcher-glyph" aria-hidden="true" />
+      </Button>
     </div>
   );
 }

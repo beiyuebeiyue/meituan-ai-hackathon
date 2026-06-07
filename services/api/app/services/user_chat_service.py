@@ -23,6 +23,28 @@ from app.services.user_chat_tools import (
 from app.services.xhs_vector_recommendation_service import XhsVectorRecommendationService
 from app.utils.files import resolve_local_path
 
+RECOMMENDATION_INTENT_WORDS = (
+    "推荐",
+    "查找",
+    "找",
+    "看看",
+    "看一下",
+    "有没有",
+    "挑",
+    "适合",
+    "裸粉",
+    "猫眼",
+    "法式",
+    "显白",
+    "通勤",
+    "短甲",
+    "长甲",
+    "美甲",
+)
+HAND_MATCH_INTENT_WORDS = ("我的手", "适合我的手", "手型", "肤色", "手图", "按我的手", "我的肤色", "我的手型")
+RECOMMENDATION_ACTION_WORDS = ("推荐", "查找", "找", "看看", "看一下", "有没有", "挑", "适合")
+EXPLANATION_INTENT_WORDS = ("是什么", "什么意思", "怎么做", "区别", "解释")
+
 
 class UserChatService:
     def __init__(self) -> None:
@@ -44,6 +66,10 @@ class UserChatService:
             hand_features = self._hand_features(db, user, hand_image, saved_hand_photo_id)
         except HandFeatureError as exc:
             return AIChatResponse(reply=f"这张手图我暂时没法稳定判断：{exc}。可以换一张光线更自然、手指完整露出的照片。", model="hand-feature-extractor")
+
+        direct_tool_calls = _fallback_tool_calls_for_question(question)
+        if direct_tool_calls:
+            return self._longcat_markup_tool_reply("xhs-recommendation", question, hand_features, direct_tool_calls)
 
         if not settings.longcat_api_key:
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="小嘉大模型未配置")
@@ -75,11 +101,9 @@ class UserChatService:
         if parsed_tool_calls:
             return self._longcat_markup_tool_reply(settings.longcat_chat_model, question, hand_features, parsed_tool_calls)
         if _contains_longcat_tool_markup(raw_reply):
-            return AIChatResponse(
-                reply="我这次没有调用到可用的图库检索工具，所以先不展示推荐卡片。你可以再问一次，我会重新尝试检索。",
-                model=settings.longcat_chat_model,
-                recommendations=[],
-            )
+            fallback_tool_calls = _fallback_tool_calls_for_question(question)
+            if fallback_tool_calls:
+                return self._longcat_markup_tool_reply(settings.longcat_chat_model, question, hand_features, fallback_tool_calls)
         return AIChatResponse(reply=_strip_longcat_tool_markup(raw_reply), model=settings.longcat_chat_model, recommendations=[])
 
     def _longcat_markup_tool_reply(
@@ -260,6 +284,55 @@ def _parse_longcat_tool_call_markup(value: str) -> list[dict[str, Any]]:
             if name in {TEXT_TOOL_NAME, HAND_TOOL_NAME}:
                 calls.append({"name": name, "arguments": arguments})
     return calls
+
+
+def _fallback_tool_calls_for_question(question: str) -> list[dict[str, Any]]:
+    normalized = question.strip()
+    if not normalized or not _looks_like_recommendation_request(normalized):
+        return []
+    if _looks_like_explanation_request(normalized) and not _looks_like_recommendation_action(normalized):
+        return []
+    name = HAND_TOOL_NAME if _looks_like_hand_match_request(normalized) else TEXT_TOOL_NAME
+    arguments: dict[str, Any] = {"query": normalized, "limit": 5}
+    colors = _fallback_color_filters(normalized)
+    if colors:
+        arguments["filters"] = {"colors": colors}
+    return [{"name": name, "arguments": arguments}]
+
+
+def _looks_like_recommendation_request(question: str) -> bool:
+    return any(word in question for word in RECOMMENDATION_INTENT_WORDS)
+
+
+def _looks_like_recommendation_action(question: str) -> bool:
+    return any(word in question for word in RECOMMENDATION_ACTION_WORDS)
+
+
+def _looks_like_explanation_request(question: str) -> bool:
+    return any(word in question for word in EXPLANATION_INTENT_WORDS)
+
+
+def _looks_like_hand_match_request(question: str) -> bool:
+    return any(word in question for word in HAND_MATCH_INTENT_WORDS)
+
+
+def _fallback_color_filters(question: str) -> list[str]:
+    colors: list[str] = []
+    if any(word in question for word in ("裸粉", "粉色", "豆沙粉", "玫粉", "樱花粉")):
+        colors.extend(["粉色", "裸色"])
+    if any(word in question for word in ("裸色", "奶茶色", "豆沙", "肉桂色")):
+        colors.append("裸色")
+    if any(word in question for word in ("奶白", "白色", "米白", "乳白")):
+        colors.append("白色")
+    if any(word in question for word in ("绿色", "墨绿", "深绿", "橄榄绿", "牛油果绿")):
+        colors.append("绿色")
+    if any(word in question for word in ("红色", "酒红", "枣红", "玫红")):
+        colors.append("红色")
+    if any(word in question for word in ("蓝色", "雾霾蓝", "深蓝")):
+        colors.append("蓝色")
+    if any(word in question for word in ("紫色", "香芋紫", "薰衣草紫")):
+        colors.append("紫色")
+    return list(dict.fromkeys(colors))
 
 
 def _strip_longcat_tool_markup(value: str) -> str:

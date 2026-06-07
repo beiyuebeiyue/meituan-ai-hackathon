@@ -7,6 +7,8 @@ class TryOnJobCreateResponse(BaseModel):
     job_id: str
     status: str
     stage: str = "pending"
+    source_hand_image_url: str | None = None
+    mask_url: str | None = None
 
 
 class TryOnJobRead(BaseModel):
@@ -15,6 +17,7 @@ class TryOnJobRead(BaseModel):
     stage: str = "pending"
     result_image_url: str | None = None
     source_hand_image_url: str | None = None
+    mask_url: str | None = None
     error_message: str | None = None
     prompt_text: str | None = None
     selected_style_id: str

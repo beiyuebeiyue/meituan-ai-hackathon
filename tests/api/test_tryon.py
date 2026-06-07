@@ -77,7 +77,7 @@ def test_tryon_job_success_and_failure(client, db_session, image_factory, app_en
             "/api/v1/tryon/jobs",
             headers={"Authorization": f"Bearer {token}"},
             files={"hand_image": ("hand.png", hand_file.read(), "image/png")},
-            data={"style_id": style.id, "prompt_text": "裸粉法式"},
+            data={"style_id": style.id, "prompt_text": "裸粉法式", "prepare_only": "false"},
         )
     assert response.status_code == 200
     job_id = response.json()["job_id"]
@@ -96,7 +96,7 @@ def test_tryon_job_success_and_failure(client, db_session, image_factory, app_en
     assert hand_photos[0]["processing_status"] == "succeeded"
     assert re.search(rf"/files/uploads/hands/{user['uid']}/{user['uid']}-\d{{20}}-[0-9a-f]{{16}}\.", hand_photos[0]["image_url"]) is not None
     saved_hand_photo_id = hand_photos[0]["id"]
-    assert len(detect_calls) == 2
+    assert len(detect_calls) == 1
     assert len(segmentation_calls) == 2
 
     reused_response = client.post(
@@ -106,6 +106,7 @@ def test_tryon_job_success_and_failure(client, db_session, image_factory, app_en
             "style_id": (None, style.id),
             "prompt_text": (None, "复用手图"),
             "saved_hand_photo_id": (None, saved_hand_photo_id),
+            "prepare_only": (None, "false"),
         },
     )
     assert reused_response.status_code == 200
@@ -114,7 +115,7 @@ def test_tryon_job_success_and_failure(client, db_session, image_factory, app_en
     assert reused_status.status_code == 200
     assert reused_status.json()["status"] == "succeeded"
     assert reused_status.json()["source_hand_image_url"] == hand_photos[0]["image_url"]
-    assert len(detect_calls) == 2
+    assert len(detect_calls) == 1
     assert len(segmentation_calls) == 2
 
     monkeypatch.setattr(
@@ -132,13 +133,70 @@ def test_tryon_job_success_and_failure(client, db_session, image_factory, app_en
             "/api/v1/tryon/jobs",
             headers={"Authorization": f"Bearer {token}"},
             files={"hand_image": ("hand.png", hand_file.read(), "image/png")},
-            data={"style_id": style.id, "prompt_text": "失败"},
+            data={"style_id": style.id, "prompt_text": "失败", "prepare_only": "false"},
         )
     failed_job_id = failed_response.json()["job_id"]
     failed_status = client.get(f"/api/v1/tryon/jobs/{failed_job_id}", headers={"Authorization": f"Bearer {token}"})
     assert failed_status.status_code == 200
     assert failed_status.json()["status"] == "failed"
     assert "fallback failure" in failed_status.json()["error_message"]
+
+
+def test_tryon_job_defaults_to_prepare_only(client, db_session, image_factory, monkeypatch):
+    token, _user = _create_user(client)
+    style = NailStyle(
+        title="测试猫眼",
+        description="desc",
+        image_url="http://example.com/style-prepare.png",
+        local_image_path=str(image_factory("style-prepare.png")),
+        source_type="seed_xlsx",
+        tags_json=["猫眼"],
+        dominant_colors_json=[],
+        style_metadata_json={},
+        popularity_score=7,
+        is_trending=True,
+    )
+    db_session.add(style)
+    db_session.commit()
+    db_session.refresh(style)
+
+    from app.routers.tryon import tryon_service
+
+    def mock_segment(image_path):
+        mask_path = image_path.parent / f"{image_path.stem}_prepare_mask.png"
+        Image.new("L", (256, 256), 255).save(mask_path)
+        return type(
+            "Segmentation",
+            (),
+            {"mask_path": mask_path, "roi_boxes": [{"x": 20, "y": 20, "width": 40, "height": 40}], "confidence": 0.88},
+        )()
+
+    monkeypatch.setattr(tryon_service.user_hand_photo_service.segmentation_service, "segment", mock_segment)
+    monkeypatch.setattr(
+        tryon_service.image_edit_service,
+        "generate_tryon",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("generation should not run before confirmation")),
+    )
+
+    with image_factory("prepare-hand.png").open("rb") as hand_file:
+        response = client.post(
+            "/api/v1/tryon/jobs",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"hand_image": ("hand.png", hand_file.read(), "image/png")},
+            data={"style_id": style.id, "prompt_text": "先只预处理"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "awaiting_confirmation"
+    assert payload["stage"] == "mask_ready"
+    assert payload["source_hand_image_url"]
+    assert payload["mask_url"]
+
+    status_response = client.get(f"/api/v1/tryon/jobs/{payload['job_id']}", headers={"Authorization": f"Bearer {token}"})
+    assert status_response.status_code == 200
+    assert status_response.json()["status"] == "awaiting_confirmation"
+    assert status_response.json()["mask_url"] == payload["mask_url"]
 
 
 def test_remote_gpu_tryon_receives_cached_artifacts(client, db_session, image_factory, app_env, monkeypatch):
@@ -188,7 +246,7 @@ def test_remote_gpu_tryon_receives_cached_artifacts(client, db_session, image_fa
             "/api/v1/tryon/jobs",
             headers={"Authorization": f"Bearer {token}"},
             files={"hand_image": ("hand.png", hand_file.read(), "image/png")},
-            data={"style_id": style.id, "prompt_text": "远程"},
+            data={"style_id": style.id, "prompt_text": "远程", "prepare_only": "false"},
         )
     assert response.status_code == 200
     first_job = response.json()["job_id"]
@@ -205,6 +263,7 @@ def test_remote_gpu_tryon_receives_cached_artifacts(client, db_session, image_fa
             "style_id": (None, style.id),
             "prompt_text": (None, "远程复用"),
             "saved_hand_photo_id": (None, hand_photos[0]["id"]),
+            "prepare_only": (None, "false"),
         },
     )
     assert reused_response.status_code == 200

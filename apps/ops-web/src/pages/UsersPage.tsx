@@ -1,5 +1,5 @@
 import { DownOutlined, GiftOutlined, StopOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { App, Button, Descriptions, Drawer, Dropdown, Input, Space, Table, Typography } from "antd";
+import { App, Button, Descriptions, Drawer, Dropdown, Image, Input, Space, Table, Typography } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useState } from "react";
 import { api, OpsUser } from "../api/client";
@@ -23,6 +23,19 @@ function usersCacheKey(query: string, page: number) {
 
 function isFresh(cachedAt: number) {
   return Date.now() - cachedAt < USERS_CACHE_TTL_MS;
+}
+
+function UserDemoImage({ src, alt }: { src?: string | null; alt: string }) {
+  if (!src) return <>-</>;
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={160}
+      height={160}
+      style={{ objectFit: "cover", borderRadius: 12 }}
+    />
+  );
 }
 
 export function UsersPage() {
@@ -179,6 +192,12 @@ export function UsersPage() {
             <Descriptions.Item label="最近 IP 属地">{selected.last_login_ip_location || "-"}</Descriptions.Item>
             <Descriptions.Item label="预约数">{selected.booking_count}</Descriptions.Item>
             <Descriptions.Item label="AI 焕手">{selected.tryon_count}</Descriptions.Item>
+            <Descriptions.Item label="上传首图">
+              <UserDemoImage src={selected.latest_hand_image_url} alt={`${selected.username} 上传首图`} />
+            </Descriptions.Item>
+            <Descriptions.Item label="焕甲结果图">
+              <UserDemoImage src={selected.latest_tryon_result_image_url} alt={`${selected.username} 焕甲结果图`} />
+            </Descriptions.Item>
             <Descriptions.Item label="Like">{selected.like_count}</Descriptions.Item>
             <Descriptions.Item label="Collect">{selected.collect_count}</Descriptions.Item>
             <Descriptions.Item label="注册时间">{new Date(selected.created_at).toLocaleString("zh-CN")}</Descriptions.Item>

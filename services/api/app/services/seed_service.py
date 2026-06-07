@@ -73,6 +73,7 @@ class SeedService:
             if path.is_file() and path.suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
         )
         for index, image_path in enumerate(image_paths, start=1):
+            nail_type = self._seed_nail_type(index)
             local_path = relative_to_base(image_path)
             image_url = self._packaged_seed_public_url(local_path)
             style = db.scalar(
@@ -103,7 +104,7 @@ class SeedService:
                     original_image_url=None,
                     enhanced_image_url=None,
                     source_type="seed_local",
-                    nail_type="press_on",
+                    nail_type=nail_type,
                     tags_json=tags,
                     dominant_colors_json=dominant_colors,
                     style_metadata_json=metadata,
@@ -117,7 +118,7 @@ class SeedService:
                 style.image_url = image_url
                 style.local_image_path = local_path
                 style.source_type = style.source_type or "seed_local"
-                style.nail_type = "press_on"
+                style.nail_type = nail_type
                 style.style_metadata_json = existing_metadata
                 if not style.tags_json:
                     style.tags_json = tags
@@ -130,11 +131,41 @@ class SeedService:
             db.commit()
         return {"created_count": created, "updated_count": updated, "seed_dir": str(nails_dir)}
 
+    def normalize_demo_nail_types(self, db: Session, press_on_limit: int = 2) -> dict[str, int]:
+        updated = 0
+        for style in db.scalars(select(NailStyle).where(NailStyle.source_type == "xhs_note")):
+            if style.nail_type != "handmade":
+                style.nail_type = "handmade"
+                db.add(style)
+                updated += 1
+
+        seed_styles = list(
+            db.scalars(
+                select(NailStyle)
+                .where(NailStyle.source_type.in_(["seed_local", "seed_xlsx"]))
+                .order_by(NailStyle.source_type.asc(), NailStyle.created_at.asc(), NailStyle.id.asc())
+            )
+        )
+        for index, style in enumerate(seed_styles, start=1):
+            next_type = self._seed_nail_type(index, press_on_limit=press_on_limit)
+            if style.nail_type != next_type:
+                style.nail_type = next_type
+                db.add(style)
+                updated += 1
+
+        if updated:
+            db.commit()
+        return {"updated_count": updated, "press_on_limit": press_on_limit}
+
     def _packaged_seed_public_url(self, local_path: str) -> str:
         normalized = local_path.replace("\\", "/")
         if normalized.startswith("data/"):
             return f"{self.settings.public_files_prefix}/{normalized.removeprefix('data/')}"
         return public_url_for_path(Path(local_path))
+
+    @staticmethod
+    def _seed_nail_type(index: int, press_on_limit: int = 2) -> str:
+        return "press_on" if index <= press_on_limit else "handmade"
 
     def import_seed_data(self, db: Session, xlsx_path: Path | None = None) -> dict[str, object]:
         workbook_path = xlsx_path or self.settings.seed_xlsx
@@ -301,6 +332,7 @@ class SeedService:
         local_path = relative_to_base(primary_record.saved_path)
         image_url = public_url_for_path(primary_record.saved_path)
         preset = STYLE_PRESETS[(max(index, 1) - 1) % len(STYLE_PRESETS)]
+        nail_type = self._seed_nail_type(index or 1)
         if style is None:
             style = NailStyle(
                 title=self._build_natural_title(index or 1, preset, preset["tags"], []),
@@ -310,7 +342,7 @@ class SeedService:
                 original_image_url=str(original_url) if original_url else None,
                 enhanced_image_url=str(enhanced_url) if enhanced_url else None,
                 source_type="seed_xlsx",
-                nail_type="press_on",
+                nail_type=nail_type,
                 tags_json=[],
                 dominant_colors_json=[],
                 style_metadata_json={},
@@ -322,7 +354,7 @@ class SeedService:
             style.local_image_path = local_path
             style.original_image_url = str(original_url) if original_url else style.original_image_url
             style.enhanced_image_url = str(enhanced_url) if enhanced_url else style.enhanced_image_url
-            style.nail_type = "press_on"
+            style.nail_type = nail_type
         db.add(style)
         db.commit()
 

@@ -302,6 +302,44 @@ def test_longcat_text_tool_call_for_hand_query_requests_hand_image(app_env, monk
     assert response.hand_picker_message
 
 
+def test_longcat_malformed_tool_call_for_hand_query_falls_back_to_hand_prompt(app_env, monkeypatch):
+    from app.core.config import get_settings
+    from app.schemas.ai import AIChatMessage
+    from app.services.user_chat_service import UserChatService
+
+    monkeypatch.setenv("LONGCAT_API_KEY", "test-key")
+    get_settings.cache_clear()
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(
+                            content="<longcat_tool_call>search_nail_images_by_hand_and_text(query='温柔裸粉美甲')</longcat_tool_call>",
+                        )
+                    )
+                ]
+            )
+
+    class FakeOpenAI:
+        def __init__(self, **kwargs):
+            self.chat = SimpleNamespace(completions=FakeCompletions())
+
+    monkeypatch.setitem(sys.modules, "openai", SimpleNamespace(OpenAI=FakeOpenAI))
+
+    response = UserChatService()._longcat_reply(
+        [AIChatMessage(role="user", content="我的手适合哪些温柔裸粉美甲")],
+        "我的手适合哪些温柔裸粉美甲",
+        None,
+    )
+
+    assert "没有调用到可用的图库检索工具" not in response.reply
+    assert response.needs_hand_image is True
+    assert response.recommendations == []
+    assert response.hand_picker_message
+
+
 def test_longcat_tool_prompt_uses_longcat_xml_json_tool_calls(app_env):
     from app.services.user_chat_service import UserChatService
     from app.services.user_chat_tools import SearchNailImagesByTextTool

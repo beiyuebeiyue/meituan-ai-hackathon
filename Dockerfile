@@ -49,7 +49,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     MOBILE_WEB_DIST=/workspace/apps/mobile/dist
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git \
+    && apt-get install -y --no-install-recommends git libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=openclaw-runtime /usr/local /usr/local
@@ -66,10 +66,11 @@ COPY --from=mobile-web-builder /workspace/apps/mobile/dist /workspace/apps/mobil
 COPY deploy/hf-openclaw/openclaw.json /workspace/.openclaw/openclaw.json
 COPY deploy/hf-openclaw/workspace /workspace/.openclaw/workspace
 COPY deploy/hf-openclaw/skills /workspace/.openclaw/workspace/skills
+COPY scripts/openclaw_scheduled_tasks.py /workspace/scripts/openclaw_scheduled_tasks.py
 COPY scripts/start-hf-space.sh /workspace/start-hf-space.sh
 
 RUN mkdir -p /data/uploads /data/tryon_results /data/tryon_artifacts /data/seed /data/reports /data/xhs-popular-nail-posts-crawler/assets /data/xhs-daily-nail-report/assets /workspace/data /workspace/.openclaw/state /workspace/.openclaw/logs \
-    && chmod +x /workspace/start-hf-space.sh \
+    && chmod +x /workspace/start-hf-space.sh /workspace/scripts/openclaw_scheduled_tasks.py \
     && chown -R user:user /data /workspace
 
 USER user

@@ -50,10 +50,12 @@ class XhsStyleMaterializationService:
                     existing.style_metadata_json != next_metadata
                     or existing.popularity_score != next_score
                     or not existing.is_trending
+                    or existing.nail_type != "handmade"
                 ):
                     existing.style_metadata_json = next_metadata
                     existing.popularity_score = next_score
                     existing.is_trending = True
+                    existing.nail_type = "handmade"
                     db.add(existing)
                     updated += 1
                 continue

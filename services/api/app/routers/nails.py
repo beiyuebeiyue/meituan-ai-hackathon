@@ -1,3 +1,5 @@
+from time import monotonic
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -25,24 +27,53 @@ router = APIRouter(prefix="/nails", tags=["nails"])
 style_service = StyleService()
 style_comment_service = StyleCommentService()
 follow_service = FollowService()
+_PUBLIC_FEED_CACHE_TTL_SECONDS = 60.0
+_public_feed_cache: dict[tuple[str, int, int, bool], tuple[float, NailStyleListResponse]] = {}
+
+
+def _get_public_feed_cache(key: tuple[str, int, int, bool]) -> NailStyleListResponse | None:
+    cached = _public_feed_cache.get(key)
+    if cached is None:
+        return None
+    expires_at, response = cached
+    if expires_at <= monotonic():
+        _public_feed_cache.pop(key, None)
+        return None
+    return response
+
+
+def _set_public_feed_cache(key: tuple[str, int, int, bool], response: NailStyleListResponse) -> NailStyleListResponse:
+    _public_feed_cache[key] = (monotonic() + _PUBLIC_FEED_CACHE_TTL_SECONDS, response)
+    return response
+
+
+def build_public_style_payloads(items: list) -> list[NailStyleDetailRead]:
+    return [serialize_style_detail(style) for style in items]
 
 
 def build_style_payloads(db: Session, items: list, user: User | None) -> list[NailStyleDetailRead]:
+    if user is None:
+        return build_public_style_payloads(items)
     favorite_ids = style_service.get_favorite_ids(db, user.id) if user else set()
     like_ids = style_service.get_like_ids(db, user.id) if user else set()
     following_ids = follow_service.get_following_ids(db, user.id) if user else set()
+    style_ids = [style.id for style in items]
+    like_counts = style_service.get_like_counts_map(db, style_ids)
+    favorite_counts = style_service.get_favorite_counts_map(db, style_ids)
+    comment_counts = style_service.get_comment_counts_map(db, style_ids)
+    authors = style_service.resolve_style_author_users(db, items)
     payloads: list[NailStyleDetailRead] = []
     for style in items:
-        author = style_service.resolve_style_author_user(db, style)
+        author = authors.get(style.id)
         post = style_service.get_post_for_style(db, style) if user and author and author.id == user.id else None
         payloads.append(
             serialize_style_detail(
                 style,
                 favorite_ids=favorite_ids,
                 like_ids=like_ids,
-                like_count=style_service.get_like_count(db, style.id),
-                favorite_count=style_service.get_favorite_count(db, style.id),
-                comment_count=style_service.get_comment_count(db, style.id),
+                like_count=like_counts.get(style.id, 0),
+                favorite_count=favorite_counts.get(style.id, 0),
+                comment_count=comment_counts.get(style.id, 0),
                 author_id=author.id if author else None,
                 author_name=author.username if author else "焕甲图库",
                 author_avatar_url=author.avatar_url if author else None,
@@ -64,13 +95,19 @@ def list_hot(
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
+    cache_key = ("hot", page, page_size, include_xhs_posts)
+    if user is None and (cached := _get_public_feed_cache(cache_key)) is not None:
+        return cached
     items, total = style_service.list_hot(db, page, page_size, viewer=user, include_xhs_posts=include_xhs_posts)
-    return NailStyleListResponse(
+    response = NailStyleListResponse(
         page=page,
         page_size=page_size,
         total=total,
         items=build_style_payloads(db, items, user),
     )
+    if user is None:
+        return _set_public_feed_cache(cache_key, response)
+    return response
 
 
 @router.get("/discover", response_model=NailStyleListResponse)
@@ -81,13 +118,19 @@ def list_discover(
     db: Session = Depends(get_db),
     user: User | None = Depends(get_optional_current_user),
 ) -> NailStyleListResponse:
+    cache_key = ("discover", page, page_size, include_xhs_posts)
+    if user is None and (cached := _get_public_feed_cache(cache_key)) is not None:
+        return cached
     items, total = style_service.list_latest(db, page, page_size, viewer=user, include_xhs_posts=include_xhs_posts)
-    return NailStyleListResponse(
+    response = NailStyleListResponse(
         page=page,
         page_size=page_size,
         total=total,
         items=build_style_payloads(db, items, user),
     )
+    if user is None:
+        return _set_public_feed_cache(cache_key, response)
+    return response
 
 
 @router.get("/search", response_model=NailStyleListResponse)

@@ -1,5 +1,5 @@
-import { App as AntdApp, Button, Card, Checkbox, Col, Empty, Input, Row, Space, Spin, Statistic, Tag, Typography } from "antd";
-import { FireOutlined, RobotOutlined, SendOutlined } from "@ant-design/icons";
+import { Alert, App as AntdApp, Button, Card, Checkbox, Col, Empty, Input, Row, Space, Spin, Statistic, Tag, Typography } from "antd";
+import { FireOutlined, SendOutlined } from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api, resolveAssetUrl, TrendNailStyle } from "../api/client";
@@ -15,17 +15,26 @@ function CandidateCard({
   checked: boolean;
   onToggle: () => void;
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
   return (
     <Card
       hoverable
       onClick={onToggle}
       cover={
         <div style={{ height: 180, overflow: "hidden", background: "#f5f5f5" }}>
-          <img
-            alt={item.title}
-            src={resolveAssetUrl(item.image_url)}
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-          />
+          {imageFailed ? (
+            <div className="trend-nail-image-fallback">
+              <FireOutlined />
+              <span>图片加载失败</span>
+            </div>
+          ) : (
+            <img
+              alt={item.title}
+              src={resolveAssetUrl(item.image_url)}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              onError={() => setImageFailed(true)}
+            />
+          )}
         </div>
       }
       styles={{ body: { padding: 14 } }}
@@ -53,8 +62,10 @@ function CandidateCard({
 
 export function TrendNailsPage() {
   const { message } = AntdApp.useApp();
-  const [title, setTitle] = useState("本周热门手工甲");
-  const [description, setDescription] = useState("这些是近期适合推给商家的热门手工甲，商家可一键登记“我也能做”。");
+  const [title, setTitle] = useState("本周热门美甲");
+  const [description, setDescription] = useState(
+    "我们为您整理了上周小红书上的热门手工甲款式。如果您的店铺也能制作这些款式，请登记“我也能做”。当用户寻找可制作同款手工甲的门店时，我们会优先推荐您的店铺。",
+  );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [lastCampaignId, setLastCampaignId] = useState<string | null>(null);
   const query = useQuery({
@@ -76,37 +87,15 @@ export function TrendNailsPage() {
   const createMutation = useMutation({
     mutationFn: () =>
       api.createTrendNailCampaign({
-        title: title.trim() || "热门手工甲推送",
+        title: title.trim() || "本周热门美甲",
         description: description.trim(),
         style_ids: selectedIds,
         merchant_user_ids: null,
       }),
     onSuccess: (campaign) => {
       setLastCampaignId(campaign.id);
-      message.success(`已推送给 ${campaign.merchant_count} 个商家账号`);
+      message.success(`已推送给 ${campaign.merchant_count} 个商家账号，下周推送已设定`);
       setSelectedIds([]);
-    },
-    onError: (error: Error) => {
-      let detail = error.message;
-      try {
-        detail = (JSON.parse(error.message) as { detail?: string }).detail ?? detail;
-      } catch {
-        // keep response text
-      }
-      message.error(detail);
-    },
-  });
-
-  const autoCreateMutation = useMutation({
-    mutationFn: () => api.createAutoTrendNailCampaign(false, 12),
-    onSuccess: (campaign) => {
-      if (!campaign) {
-        message.warning("暂无可自动推送的热门手工甲款式");
-        return;
-      }
-      setLastCampaignId(campaign.id);
-      message.success(`本周自动推送已就绪，覆盖 ${campaign.merchant_count} 个商家账号`);
-      query.refetch();
     },
     onError: (error: Error) => {
       let detail = error.message;
@@ -127,7 +116,7 @@ export function TrendNailsPage() {
     <div className="ops-page">
       <div className="ops-page-header">
         <div>
-          <Title level={2}>热门手工甲推送</Title>
+          <Title level={2}>本周热门美甲</Title>
           <Paragraph type="secondary">
             运营选择手工甲候选款并推送给商家。商家点击“我也能做”后，用户焕甲选店时对应门店会优先展示。
           </Paragraph>
@@ -136,8 +125,16 @@ export function TrendNailsPage() {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={8}>
-          <Card title="推送方案">
+          <Card title="推送给全部商家">
             <Space direction="vertical" size={14} style={{ width: "100%" }}>
+              {campaignQuery.data ? (
+                <Alert
+                  type="success"
+                  showIcon
+                  message="本周推送已完成"
+                  description="下周推送已设定。系统会延续本周候选池与商家反馈，在下周自动进入新一轮热门款式推荐。"
+                />
+              ) : null}
               <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="方案标题" />
               <Input.TextArea
                 value={description}
@@ -166,14 +163,6 @@ export function TrendNailsPage() {
                 onClick={() => createMutation.mutate()}
               >
                 推送给全部商家
-              </Button>
-              <Button
-                icon={<RobotOutlined />}
-                block
-                loading={autoCreateMutation.isPending}
-                onClick={() => autoCreateMutation.mutate()}
-              >
-                自动生成本周推送
               </Button>
             </Space>
           </Card>

@@ -3,8 +3,8 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveAssetUrl } from "../api/client";
 import { AuthorRoleBadge } from "./AuthorRoleBadge";
 import { NailStyle } from "../types/api";
-import { getNailTypeLabel } from "../utils/nailType";
-import { useThemeColors } from "../utils/theme";
+import { getNailTypeLabel, getNailTypeTone } from "../utils/nailType";
+import { useIsDarkMode, useThemeColors } from "../utils/theme";
 
 type NailCardProps = {
   item: NailStyle;
@@ -14,6 +14,8 @@ type NailCardProps = {
 
 export function NailCard({ item, onToggleLike, onPress }: NailCardProps) {
   const colors = useThemeColors();
+  const isDark = useIsDarkMode();
+  const nailTypeTone = getNailTypeTone(item.nail_type, isDark);
 
   return (
     <Pressable style={[styles.card, { backgroundColor: colors.surface }]} onPress={() => onPress?.(item)}>
@@ -35,8 +37,16 @@ export function NailCard({ item, onToggleLike, onPress }: NailCardProps) {
           {item.description}
         </Text>
         <View style={styles.metaRow}>
-          <View style={[styles.typePill, { backgroundColor: colors.surfaceAlt }]}>
-            <Text style={[styles.typePillText, { color: colors.subtext }]}>{getNailTypeLabel(item.nail_type)}</Text>
+          <View
+            style={[
+              styles.typePill,
+              {
+                backgroundColor: nailTypeTone.backgroundColor,
+                borderColor: nailTypeTone.borderColor,
+              },
+            ]}
+          >
+            <Text style={[styles.typePillText, { color: nailTypeTone.textColor }]}>{getNailTypeLabel(item.nail_type)}</Text>
           </View>
           <AuthorRoleBadge isMerchant={item.author_is_shop} compact />
         </View>
@@ -94,6 +104,7 @@ const styles = StyleSheet.create({
   },
   typePill: {
     borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },

@@ -141,7 +141,7 @@ class TryOnService:
                     if user_artifact.status != "succeeded":
                         self.artifact_service.mark_processing(db, user_artifact)
                         user_detection = self.hand_service.detect(hand_image_path)
-                        user_segmentation = self.segmentation_service.segment(hand_image_path, user_detection)
+                        user_segmentation = self.segmentation_service.segment(hand_image_path)
                         user_artifact = self.artifact_service.mark_succeeded_from_local(
                             db,
                             user_artifact,
@@ -152,7 +152,7 @@ class TryOnService:
                     if style_artifact.status != "succeeded":
                         self.artifact_service.mark_processing(db, style_artifact)
                         style_detection = self.hand_service.detect(style_image_path)
-                        style_segmentation = self.segmentation_service.segment(style_image_path, style_detection)
+                        style_segmentation = self.segmentation_service.segment(style_image_path)
                         style_artifact = self.artifact_service.mark_succeeded_from_local(
                             db,
                             style_artifact,

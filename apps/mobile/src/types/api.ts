@@ -44,6 +44,11 @@ export type UserHandPhoto = {
   id: string;
   image_url: string;
   processing_status?: "pending" | "processing" | "succeeded" | "failed" | null;
+  error_message?: string | null;
+  mask_url?: string | null;
+  cutout_url?: string | null;
+  roi_boxes?: Array<{ x: number; y: number; width: number; height: number }>;
+  quality_score?: number | null;
   created_at: string;
 };
 
@@ -61,8 +66,8 @@ export type NailStyle = {
   title: string;
   description: string;
   image_url: string;
-  tags: string[];
-  dominant_colors: string[];
+  tags: readonly string[];
+  dominant_colors: readonly string[];
   popularity_score: number;
   is_trending: boolean;
   nail_type: NailType;
@@ -182,10 +187,11 @@ export type AnalyticsEventPayload = {
 
 export type TryOnJob = {
   job_id: string;
-  status: "pending" | "processing" | "succeeded" | "failed";
-  stage?: "pending" | "preprocessing" | "generating" | "succeeded" | "failed";
+  status: "pending" | "processing" | "awaiting_confirmation" | "succeeded" | "failed";
+  stage?: "pending" | "preprocessing" | "mask_ready" | "generating" | "succeeded" | "failed";
   result_image_url?: string | null;
   source_hand_image_url?: string | null;
+  mask_url?: string | null;
   error_message?: string | null;
   prompt_text?: string | null;
   selected_style_id: string;
@@ -194,8 +200,8 @@ export type TryOnJob = {
 
 export type TryOnHistoryItem = {
   job_id: string;
-  status: "pending" | "processing" | "succeeded" | "failed";
-  stage?: "pending" | "preprocessing" | "generating" | "succeeded" | "failed";
+  status: "pending" | "processing" | "awaiting_confirmation" | "succeeded" | "failed";
+  stage?: "pending" | "preprocessing" | "mask_ready" | "generating" | "succeeded" | "failed";
   result_image_url?: string | null;
   source_hand_image_url?: string | null;
   prompt_text?: string | null;

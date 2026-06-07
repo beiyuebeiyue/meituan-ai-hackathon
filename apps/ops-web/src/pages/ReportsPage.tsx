@@ -1,4 +1,4 @@
-import { App, Card, Empty, Segmented, Space, Typography } from "antd";
+import { App, Card, Empty, Select, Space } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { api, OpsHtmlReport, XHS_WEEKLY_REPORT_WEEKS } from "../api/client";
 import type { XhsWeeklyReportWeek } from "../api/client";
@@ -27,11 +27,9 @@ export function ReportsPage() {
 
   return (
     <Space direction="vertical" size={10} className="page-stack reports-page">
-      <div className="page-title-row">
-        <Typography.Title level={3} className="page-title">
-          运营周报
-        </Typography.Title>
-        <Segmented
+      <div className="report-toolbar">
+        <Select
+          className="report-week-select"
           value={selectedWeek.week}
           options={XHS_WEEKLY_REPORT_WEEKS.map((week) => ({ label: week.label, value: week.week }))}
           onChange={(value) => {

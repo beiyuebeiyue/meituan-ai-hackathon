@@ -9,6 +9,7 @@ from app.models.merchant_shop import MerchantShop
 from app.models.user import User
 from app.models.user_follow import UserFollow
 from app.models.user_style_like import UserStyleLike
+from app.models.user_post import UserPost
 from app.routers.helpers import serialize_author_post, serialize_style, serialize_style_detail
 from app.schemas.nails import NailStyleListResponse
 from app.schemas.users import (
@@ -47,6 +48,20 @@ block_service = BlockService()
 follow_service = FollowService()
 style_service = StyleService()
 style_comment_service = StyleCommentService()
+
+
+def serialize_hand_photo_read(item, artifact) -> UserHandPhotoRead:
+    return UserHandPhotoRead(
+        id=item.id,
+        image_url=item.image_url,
+        processing_status=artifact.status if artifact is not None else None,
+        error_message=artifact.error_message if artifact is not None else None,
+        mask_url=artifact.mask_url if artifact is not None else None,
+        cutout_url=artifact.cutout_url if artifact is not None else None,
+        roi_boxes=artifact.roi_boxes_json if artifact is not None else [],
+        quality_score=artifact.quality_score if artifact is not None else None,
+        created_at=item.created_at,
+    )
 
 
 def can_view_private_section(author: User, viewer: User | None) -> bool:
@@ -107,14 +122,7 @@ def get_my_hand_photos(user: User = Depends(get_current_user), db: Session = Dep
     items = []
     for item in hand_photo_service.list_for_user(db, user):
         artifact = image_artifact_service.get_existing_for_hash(db, item.sha256, "user_hand")
-        items.append(
-            UserHandPhotoRead(
-                id=item.id,
-                image_url=item.image_url,
-                processing_status=artifact.status if artifact is not None else None,
-                created_at=item.created_at,
-            )
-        )
+        items.append(serialize_hand_photo_read(item, artifact))
     return UserHandPhotoListResponse(items=items)
 
 
@@ -126,12 +134,7 @@ def upload_my_hand_photo(
 ) -> UserHandPhotoRead:
     item = hand_photo_service.save_uploaded(db, user, image)
     artifact = image_artifact_service.get_existing_for_hash(db, item.sha256, "user_hand")
-    return UserHandPhotoRead(
-        id=item.id,
-        image_url=item.image_url,
-        processing_status=artifact.status if artifact is not None else None,
-        created_at=item.created_at,
-    )
+    return serialize_hand_photo_read(item, artifact)
 
 
 @router.delete("/me/hand-photos/{hand_photo_id}")
@@ -416,19 +419,31 @@ def get_author_profile(
     styles = style_service.list_styles_for_author(db, author, user)
     is_mine = bool(user and user.id == author.id)
     like_ids = style_service.get_like_ids(db, user.id) if user else set()
+    style_ids = [style.id for style in styles]
+    like_counts = style_service.get_like_counts_map(db, style_ids)
     view_stats = style_service.get_view_stats_map(db, [style.id for style in styles]) if is_mine else {}
+    post_ids = {
+        post_id
+        for style in styles
+        if isinstance(style.style_metadata_json, dict)
+        and isinstance((post_id := style.style_metadata_json.get("from_post_id")), str)
+    }
+    posts_by_id = {
+        post.id: post
+        for post in db.scalars(select(UserPost).where(UserPost.id.in_(post_ids)))
+    } if post_ids else {}
     authored_posts = [
         serialize_author_post(
             style,
-            style_service.get_post_for_style(db, style),
+            posts_by_id.get(style.style_metadata_json.get("from_post_id")) if isinstance(style.style_metadata_json, dict) else None,
             is_liked=style.id in like_ids,
-            like_count=style_service.get_like_count(db, style.id),
+            like_count=like_counts.get(style.id, 0),
             view_count=view_stats.get(style.id, {}).get("view_count", 0),
             unique_viewer_count=view_stats.get(style.id, {}).get("unique_viewer_count", 0),
         )
         for style in styles
     ]
-    total_like_count = sum(style_service.get_like_count(db, style.id) for style in styles)
+    total_like_count = sum(like_counts.get(style.id, 0) for style in styles)
     follower_count = db.scalar(select(func.count()).select_from(UserFollow).where(UserFollow.followed_user_id == author.id)) or 0
     following_count = db.scalar(select(func.count()).select_from(UserFollow).where(UserFollow.follower_user_id == author.id)) or 0
     has_blocked_viewer, viewer_has_blocked_author = block_service.get_relationship(db, user.id if user else None, author.id)

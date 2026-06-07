@@ -27,14 +27,25 @@ class Settings(BaseSettings):
     openai_base_url: str = ""
     openai_text_model: str = "gpt-5.2"
     openai_image_model: str = "gpt-image-2"
+    evolink_gpt_image_2_url: str = "https://evolink.ai/gpt-image-2"
+    evolink_api_base_url: str = "https://api.evolink.ai"
+    evolink_image_model: str = "gpt-image-2"
+    evolink_image_quality: str = "low"
+    evolink_image_size: str = "1:1"
+    evolink_image_resolution: str = "1K"
     hf_token: str = ""
     longcat_api_key: str = ""
     longcat_base_url: str = "https://api.longcat.chat/openai"
     longcat_chat_model: str = "LongCat-2.0-Preview"
     longcat_multimodal_model: str = "LongCat-Flash-Omni-2603"
     longcat_chat_timeout_seconds: float = 25.0
-    image_pipeline_version: str = "mediapipe-sam31-v1"
+    image_pipeline_version: str = "yolo-nail26-v1"
     image_provider_config_hash: str = ""
+    nail_yolo_model_path: str = ""
+    nail_yolo_imgsz: int = 640
+    nail_yolo_confidence: float = 0.25
+    nail_yolo_iou: float = 0.7
+    nail_yolo_device: str = ""
     remote_gpu_tryon_url: str = ""
     remote_gpu_tryon_api_key: str = ""
     remote_gpu_tryon_timeout_seconds: float = 180.0
@@ -83,6 +94,7 @@ class Settings(BaseSettings):
     openclaw_base_url: str = "http://host.docker.internal:18789"
     openclaw_model: str = "openclaw/default"
     openclaw_gateway_token: str = ""
+    openclaw_schedule_state_path_value: str = ".openclaw/logs/scheduled-tasks.json"
     ops_report_timezone: str = "Asia/Shanghai"
     ops_demo_metrics_enabled: bool = True
     auto_trend_campaign_enabled: bool = True
@@ -138,6 +150,10 @@ class Settings(BaseSettings):
     @property
     def xhs_daily_report_assets_path(self) -> Path:
         return self.resolve_path(self.xhs_daily_report_assets_dir)
+
+    @property
+    def openclaw_schedule_state_path(self) -> Path:
+        return self.resolve_path(self.openclaw_schedule_state_path_value)
 
     @property
     def seed_xlsx(self) -> Path:

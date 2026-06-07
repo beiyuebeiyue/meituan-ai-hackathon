@@ -23,20 +23,19 @@ import {
   useOverlayDirection,
 } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
+import type { TryOnHistoryItem } from "../types/api";
 import { useThemeColors } from "../utils/theme";
 
-function getStatusLabel(
-  status: "pending" | "processing" | "succeeded" | "failed",
-) {
+function getStatusLabel(status: TryOnHistoryItem["status"]) {
+  if (status === "awaiting_confirmation") return "待确认";
   if (status === "pending") return "排队中";
   if (status === "processing") return "生成中";
   if (status === "succeeded") return "已完成";
   return "已失败";
 }
 
-function getStatusTone(
-  status: "pending" | "processing" | "succeeded" | "failed",
-) {
+function getStatusTone(status: TryOnHistoryItem["status"]) {
+  if (status === "awaiting_confirmation") return "accent";
   if (status === "failed") return "danger";
   if (status === "succeeded") return "success";
   if (status === "processing") return "accent";

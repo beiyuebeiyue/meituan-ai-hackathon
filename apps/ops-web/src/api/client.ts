@@ -149,6 +149,8 @@ export type OpsUser = {
   username: string;
   phone?: string | null;
   avatar_url?: string | null;
+  latest_hand_image_url?: string | null;
+  latest_tryon_result_image_url?: string | null;
   last_login_ip_location?: string | null;
   role: string;
   created_at: string;
@@ -226,6 +228,23 @@ export type ChatResponse = {
   model: string;
 };
 
+export type OpenSkillScheduledTask = {
+  id: string;
+  name: string;
+  skill_name: string;
+  description: string;
+  schedule_label: string;
+  cron: string;
+  timezone: string;
+  enabled: boolean;
+  status: string;
+  next_run_at?: string | null;
+  last_run_at?: string | null;
+  last_status?: string | null;
+  last_message: string;
+  log_path: string;
+};
+
 export type OpsReport = {
   id: string;
   report_date: string;
@@ -299,6 +318,9 @@ export const XHS_WEEKLY_REPORT_WEEKS = [
 
 export type XhsWeeklyReportWeek = (typeof XHS_WEEKLY_REPORT_WEEKS)[number];
 
+const XHS_WEEKLY_REPORT_CACHE_PREFIX = "xhs-weekly-report-html:";
+const XHS_WEEKLY_REPORT_MEMORY_CACHE = new Map<string, OpsHtmlReport | null>();
+
 function shanghaiDateKey(value: Date): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Shanghai",
@@ -342,18 +364,52 @@ async function fetchXhsMarkdownReportHistory(fileName: string, limit = 30): Prom
 
 async function fetchXhsWeeklyHtmlReport(week: XhsWeeklyReportWeek = XHS_WEEKLY_REPORT_WEEKS[0]): Promise<OpsHtmlReport | null> {
   const url = `${API_ORIGIN}/${XHS_WEEKLY_REPORT_FILE}`;
-  const response = await fetch(url, { cache: "no-store" });
+  const cacheKey = `${XHS_WEEKLY_REPORT_CACHE_PREFIX}${week.year}-W${week.week}`;
+  const memoryCached = XHS_WEEKLY_REPORT_MEMORY_CACHE.get(cacheKey);
+  if (memoryCached !== undefined) return memoryCached;
+
+  const stored = readXhsWeeklyReportCache(cacheKey);
+  if (stored !== undefined) {
+    XHS_WEEKLY_REPORT_MEMORY_CACHE.set(cacheKey, stored);
+    return stored;
+  }
+
+  const response = await fetch(url, { cache: "force-cache" });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Request failed: ${response.status}`);
   const todayKey = shanghaiDateKey(new Date());
   const htmlContent = await response.text();
-  return {
+  const report = {
     report_date: dateKeyToReportDate(todayKey),
     date_key: `${week.year}-W${String(week.week).padStart(2, "0")}`,
     html_content: normalizeXhsWeeklyReportHtml(htmlContent, week),
     local_file_path: url,
     created_at: response.headers.get("last-modified") ?? new Date().toISOString(),
   };
+  XHS_WEEKLY_REPORT_MEMORY_CACHE.set(cacheKey, report);
+  writeXhsWeeklyReportCache(cacheKey, report);
+  return report;
+}
+
+function readXhsWeeklyReportCache(cacheKey: string): OpsHtmlReport | null | undefined {
+  if (typeof window === "undefined") return undefined;
+  const raw = window.sessionStorage.getItem(cacheKey);
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as OpsHtmlReport | null;
+  } catch {
+    window.sessionStorage.removeItem(cacheKey);
+    return undefined;
+  }
+}
+
+function writeXhsWeeklyReportCache(cacheKey: string, report: OpsHtmlReport | null) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(cacheKey, JSON.stringify(report));
+  } catch {
+    // Storage can be full or unavailable in private browsing; in-memory cache still works.
+  }
 }
 
 function normalizeXhsWeeklyReportHtml(html: string, week: XhsWeeklyReportWeek): string {
@@ -404,6 +460,7 @@ export const api = {
   getCouponGrants: (limit = 50, offset = 0) => request<ListResponse<CouponGrant>>(`/ops/coupons/grants?limit=${limit}&offset=${offset}`),
   chat: (messages: ChatMessage[]) =>
     request<ChatResponse>("/ops/ai/chat", { method: "POST", body: JSON.stringify({ messages }) }),
+  getOpenSkillScheduledTasks: () => request<{ items: OpenSkillScheduledTask[] }>("/ops/openclaw/scheduled-tasks"),
   generateReport: () => request<ReportGenerateResponse>("/ops/reports/generate", { method: "POST" }),
   saveReport: (payload: ReportGenerateResponse) =>
     request<OpsReport>("/ops/reports/save", { method: "POST", body: JSON.stringify(payload) }),
