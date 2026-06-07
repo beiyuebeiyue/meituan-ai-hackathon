@@ -309,26 +309,6 @@ function ConsumerProfileScreen() {
         contentContainerStyle={styles.consumerContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.consumerTopBar}>
-          <View>
-            <Text style={[styles.consumerPageEyebrow, { color: colors.subtext }]}>
-              我的
-            </Text>
-            <Text style={[styles.consumerPageTitle, { color: colors.text }]}>
-              欢迎使用焕甲
-            </Text>
-          </View>
-          <Pressable
-            style={[
-              styles.consumerTopIcon,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            onPress={() => navigation.navigate("ProfileSettings")}
-          >
-            <Ionicons name="settings-outline" size={21} color={colors.text} />
-          </Pressable>
-        </View>
-
         <View
           style={[
             styles.consumerHero,
@@ -367,6 +347,15 @@ function ConsumerProfileScreen() {
                 </Text>
               ) : null}
             </View>
+            <Pressable
+              style={[
+                styles.consumerTopIcon,
+                { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+              ]}
+              onPress={() => navigation.navigate("ProfileSettings")}
+            >
+              <Ionicons name="settings-outline" size={21} color={colors.text} />
+            </Pressable>
           </View>
           <View style={styles.consumerHeroActions}>
             <Pressable
@@ -744,23 +733,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   consumerContent: { padding: 16, paddingTop: 10, paddingBottom: 120, gap: 14 },
-  consumerTopBar: {
-    minHeight: 54,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 2,
-  },
-  consumerPageEyebrow: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  consumerPageTitle: {
-    marginTop: 2,
-    fontSize: 25,
-    lineHeight: 31,
-    fontWeight: "900",
-  },
   consumerTopIcon: {
     width: 42,
     height: 42,
