@@ -12,9 +12,9 @@ from sqlalchemy.orm import selectinload
 from app.core.config import get_settings
 from app.models.tryon_job import TryOnJob
 from app.models.user import User
+from app.providers.hand_landmarker_provider import HandDetectionResult
 from app.schemas.events import StyleEventInput
 from app.services.event_service import EventService
-from app.services.hand_service import get_hand_service
 from app.providers.remote_gpu_tryon_provider import RemoteGpuTryOnProvider
 from app.services.image_edit_service import get_image_edit_service
 from app.services.image_processing_artifact_service import ImageProcessingArtifactService
@@ -29,7 +29,6 @@ from app.utils.files import ensure_local_file, public_url_for_path, relative_to_
 class TryOnService:
     def __init__(self) -> None:
         self.styles = StyleService()
-        self.hand_service = get_hand_service()
         self.segmentation_service = get_segmentation_service()
         self.image_edit_service = get_image_edit_service()
         self.remote_gpu_provider = RemoteGpuTryOnProvider()
@@ -142,24 +141,22 @@ class TryOnService:
             else:
                 if user_artifact.status != "succeeded":
                     self.artifact_service.mark_processing(db, user_artifact)
-                    user_detection = self.hand_service.detect(hand_image_path)
                     user_segmentation = self.segmentation_service.segment(hand_image_path)
                     user_artifact = self.artifact_service.mark_succeeded_from_local(
                         db,
                         user_artifact,
                         hand_image_path,
-                        user_detection,
+                        HandDetectionResult(landmarks=[], fingertip_rois=[]),
                         user_segmentation,
                     )
                 if style_artifact.status != "succeeded":
                     self.artifact_service.mark_processing(db, style_artifact)
-                    style_detection = self.hand_service.detect(style_image_path)
                     style_segmentation = self.segmentation_service.segment(style_image_path)
                     style_artifact = self.artifact_service.mark_succeeded_from_local(
                         db,
                         style_artifact,
                         style_image_path,
-                        style_detection,
+                        HandDetectionResult(landmarks=[], fingertip_rois=[]),
                         style_segmentation,
                         create_cutout=True,
                     )
