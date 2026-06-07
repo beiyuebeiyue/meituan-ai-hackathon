@@ -12,8 +12,9 @@ import { RequireLogin } from "../components/RequireLogin";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
 
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 
 function pad(value: number) {
   return String(value).padStart(2, "0");

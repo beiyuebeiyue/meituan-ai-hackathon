@@ -15,8 +15,9 @@ import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { useAuthStore } from "../store/useAuthStore";
 import { UserSummary } from "../types/api";
 import { useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
 
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 type FollowTab = "following" | "followers";
 
 export function FollowListScreen() {

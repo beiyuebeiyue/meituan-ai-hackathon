@@ -16,8 +16,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useThemeColors } from "../utils/theme";
+import { BRAND_LOGO_SOURCE } from "../constants/imageSources";
 
-const brandLogo = require("../../assets/app/logo.png");
+const brandLogo = BRAND_LOGO_SOURCE;
 
 export type MerchantDrawerActionKey =
   | "market-data"

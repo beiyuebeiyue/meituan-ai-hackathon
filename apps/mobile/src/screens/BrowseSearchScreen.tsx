@@ -25,11 +25,12 @@ import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import { useSearchHistoryStore } from "../store/useSearchHistoryStore";
 import { NailStyle, UserSummary } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
 
 const HISTORY_MAX_ROWS = 6;
 const HISTORY_CHIP_GAP = 12;
 const HISTORY_CONTAINER_HORIZONTAL_PADDING = 40;
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 
 function estimateChipWidth(label: string, availableWidth: number) {
   const textWidth = Array.from(label).reduce((sum, char) => {

@@ -9,8 +9,9 @@ import { RequireLogin } from "../components/RequireLogin";
 import { useAuthStore } from "../store/useAuthStore";
 import { NailStyle } from "../types/api";
 import { useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
 
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 
 export function ConsumerLikesScreen() {
   const navigation = useNavigation<any>();

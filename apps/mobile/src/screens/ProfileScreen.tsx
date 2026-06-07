@@ -26,9 +26,10 @@ import {
   getBookingStatusTextColor,
 } from "../utils/bookingStatus";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE, BRAND_LOGO_SOURCE } from "../constants/imageSources";
 
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
-const loginLogo = require("../../assets/login/logo.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+const loginLogo = BRAND_LOGO_SOURCE;
 const DEMO_CONSUMER_PHONE = "13886722665";
 const DEMO_PASSWORD = "admin@123456";
 

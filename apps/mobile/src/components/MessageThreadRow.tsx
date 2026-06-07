@@ -3,8 +3,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { MessageInboxThread } from "../types/api";
 import { resolveAssetUrl } from "../api/client";
 import type { AppPalette } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
 
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 
 function formatConversationTime(value: string) {
   const date = new Date(value);

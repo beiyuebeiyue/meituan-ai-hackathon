@@ -36,9 +36,10 @@ import { StyleDetail } from "../types/api";
 import { isMockDiscoverStyleId } from "../data/mockDiscoverStyles";
 import { getNailTypeLabel, getNailTypeTone } from "../utils/nailType";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
 
 type ScreenRoute = RouteProp<RootStackParamList, "StylePreview">;
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 const emojiGroups = [
   {
     key: "smile",

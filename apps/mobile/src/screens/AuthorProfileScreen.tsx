@@ -48,9 +48,10 @@ import {
 import { getStoredValue, setStoredValue } from "../utils/sessionStorage";
 import { formatRelativeRegionTime } from "../utils/postTime";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE, DEFAULT_PROFILE_BACKGROUND_SOURCE } from "../constants/imageSources";
 
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
-const profileBgDefault = require("../../assets/profile/profile_bg_default.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
+const profileBgDefault = DEFAULT_PROFILE_BACKGROUND_SOURCE;
 const PROFILE_HEADER_HEIGHT = Math.min(
   330,
   Math.max(300, Math.round(Dimensions.get("window").height * 0.34)),

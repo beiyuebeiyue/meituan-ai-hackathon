@@ -25,8 +25,9 @@ import { RootStackParamList } from "../navigation/RootNavigator";
 import { useAuthStore } from "../store/useAuthStore";
 import { DirectMessage } from "../types/api";
 import { useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
 
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 
 type ScreenRoute = RouteProp<RootStackParamList, "DirectMessage">;
 const emojiGroups = [

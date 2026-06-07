@@ -10,8 +10,9 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useContentPreferenceStore } from "../store/useContentPreferenceStore";
 import type { NailStyle } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
 
-const defaultAvatar = require("../../assets/profile/default_avatar.png");
+const defaultAvatar = DEFAULT_AVATAR_SOURCE;
 
 function normalizeTag(raw?: string) {
   return (raw ?? "").trim().replace(/^#+/, "");

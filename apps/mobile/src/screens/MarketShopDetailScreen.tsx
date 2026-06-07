@@ -20,8 +20,9 @@ import { useAuthStore } from "../store/useAuthStore";
 import { useMarketStore } from "../store/useMarketStore";
 import { NailStyle, NearbyShop } from "../types/api";
 import { useIsDarkMode, useThemeColors } from "../utils/theme";
+import { DEFAULT_AVATAR_SOURCE } from "../constants/imageSources";
 
-const fallbackAvatar = require("../../assets/profile/default_avatar.png");
+const fallbackAvatar = DEFAULT_AVATAR_SOURCE;
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const SHOP_TAGS = ["免费停车", "无隐性消费", "有沙发位", "支持预约"];
 
