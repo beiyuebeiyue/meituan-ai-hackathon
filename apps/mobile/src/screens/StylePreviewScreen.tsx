@@ -397,6 +397,14 @@ export function StylePreviewScreen() {
     navigation.navigate("DirectMessage", {
       userId: query.data.author_id,
       entryEdge: "right",
+      targetSnapshot: {
+        id: query.data.author_id,
+        uid: 0,
+        username: query.data.author_name,
+        role: query.data.author_is_shop ? "merchant" : "consumer",
+        is_shop: query.data.author_is_shop,
+        avatar_url: query.data.author_avatar_url ?? null,
+      },
     });
   };
 

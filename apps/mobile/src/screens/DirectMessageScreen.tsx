@@ -23,7 +23,7 @@ import { BookingSheet } from "../components/BookingSheet";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useAuthStore } from "../store/useAuthStore";
-import { DirectMessage } from "../types/api";
+import { DirectMessage, DirectMessageTarget } from "../types/api";
 import { useThemeColors } from "../utils/theme";
 import { defaultAvatarSourceFor } from "../constants/imageSources";
 
@@ -137,6 +137,8 @@ export function DirectMessageScreen() {
     queryFn: api.getLikedStyles,
     enabled: morePanelOpen,
   });
+  const displayTarget: DirectMessageTarget | undefined =
+    thread?.target ?? route.params.targetSnapshot;
 
   useEffect(() => {
     if (!query.dataUpdatedAt) return;
@@ -407,19 +409,11 @@ export function DirectMessageScreen() {
           >
             <Ionicons name="chevron-back" size={28} color={colors.text} />
           </Pressable>
-          <Pressable
+          <View
             style={styles.headerCenter}
-            disabled={!thread || thread.target.role !== "merchant"}
-            onPress={() => {
-              if (thread?.target.role === "merchant") {
-                navigation.navigate("AuthorProfile", {
-                  authorId: thread.target.id,
-                });
-              }
-            }}
           >
             <Image
-              source={defaultAvatarSourceFor(thread?.target)}
+              source={defaultAvatarSourceFor(displayTarget)}
               style={[
                 styles.headerAvatar,
                 { backgroundColor: colors.surfaceAlt },
@@ -427,17 +421,17 @@ export function DirectMessageScreen() {
             />
             <View style={styles.headerTextBlock}>
               <Text style={[styles.headerName, { color: colors.text }]} numberOfLines={1}>
-                {thread?.target.username ?? "正在加载私信对象"}
+                {displayTarget?.username ?? "私信"}
               </Text>
               <Text style={[styles.headerSubtitle, { color: colors.subtext }]} numberOfLines={1}>
-                {thread?.target.role === "merchant" ? "商家私信" : "用户私信"}
+                {displayTarget?.role === "merchant" ? "商家私信" : "用户私信"}
               </Text>
             </View>
-          </Pressable>
+          </View>
           <Pressable
             style={styles.headerAction}
             onPress={() =>
-              Alert.alert("更多", "不再看她的操作请在作者主页右上角中完成。")
+              Alert.alert("更多", "私信更多操作后续补充。")
             }
           >
             <Ionicons

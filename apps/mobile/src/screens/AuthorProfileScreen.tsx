@@ -1182,7 +1182,17 @@ export function AuthorProfileScreen({
                   return;
                 }
                 if (dmDisabled) return;
-                navigation.navigate("DirectMessage", { userId: author.id });
+                navigation.navigate("DirectMessage", {
+                  userId: author.id,
+                  targetSnapshot: {
+                    id: author.id,
+                    uid: author.uid,
+                    username: author.username,
+                    role: author.role,
+                    is_shop: author.is_shop,
+                    avatar_url: author.avatar_url ?? null,
+                  },
+                });
               }}
               variant="ghost"
               disabled={dmDisabled}

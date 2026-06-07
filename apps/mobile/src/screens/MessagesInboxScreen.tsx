@@ -108,7 +108,10 @@ export function MessagesInboxScreen({
   });
 
   const handleOpenThread = (item: MessageInboxThread) => {
-    navigation.navigate("DirectMessage", { userId: item.target.id });
+    navigation.navigate("DirectMessage", {
+      userId: item.target.id,
+      targetSnapshot: item.target,
+    });
   };
 
   const socialCards = [

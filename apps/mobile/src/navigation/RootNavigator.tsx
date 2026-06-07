@@ -12,6 +12,7 @@ import {
   SlideOverlayScreen,
 } from "../components/SlideOverlayScreen";
 import { WeeklyHotNailsModal } from "../components/WeeklyHotNailsModal";
+import { DirectMessageTarget } from "../types/api";
 import { AskAIScreen } from "../screens/AskAIScreen";
 import { AuthorProfileScreen } from "../screens/AuthorProfileScreen";
 import { BrowseHistoryScreen } from "../screens/BrowseHistoryScreen";
@@ -101,6 +102,7 @@ export type RootStackParamList = {
   } & OverlayEntryParams;
   DirectMessage: {
     userId: string;
+    targetSnapshot?: DirectMessageTarget;
     initialStyleId?: string;
     initialTryOnJobId?: string;
     initialMessage?: string;

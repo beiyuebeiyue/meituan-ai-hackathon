@@ -186,6 +186,14 @@ export function MarketShopDetailScreen() {
     navigation.navigate("DirectMessage", {
       userId: shop.merchant_user_id,
       entryEdge: "right",
+      targetSnapshot: {
+        id: shop.merchant_user_id,
+        uid: 0,
+        username: shop.name,
+        role: "merchant",
+        is_shop: true,
+        avatar_url: null,
+      },
       initialStyleId: pendingBookingStyleId ?? undefined,
       initialTryOnJobId: pendingBookingTryOnJobId ?? undefined,
       initialMessage: pendingBookingStyleId
