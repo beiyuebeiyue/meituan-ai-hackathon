@@ -16,6 +16,12 @@ pinned: false
 
 ## 在线体验
 
+### 产品 PRD
+
+这是焕甲AI 的产品 PRD：
+
+- PRD 文档：https://pcn7x0h2nqqh.feishu.cn/docx/ZXnKddUIRoGvFIxyH2ic7D7rnzV
+
 ### 运营端
 
 运营端用于查看平台数据、用户与商家信息、热门美甲推款、运营周报和 AI 运营助手。
