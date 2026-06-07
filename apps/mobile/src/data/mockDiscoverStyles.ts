@@ -200,6 +200,34 @@ export function getMockDiscoverResponse(pageSize = mockDiscoverStyles.length): N
   };
 }
 
+function normalizeSearchText(value: string) {
+  return value.trim().toLowerCase().replace(/^#+/, "");
+}
+
+export function searchMockDiscoverStyles(query: string, pageSize = mockDiscoverStyles.length): NailStyleListResponse {
+  const token = normalizeSearchText(query);
+  const items = token
+    ? mockDiscoverStyles.filter((item) => {
+        const searchableText = [
+          item.title,
+          item.description,
+          item.nail_type === "handmade" ? "手工甲" : "穿戴甲",
+          ...item.tags,
+        ]
+          .join(" ")
+          .toLowerCase();
+        return searchableText.includes(token);
+      })
+    : mockDiscoverStyles;
+
+  return {
+    page: 1,
+    page_size: pageSize,
+    total: items.length,
+    items: items.slice(0, pageSize),
+  };
+}
+
 export function getMockDiscoverStyle(styleId: string): StyleDetail | undefined {
   const style = mockDiscoverStyles.find((item) => item.id === styleId);
   return style ? { ...style } : undefined;

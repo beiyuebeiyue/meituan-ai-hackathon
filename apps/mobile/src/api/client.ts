@@ -6,6 +6,7 @@ import {
   getMockDiscoverStyle,
   getMockStyleComments,
   isMockDiscoverStyleId,
+  searchMockDiscoverStyles,
 } from "../data/mockDiscoverStyles";
 import {
   AIChatMessage,
@@ -126,7 +127,13 @@ export const api = {
   getDiscover: () => Promise.resolve(getMockDiscoverResponse(20)),
   getDefaultGalleryStyles: () => Promise.resolve(getMockDiscoverResponse(30)),
   getShopStyles: (shopId: string) => request<NailStyleListResponse>(`/nails/by-shop/${shopId}?page=1&page_size=30`),
-  searchStyles: (query: string) => request<NailStyleListResponse>(withXhsPreference(`/nails/search?query=${encodeURIComponent(query)}&page=1&page_size=20`)),
+  searchStyles: async (query: string) => {
+    const localResults = searchMockDiscoverStyles(query, 20);
+    if (localResults.items.length > 0) {
+      return localResults;
+    }
+    return request<NailStyleListResponse>(withXhsPreference(`/nails/search?query=${encodeURIComponent(query)}&page=1&page_size=20`));
+  },
   searchUsers: (query: string) => request<{ items: UserSummary[] }>(`/users/search?query=${encodeURIComponent(query)}&limit=30`),
   getFollowingStyles: () => request<NailStyleListResponse>(withXhsPreference("/nails/following?page=1&page_size=20")),
   getLatest: () => request<NailStyleListResponse>(withXhsPreference("/nails/latest?page=1&page_size=20")),

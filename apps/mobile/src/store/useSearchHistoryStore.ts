@@ -9,6 +9,7 @@ type SearchHistoryState = {
   hydrated: boolean;
   load: () => Promise<void>;
   addItem: (query: string) => Promise<void>;
+  removeItem: (query: string) => Promise<void>;
   clear: () => Promise<void>;
 };
 
@@ -38,6 +39,17 @@ export const useSearchHistoryStore = create<SearchHistoryState>((set, get) => ({
     const currentItems = get().items;
     const nextItems = [normalized, ...currentItems.filter((item) => item !== normalized)].slice(0, MAX_STORED_HISTORY_ITEMS);
     await setStoredValue(SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(nextItems));
+    set({ items: nextItems, hydrated: true });
+  },
+  removeItem: async (query) => {
+    const normalized = normalizeQuery(query);
+    if (!normalized) return;
+    const nextItems = get().items.filter((item) => item !== normalized);
+    if (nextItems.length) {
+      await setStoredValue(SEARCH_HISTORY_STORAGE_KEY, JSON.stringify(nextItems));
+    } else {
+      await deleteStoredValue(SEARCH_HISTORY_STORAGE_KEY);
+    }
     set({ items: nextItems, hydrated: true });
   },
   clear: async () => {

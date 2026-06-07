@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -100,6 +99,7 @@ export function BrowseSearchScreen() {
   const historyHydrated = useSearchHistoryStore((state) => state.hydrated);
   const loadHistory = useSearchHistoryStore((state) => state.load);
   const addHistoryItem = useSearchHistoryStore((state) => state.addItem);
+  const removeHistoryItem = useSearchHistoryStore((state) => state.removeItem);
   const clearHistory = useSearchHistoryStore((state) => state.clear);
   const { width: windowWidth } = useWindowDimensions();
 
@@ -175,14 +175,7 @@ export function BrowseSearchScreen() {
   };
 
   const onClearHistory = () => {
-    Alert.alert("清空搜索历史", "确认删除全部搜索历史吗？", [
-      { text: "取消", style: "cancel" },
-      {
-        text: "清空",
-        style: "destructive",
-        onPress: () => void clearHistory(),
-      },
-    ]);
+    void clearHistory();
   };
 
   const postResults = stylesQuery.data?.items ?? [];
@@ -444,6 +437,16 @@ export function BrowseSearchScreen() {
                         >
                           {item}
                         </Text>
+                        <Pressable
+                          hitSlop={8}
+                          style={styles.historyChipRemove}
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            void removeHistoryItem(item);
+                          }}
+                        >
+                          <Ionicons name="close" size={15} color={colors.subtext} />
+                        </Pressable>
                       </Pressable>
                     ))}
                   </View>
@@ -536,10 +539,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 18,
     paddingVertical: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   historyChipText: {
     fontSize: 15,
     fontWeight: "600",
+  },
+  historyChipRemove: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyHistoryText: {
     fontSize: 14,
