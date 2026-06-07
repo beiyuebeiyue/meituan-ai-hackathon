@@ -34,9 +34,9 @@ Android App 下载：
 
 - https://pan.baidu.com/s/1N403ORBb7cyMgHVqKsyu3Q?pwd=2vji
 
-由于暂时没有苹果开发者账户，目前无法提供 iOS App 下载。
+由于我们没有苹果开发者账户，因此无法提供 iOS App。
 
-同时也提供网页版用户端，方便快速预览和分享：
+我们提供网页版用户端，方便非安卓手机用户浏览：
 
 - https://huanjia.eu.cc/mobile
 
