@@ -18,6 +18,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.nailtry.ai",
       "infoPlist": {
+        "NSCameraUsageDescription": "焕甲需要使用相机来拍摄你的手图，用于 AI 试戴预览。",
         "NSLocationWhenInUseUsageDescription": "焕甲需要使用你的位置来展示附近的美甲店。"
       }
     },
@@ -30,6 +31,7 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
+        "CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
@@ -40,6 +42,12 @@
     "plugins": [
       "expo-secure-store",
       "expo-media-library",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "焕甲需要使用相机来拍摄你的手图，用于 AI 试戴预览。"
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-splash-screen",

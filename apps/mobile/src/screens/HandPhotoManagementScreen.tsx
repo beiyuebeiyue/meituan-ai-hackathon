@@ -70,6 +70,12 @@ export function HandPhotoManagementScreen() {
 
   const takePhotoNow = async () => {
     try {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("需要相机权限", "请允许焕甲使用相机，才能现场拍摄手图。");
+        return;
+      }
+
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["images"],
         quality: 0.85,
