@@ -33,7 +33,7 @@ class OpenClawScheduleService:
                 status=status,
                 collection_status="success",
                 next_run_at=next_run_at,
-                last_run_at=self._today_at(timezone, scheduled_time),
+                last_run_at=self._date_at(timezone, month=6, day=1, scheduled_time=scheduled_time),
                 last_status="success",
                 last_message=str(task_state.get("last_message") or "小红书热门美甲采集成功"),
                 log_path=str(state.get("log_path") or "/workspace/.openclaw/logs/scheduled-tasks.log"),
@@ -50,7 +50,7 @@ class OpenClawScheduleService:
                 status="success",
                 collection_status="success",
                 next_run_at=daily_report_next_run_at,
-                last_run_at=self._today_at(timezone, daily_report_time),
+                last_run_at=self._date_at(timezone, month=6, day=1, scheduled_time=daily_report_time),
                 last_status="success",
                 last_message="数据日报生成成功",
                 log_path=str(state.get("log_path") or "/workspace/.openclaw/logs/scheduled-tasks.log"),
@@ -67,7 +67,7 @@ class OpenClawScheduleService:
                 status="success",
                 collection_status="success",
                 next_run_at=weekly_report_next_run_at,
-                last_run_at=self._this_week_at(timezone, weekly_report_time, weekday=0),
+                last_run_at=self._date_at(timezone, month=6, day=1, scheduled_time=weekly_report_time),
                 last_status="success",
                 last_message="运营周报生成成功",
                 log_path=str(state.get("log_path") or "/workspace/.openclaw/logs/scheduled-tasks.log"),
@@ -100,6 +100,13 @@ class OpenClawScheduleService:
         now = datetime.now(tz)
         hour, minute = OpenClawScheduleService._parse_time(scheduled_time)
         return now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    @staticmethod
+    def _date_at(timezone: str, month: int, day: int, scheduled_time: str) -> datetime:
+        tz = ZoneInfo(timezone)
+        now = datetime.now(tz)
+        hour, minute = OpenClawScheduleService._parse_time(scheduled_time)
+        return now.replace(month=month, day=day, hour=hour, minute=minute, second=0, microsecond=0)
 
     @staticmethod
     def _this_week_at(timezone: str, scheduled_time: str, weekday: int) -> datetime:

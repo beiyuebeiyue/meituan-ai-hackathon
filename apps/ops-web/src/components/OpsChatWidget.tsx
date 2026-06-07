@@ -228,6 +228,11 @@ export function OpsChatWidget() {
               <Input.TextArea
                 autoSize={{ minRows: 1, maxRows: 3 }}
                 value={input}
+                spellCheck={false}
+                data-gramm="false"
+                data-gramm_editor="false"
+                data-enable-grammarly="false"
+                data-lt-active="false"
                 placeholder="输入 / 查看命令"
                 onChange={(event) => setInput(event.target.value)}
                 onPressEnter={(event) => {

@@ -273,6 +273,11 @@ export function ChatbotPage() {
         <Input.TextArea
           value={input}
           autoSize={{ minRows: 2, maxRows: 5 }}
+          spellCheck={false}
+          data-gramm="false"
+          data-gramm_editor="false"
+          data-enable-grammarly="false"
+          data-lt-active="false"
           placeholder={loading ? "当前回复完成后自动发送..." : "输入消息，按 Enter 发送..."}
           onChange={(event) => setInput(event.target.value)}
           onPressEnter={(event) => {

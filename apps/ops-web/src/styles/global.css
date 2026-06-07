@@ -1779,7 +1779,18 @@ textarea {
 .ops-chat-input [class*="prowriting"],
 .ops-chat-input [class*="ProWriting"],
 .ops-chat-input [class*="quillbot"],
-.ops-chat-input [class*="QuillBot"] {
+.ops-chat-input [class*="QuillBot"],
+.ops-chat-input [class*="languagetool"],
+.ops-chat-input [class*="LanguageTool"],
+.ops-chat-input [data-lt-installed],
+.ops-chat-input [data-lt-active],
+.ops-chat-input [data-extension-id],
+.ops-chat-input [data-testid*="grammarly"],
+.ops-chat-input [aria-label*="Grammarly"],
+.ops-chat-input [aria-label*="Writing"],
+.ops-chat-input [aria-label*="writing"],
+.ops-chat-input [aria-label*="Improve"],
+.ops-chat-input [style*="2147483647"] {
   display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -2204,8 +2215,24 @@ textarea {
 .chatbot-input-wrap [class*="grammarly"],
 .chatbot-input-wrap [class*="Grammarly"],
 .chatbot-input-wrap [class*="writing-assist"],
-.chatbot-input-wrap [class*="WritingAssist"] {
+.chatbot-input-wrap [class*="WritingAssist"],
+.chatbot-input-wrap [class*="prowriting"],
+.chatbot-input-wrap [class*="ProWriting"],
+.chatbot-input-wrap [class*="quillbot"],
+.chatbot-input-wrap [class*="QuillBot"],
+.chatbot-input-wrap [class*="languagetool"],
+.chatbot-input-wrap [class*="LanguageTool"],
+.chatbot-input-wrap [data-lt-installed],
+.chatbot-input-wrap [data-lt-active],
+.chatbot-input-wrap [data-extension-id],
+.chatbot-input-wrap [data-testid*="grammarly"],
+.chatbot-input-wrap [aria-label*="Grammarly"],
+.chatbot-input-wrap [aria-label*="Writing"],
+.chatbot-input-wrap [aria-label*="writing"],
+.chatbot-input-wrap [aria-label*="Improve"],
+.chatbot-input-wrap [style*="2147483647"] {
   display: none !important;
+  visibility: hidden !important;
   pointer-events: none !important;
 }
 
