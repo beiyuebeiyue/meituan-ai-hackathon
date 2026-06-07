@@ -1,5 +1,3 @@
-import * as FileSystem from "expo-file-system";
-import * as MediaLibrary from "expo-media-library";
 import { Ionicons } from "@expo/vector-icons";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,7 +41,7 @@ import {
 } from "../utils/askAgent";
 import { useThemeColors } from "../utils/theme";
 import { trackEvent } from "../utils/analytics";
-import { getNailTypeLabel, isHandmadeNail } from "../utils/nailType";
+import { getNailTypeLabel } from "../utils/nailType";
 
 type ChatPayload = {
   messages: AIChatMessage[];
@@ -65,14 +63,6 @@ type ChatDebugEntry = {
 };
 
 const AI_WAITING_MESSAGE = "正在帮你寻找您心怡的美甲，请耐心等待";
-
-function parseTryOnProgress(stage?: string | null): number | null {
-  const match = stage?.match(/^generating:(\d{1,3})$/);
-  if (!match) return null;
-  const progress = Number.parseInt(match[1], 10);
-  if (!Number.isFinite(progress)) return null;
-  return Math.max(0, Math.min(100, progress));
-}
 
 function extractApiErrorMessage(error: unknown) {
   if (!(error instanceof Error)) return "请稍后再试。";
@@ -188,47 +178,6 @@ function ChatBubble({
   colors: ReturnType<typeof useThemeColors>;
 }) {
   const isUser = message.role === "user";
-  const cloudFloat = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!pending || isUser) {
-      cloudFloat.stopAnimation();
-      cloudFloat.setValue(0);
-      return;
-    }
-
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(cloudFloat, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cloudFloat, {
-          toValue: 0,
-          duration: 1500,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [cloudFloat, isUser, pending]);
-
-  const cloudAnimatedStyle = {
-    opacity: cloudFloat.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.94, 1],
-    }),
-    transform: [
-      {
-        translateY: cloudFloat.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, -4],
-        }),
-      },
-    ],
-  };
 
   return (
     <View
@@ -242,46 +191,23 @@ function ChatBubble({
           styles.chatBubble,
           isUser
             ? [styles.userBubble, { backgroundColor: colors.accent }]
-            : pending
-              ? [
-                  styles.assistantCloudBubble,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                  cloudAnimatedStyle,
-                ]
             : [
                 styles.assistantBubble,
                 { backgroundColor: colors.surface, borderColor: colors.border },
               ],
         ]}
       >
-        {!isUser && pending ? (
-          <>
-            <View style={[styles.cloudPuff, styles.cloudPuffLeft, { backgroundColor: colors.surface, borderColor: colors.border }]} />
-            <View style={[styles.cloudPuff, styles.cloudPuffTop, { backgroundColor: colors.surface, borderColor: colors.border }]} />
-            <View style={[styles.cloudPuff, styles.cloudPuffRight, { backgroundColor: colors.surface, borderColor: colors.border }]} />
-          </>
-        ) : null}
         {message.content ? (
           <Text
             style={[
               styles.chatBubbleText,
-              pending && !isUser ? styles.cloudBubbleText : null,
               { color: isUser ? "#ffffff" : colors.text },
             ]}
           >
             {message.content}
           </Text>
         ) : null}
-        {pending && !isUser ? (
-          <View style={styles.cloudDots}>
-            <View style={[styles.cloudDot, { backgroundColor: colors.accent }]} />
-            <View style={[styles.cloudDot, { backgroundColor: colors.accent }]} />
-            <View style={[styles.cloudDot, { backgroundColor: colors.accent }]} />
-          </View>
-        ) : pending ? (
+        {pending && isUser ? (
           <ActivityIndicator size="small" color={colors.accent} style={styles.chatBubbleSpinner} />
         ) : null}
       </Animated.View>
@@ -427,9 +353,6 @@ export function AskAIScreen() {
     null,
   );
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
-  const [tryOnFeedback, setTryOnFeedback] = useState<
-    "idle" | "satisfied" | "unsatisfied"
-  >("idle");
   const [composerHeight, setComposerHeight] = useState(158);
   const [historyVisible, setHistoryVisible] = useState(false);
   const [debugVisible, setDebugVisible] = useState(false);
@@ -632,7 +555,6 @@ export function AskAIScreen() {
     onSuccess: (job) => {
       setActiveJobId(job.job_id);
       setNeedsHandFor(null);
-      setTryOnFeedback("idle");
       setAssistantLine("正在为您焕甲");
     },
     onError: (error) => {
@@ -799,7 +721,6 @@ export function AskAIScreen() {
     setRecommendations([]);
     setSelectedStyleId(null);
     setActiveJobId(null);
-    setTryOnFeedback("idle");
     setQueuedTryOnStyleId(null);
     chatMutation.reset();
     queryClient.removeQueries({ queryKey: ["ask-ai-job"] });
@@ -833,7 +754,6 @@ export function AskAIScreen() {
   ) => {
     const handReady = options?.forceHandReady ?? hasHandSelection;
     setSelectedStyleId(styleId);
-    setTryOnFeedback("idle");
     setActiveJobId(null);
     setRecommendations([]);
 
@@ -908,35 +828,12 @@ export function AskAIScreen() {
     await materializeAndStartTryOn(item.note_id);
   };
 
-  const saveTryOnResult = async () => {
-    if (!tryOnJobQuery.data?.result_image_url) return;
-    const permission = await MediaLibrary.requestPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert("需要相册权限", "允许访问相册后，才能把试戴结果保存到本地。");
-      return;
-    }
-    const download = await FileSystem.downloadAsync(
-      resolveAssetUrl(tryOnJobQuery.data.result_image_url),
-      `${FileSystem.cacheDirectory}ask-ai-result.jpg`,
-    );
-    await MediaLibrary.saveToLibraryAsync(download.uri);
-    setTryOnFeedback("satisfied");
-    setAssistantLine(
-      "好呀，这款就先帮你记下来了。你也可以继续挑别的款式再试一轮。",
-    );
-    Alert.alert("已保存", "试戴结果已经保存到你的系统相册。");
-  };
-
   const openTryOnNextStep = () => {
     const styleId = tryOnJobQuery.data?.selected_style_id;
     if (!styleId || !activeStyleQuery.data) return;
-    if (isHandmadeNail(activeStyleQuery.data.nail_type)) {
-      setPendingBookingStyleId(styleId);
-      setPendingBookingTryOnJobId(tryOnJobQuery.data?.job_id ?? null);
-      navigation.navigate("MainTabs", { screen: "Market" });
-      return;
-    }
-    navigation.navigate("WearableStore", { styleId, entryEdge: "right" });
+    setPendingBookingStyleId(styleId);
+    setPendingBookingTryOnJobId(tryOnJobQuery.data?.job_id ?? null);
+    navigation.navigate("MainTabs", { screen: "Market" });
   };
 
   const currentResultImageUrl = tryOnJobQuery.data?.result_image_url
@@ -948,7 +845,6 @@ export function AskAIScreen() {
   const pendingTryOnMaskUrl = tryOnJobQuery.data?.mask_url
     ? resolveAssetUrl(tryOnJobQuery.data.mask_url)
     : null;
-  const tryOnProgress = parseTryOnProgress(tryOnJobQuery.data?.stage);
   const showingHandChooser = needsHandFor !== null;
   const composerBottomInset = Math.max(tabBarHeight - 74, 12);
   const scrollBottomPadding = composerHeight + 18;
@@ -981,7 +877,6 @@ export function AskAIScreen() {
     setHandPickerMessage("");
     setSelectedStyleId(null);
     setActiveJobId(null);
-    setTryOnFeedback("idle");
     chatMutation.reset();
     setHistoryVisible(false);
   };
@@ -1202,28 +1097,6 @@ export function AskAIScreen() {
               <Text style={[styles.processingTitle, { color: colors.text }]}>
                 正在为您焕甲
               </Text>
-              <View
-                style={[
-                  styles.processingProgressTrack,
-                  { backgroundColor: colors.accentSoft },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.processingProgressFill,
-                    {
-                      backgroundColor: colors.accent,
-                      width: `${tryOnProgress ?? 8}%`,
-                    },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.processingProgressText, { color: colors.subtext }]}>
-                {tryOnProgress !== null ? `${tryOnProgress}%` : "正在排队"}
-              </Text>
-              <Text style={[styles.processingText, { color: colors.subtext }]}>
-                我正在用你选中的手图、指甲 mask 和款式图生成试戴效果。
-              </Text>
             </View>
           ) : null}
 
@@ -1254,74 +1127,39 @@ export function AskAIScreen() {
                   </View>
                 ) : null}
               </View>
-              <Image
-                source={{ uri: currentResultImageUrl }}
-                style={[
-                  styles.resultImage,
-                  { backgroundColor: colors.accentSoft },
-                ]}
+              <View style={styles.tryOnCompareRow}>
+                {pendingTryOnHandUrl ? (
+                  <View style={styles.tryOnCompareItem}>
+                    <Image
+                      source={{ uri: pendingTryOnHandUrl }}
+                      style={[
+                        styles.tryOnCompareImage,
+                        { backgroundColor: colors.accentSoft },
+                      ]}
+                    />
+                    <Text style={[styles.tryOnCompareLabel, { color: colors.subtext }]}>
+                      原手图
+                    </Text>
+                  </View>
+                ) : null}
+                <View style={styles.tryOnCompareItem}>
+                  <Image
+                    source={{ uri: currentResultImageUrl }}
+                    style={[
+                      styles.tryOnCompareImage,
+                      { backgroundColor: colors.accentSoft },
+                    ]}
+                  />
+                  <Text style={[styles.tryOnCompareLabel, { color: colors.subtext }]}>
+                    焕甲后
+                  </Text>
+                </View>
+              </View>
+              <PrimaryButton
+                label="选择商家预约"
+                onPress={openTryOnNextStep}
+                disabled={!activeStyleQuery.data}
               />
-              <View style={styles.resultActions}>
-                <PrimaryButton
-                  label="满意，保存结果"
-                  onPress={saveTryOnResult}
-                  style={{ flex: 1 }}
-                />
-                <PrimaryButton
-                  label={
-                    isHandmadeNail(activeStyleQuery.data?.nail_type)
-                      ? "选择商家预约"
-                      : "去超市下单"
-                  }
-                  onPress={openTryOnNextStep}
-                  disabled={!activeStyleQuery.data}
-                  style={{ flex: 1 }}
-                />
-              </View>
-              <View style={styles.resultActions}>
-                <PrimaryButton
-                  label="不太满意"
-                  variant="ghost"
-                  onPress={() => {
-                    setTryOnFeedback("unsatisfied");
-                    setAssistantLine(getAgentResultPrompt("unsatisfied"));
-                  }}
-                  style={{ flex: 1 }}
-                />
-                <PrimaryButton
-                  label="继续挑款"
-                  variant="ghost"
-                  onPress={() => setActiveJobId(null)}
-                  style={{ flex: 1 }}
-                />
-              </View>
-              <View style={styles.resultSubActions}>
-                <Pressable
-                  style={[
-                    styles.subActionButton,
-                    { borderColor: colors.border },
-                  ]}
-                  onPress={() => setNeedsHandFor("tryon")}
-                >
-                  <Text style={[styles.subActionText, { color: colors.text }]}>
-                    换一张手图再试
-                  </Text>
-                </Pressable>
-                <Pressable
-                  style={[
-                    styles.subActionButton,
-                    { borderColor: colors.border },
-                  ]}
-                  onPress={() => {
-                    if (!activeJobId) return;
-                    navigation.navigate("TryOnResult", { jobId: activeJobId });
-                  }}
-                >
-                  <Text style={[styles.subActionText, { color: colors.text }]}>
-                    打开完整结果页
-                  </Text>
-                </Pressable>
-              </View>
             </View>
           ) : null}
 
@@ -1918,66 +1756,9 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 6,
     borderWidth: 1,
   },
-  assistantCloudBubble: {
-    marginTop: 8,
-    maxWidth: "88%",
-    minHeight: 70,
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    overflow: "visible",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 5,
-  },
-  cloudPuff: {
-    position: "absolute",
-    borderWidth: 1,
-    zIndex: -1,
-  },
-  cloudPuffLeft: {
-    left: 18,
-    top: -8,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-  },
-  cloudPuffTop: {
-    left: 54,
-    top: -17,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-  },
-  cloudPuffRight: {
-    right: 26,
-    top: -10,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-  },
   chatBubbleText: {
     fontSize: 15,
     lineHeight: 22,
-  },
-  cloudBubbleText: {
-    fontWeight: "700",
-    lineHeight: 21,
-  },
-  cloudDots: {
-    marginTop: 8,
-    flexDirection: "row",
-    gap: 5,
-    alignItems: "center",
-  },
-  cloudDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    opacity: 0.65,
   },
   chatBubbleSpinner: {
     alignSelf: "flex-start",
@@ -2157,24 +1938,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
   },
-  processingProgressTrack: {
-    width: "100%",
-    height: 8,
-    borderRadius: 999,
-    overflow: "hidden",
-  },
-  processingProgressFill: {
-    height: "100%",
-    borderRadius: 999,
-  },
-  processingProgressText: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  processingText: {
-    textAlign: "center",
-    lineHeight: 21,
-  },
   reviewCard: {
     borderRadius: 26,
     padding: 18,
@@ -2242,30 +2005,27 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
   },
-  resultImage: {
+  tryOnCompareRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  tryOnCompareItem: {
+    flex: 1,
+    gap: 7,
+  },
+  tryOnCompareImage: {
     width: "100%",
     aspectRatio: 1,
-    borderRadius: 24,
+    borderRadius: 20,
+  },
+  tryOnCompareLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    textAlign: "center",
   },
   resultActions: {
     flexDirection: "row",
     gap: 10,
-  },
-  resultSubActions: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  subActionButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  subActionText: {
-    fontSize: 14,
-    fontWeight: "700",
   },
   errorCard: {
     borderRadius: 24,

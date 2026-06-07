@@ -249,23 +249,13 @@ export function MarketScreen() {
                 {label}
               </Text>
               <Ionicons
-                name="chevron-down"
+                name={active ? "checkmark" : "ellipse-outline"}
                 size={13}
                 color={active ? colors.accent : colors.subtext}
               />
             </Pressable>
           );
         })}
-        <View style={[styles.sortChip, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sortChipText, { color: colors.text }]}>
-            5km内
-          </Text>
-        </View>
-        <View style={[styles.sortChip, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sortChipText, { color: colors.text }]}>
-            美甲
-          </Text>
-        </View>
       </View>
 
       <Text style={[styles.resultHint, { color: colors.subtext }]}>
@@ -350,8 +340,7 @@ const styles = StyleSheet.create({
   sortRow: {
     paddingHorizontal: 14,
     paddingTop: 8,
-    flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 8,
   },
   sortChip: {

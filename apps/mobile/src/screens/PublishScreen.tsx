@@ -170,7 +170,15 @@ export function PublishScreen() {
               onPress={pickImage}
             >
               {imageUri ? (
-                <>
+                <View
+                  style={[
+                    styles.previewFrame,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
                   <Image
                     source={{ uri: imageUri }}
                     style={[
@@ -187,7 +195,7 @@ export function PublishScreen() {
                     <Ionicons name="refresh" size={14} color="#ffffff" />
                     <Text style={styles.previewOverlayText}>更换</Text>
                   </View>
-                </>
+                </View>
               ) : (
                 <View style={styles.uploadPlaceholder}>
                   <Ionicons
@@ -547,7 +555,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    overflow: "hidden",
+    padding: 12,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -565,6 +573,14 @@ const styles = StyleSheet.create({
   preview: {
     width: "100%",
     height: "100%",
+    borderRadius: 18,
+  },
+  previewFrame: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
   },
   previewOverlay: {
     position: "absolute",

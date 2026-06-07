@@ -1,4 +1,3 @@
-import MapView, { Marker, Region } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -20,6 +19,12 @@ import { DEFAULT_SHOP_COVER_SOURCE } from "../constants/imageSources";
 import { NearbyShop } from "../types/api";
 
 type CoordinateShop = NearbyShop & { latitude: number; longitude: number };
+type Region = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
 
 const MARKER_OVERLAP_DISTANCE = 54;
 const MARKER_PINK = "#111111";
@@ -156,11 +161,9 @@ export function MarketMapView({
   onSelectShop,
   onOpenShop,
 }: MarketMapViewProps) {
-  const mapRef = useRef<MapView | null>(null);
   const listRef = useRef<FlatList<CoordinateShop> | null>(null);
   const { height: windowHeight } = useWindowDimensions();
   const initialRegion = useMemo(() => shopRegionForItems(shops, fallbackCoords), [fallbackCoords.lat, fallbackCoords.lng, shops]);
-  const [mapType, setMapType] = useState<"standard" | "satellite">("standard");
   const [mapRegion, setMapRegion] = useState<Region>(initialRegion);
   const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
   const [sheetExpanded, setSheetExpanded] = useState(false);
@@ -228,16 +231,13 @@ export function MarketMapView({
   }, [expandedSheetHeight, sheetExpanded, sheetHeight]);
 
   useEffect(() => {
-    if (!selectedShop || !mapRef.current) return;
-    mapRef.current.animateToRegion(
-      {
-        latitude: selectedShop.latitude,
-        longitude: selectedShop.longitude,
-        latitudeDelta: 0.045,
-        longitudeDelta: 0.045,
-      },
-      260
-    );
+    if (!selectedShop) return;
+    setMapRegion({
+      latitude: selectedShop.latitude,
+      longitude: selectedShop.longitude,
+      latitudeDelta: 0.045,
+      longitudeDelta: 0.045,
+    });
   }, [selectedShop]);
 
   useEffect(() => {
@@ -249,15 +249,12 @@ export function MarketMapView({
   }, [selectedShop, shops]);
 
   const recenter = () => {
-    mapRef.current?.animateToRegion(
-      {
-        latitude: fallbackCoords.lat,
-        longitude: fallbackCoords.lng,
-        latitudeDelta: 0.045,
-        longitudeDelta: 0.045,
-      },
-      260
-    );
+    setMapRegion({
+      latitude: fallbackCoords.lat,
+      longitude: fallbackCoords.lng,
+      latitudeDelta: 0.045,
+      longitudeDelta: 0.045,
+    });
   };
 
   const handleMapLayout = (event: LayoutChangeEvent) => {
@@ -267,28 +264,44 @@ export function MarketMapView({
 
   return (
     <View style={styles.mapWrap}>
-      <MapView
-        ref={(ref) => {
-          mapRef.current = ref;
-        }}
-        style={styles.map}
-        mapType={mapType}
-        initialRegion={initialRegion}
-        onLayout={handleMapLayout}
-        onRegionChangeComplete={setMapRegion}
-      >
-        <Marker coordinate={{ latitude: fallbackCoords.lat, longitude: fallbackCoords.lng }} anchor={{ x: 0.5, y: 0.5 }}>
+      <View style={[styles.map, { backgroundColor: colors.surfaceAlt }]} onLayout={handleMapLayout}>
+        <View style={styles.mapGridLayer}>
+          <View style={styles.mapGridLineHorizontal} />
+          <View style={[styles.mapGridLineHorizontal, styles.mapGridLineHorizontalTwo]} />
+          <View style={styles.mapGridLineVertical} />
+          <View style={[styles.mapGridLineVertical, styles.mapGridLineVerticalTwo]} />
+        </View>
+        <View style={styles.mapDistrictA} />
+        <View style={styles.mapDistrictB} />
+        <View style={styles.mapDistrictC} />
+        <View
+          style={[
+            styles.currentLocationOverlay,
+            {
+              left: Math.max(18, mapSize.width / 2 - 17),
+              top: Math.max(120, mapSize.height / 2 - 17),
+            },
+          ]}
+        >
           <View style={styles.currentLocationHalo}>
             <View style={styles.currentLocationDot} />
           </View>
-        </Marker>
+        </View>
         {visibleMarkers.map(({ shop, isPrimary, groupSize }) => (
-          <Marker
+          <Pressable
             key={shop.id}
-            coordinate={{ latitude: shop.latitude, longitude: shop.longitude }}
-            anchor={isPrimary ? { x: 0.5, y: 1 } : { x: 0.5, y: 0.5 }}
             onPress={() => onSelectShop(shop.id)}
-            zIndex={isPrimary ? 10 + groupSize : 1}
+            style={[
+              styles.markerOverlay,
+              {
+                left: projectShopToScreen(shop, mapRegion, mapSize)?.x ?? 0,
+                top: projectShopToScreen(shop, mapRegion, mapSize)?.y ?? 0,
+                zIndex: isPrimary ? 10 + groupSize : 1,
+                transform: isPrimary
+                  ? [{ translateX: -48 }, { translateY: -42 }]
+                  : [{ translateX: -12 }, { translateY: -12 }],
+              },
+            ]}
           >
             {isPrimary ? (
               <View style={styles.markerWrap}>
@@ -317,9 +330,9 @@ export function MarketMapView({
                 <View style={styles.markerDot} />
               </View>
             )}
-          </Marker>
+          </Pressable>
         ))}
-      </MapView>
+      </View>
 
       <View style={styles.floatingTop}>
         <Pressable style={[styles.roundButton, { backgroundColor: colors.surface }]} onPress={onExitMap}>
@@ -345,16 +358,6 @@ export function MarketMapView({
             <Ionicons name="close" size={24} color={colors.text} />
           </Pressable>
         </View>
-      </View>
-
-      <View style={styles.rightTools}>
-        <Pressable
-          style={[styles.toolButton, { backgroundColor: colors.surface }]}
-          onPress={() => setMapType((current) => (current === "standard" ? "satellite" : "standard"))}
-        >
-          <Ionicons name="layers-outline" size={24} color={colors.text} />
-          <Text style={[styles.toolText, { color: colors.text }]}>图层</Text>
-        </Pressable>
       </View>
 
       <Pressable style={[styles.locationButton, { backgroundColor: colors.surface }]} onPress={recenter}>
@@ -464,6 +467,69 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+    overflow: "hidden",
+  },
+  mapGridLayer: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0.5,
+  },
+  mapGridLineHorizontal: {
+    position: "absolute",
+    left: -40,
+    right: -40,
+    top: "34%",
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.72)",
+    transform: [{ rotate: "-13deg" }],
+  },
+  mapGridLineHorizontalTwo: {
+    top: "58%",
+    transform: [{ rotate: "18deg" }],
+  },
+  mapGridLineVertical: {
+    position: "absolute",
+    top: -60,
+    bottom: -60,
+    left: "34%",
+    width: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.68)",
+    transform: [{ rotate: "18deg" }],
+  },
+  mapGridLineVerticalTwo: {
+    left: "64%",
+    transform: [{ rotate: "-15deg" }],
+  },
+  mapDistrictA: {
+    position: "absolute",
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    left: -54,
+    top: 118,
+    backgroundColor: "rgba(255, 221, 228, 0.72)",
+  },
+  mapDistrictB: {
+    position: "absolute",
+    width: 260,
+    height: 260,
+    borderRadius: 130,
+    right: -86,
+    top: 160,
+    backgroundColor: "rgba(255, 246, 214, 0.74)",
+  },
+  mapDistrictC: {
+    position: "absolute",
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    left: 118,
+    bottom: 168,
+    backgroundColor: "rgba(226, 240, 255, 0.7)",
+  },
+  currentLocationOverlay: {
+    position: "absolute",
   },
   currentLocationHalo: {
     width: 34,
@@ -484,6 +550,9 @@ const styles = StyleSheet.create({
   markerWrap: {
     alignItems: "center",
     maxWidth: 128,
+  },
+  markerOverlay: {
+    position: "absolute",
   },
   markerPill: {
     minWidth: 70,
@@ -586,29 +655,6 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
-  },
-  rightTools: {
-    position: "absolute",
-    top: 86,
-    right: 16,
-    gap: 12,
-  },
-  toolButton: {
-    width: 58,
-    height: 62,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.11,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  toolText: {
-    fontSize: 12,
-    fontWeight: "800",
   },
   locationButton: {
     position: "absolute",

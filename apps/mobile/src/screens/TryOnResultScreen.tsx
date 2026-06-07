@@ -1,5 +1,3 @@
-import * as FileSystem from "expo-file-system";
-import * as MediaLibrary from "expo-media-library";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { useEffect } from "react";
@@ -11,7 +9,7 @@ import { PrimaryButton } from "../components/PrimaryButton";
 import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useMarketStore } from "../store/useMarketStore";
-import { getNailTypeLabel, isHandmadeNail } from "../utils/nailType";
+import { getNailTypeLabel } from "../utils/nailType";
 import { useThemeColors } from "../utils/theme";
 
 type ScreenRoute = RouteProp<RootStackParamList, "TryOnResult">;
@@ -51,26 +49,12 @@ export function TryOnResultScreen() {
     },
   });
 
-  const saveResult = async () => {
-    if (!query.data?.result_image_url) return;
-    const permission = await MediaLibrary.requestPermissionsAsync();
-    if (!permission.granted) return;
-    const download = await FileSystem.downloadAsync(
-      resolveAssetUrl(query.data.result_image_url),
-      `${FileSystem.cacheDirectory}tryon-result.jpg`,
-    );
-    await MediaLibrary.saveToLibraryAsync(download.uri);
-  };
   const openNextStep = () => {
     const styleId = query.data?.selected_style_id;
     if (!styleId || !styleQuery.data) return;
-    if (isHandmadeNail(styleQuery.data.nail_type)) {
-      setPendingBookingStyleId(styleId);
-      setPendingBookingTryOnJobId(query.data?.job_id ?? null);
-      navigation.navigate("MainTabs", { screen: "Market" });
-      return;
-    }
-    navigation.navigate("WearableStore", { styleId, entryEdge: "right" });
+    setPendingBookingStyleId(styleId);
+    setPendingBookingTryOnJobId(query.data?.job_id ?? null);
+    navigation.navigate("MainTabs", { screen: "Market" });
   };
   useEffect(() => {
     if (query.data?.status !== "succeeded") return;
@@ -87,12 +71,6 @@ export function TryOnResultScreen() {
       : query.data?.stage === "generating"
         ? "正在生成焕甲结果"
         : "AI 正在处理中，通常需要几秒钟";
-  const nextStepLabel = !styleQuery.data
-    ? "正在确认款式类型..."
-    : isHandmadeNail(styleQuery.data.nail_type)
-      ? "选择美甲商家预约"
-      : "去焕甲生活超市下单";
-
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.surfaceAlt }]}
@@ -150,32 +128,71 @@ export function TryOnResultScreen() {
           </>
         ) : query.data?.status === "succeeded" && query.data.result_image_url ? (
           <>
-            <Image
-              source={{ uri: resolveAssetUrl(query.data.result_image_url) }}
-              style={[
-                styles.resultImage,
-                { backgroundColor: colors.accentSoft },
-              ]}
-            />
-            {styleQuery.data ? (
-              <View
-                style={[styles.typePill, { backgroundColor: colors.surface }]}
-              >
-                <Text style={[styles.typePillText, { color: colors.subtext }]}>
-                  {getNailTypeLabel(styleQuery.data.nail_type)}
+            <View style={[styles.resultCard, { backgroundColor: colors.surface }]}>
+              <View style={styles.resultHeader}>
+                <Text style={[styles.resultTitle, { color: colors.text }]}>
+                  这次的上手效果
                 </Text>
+                {styleQuery.data ? (
+                  <View
+                    style={[
+                      styles.typePill,
+                      { backgroundColor: colors.accentSoft },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.typePillText, { color: colors.accent }]}
+                    >
+                      {getNailTypeLabel(styleQuery.data.nail_type)}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-            <PrimaryButton label="保存到相册" onPress={saveResult} />
+              <View style={styles.resultCompareRow}>
+                {query.data.source_hand_image_url ? (
+                  <View style={styles.resultCompareItem}>
+                    <Image
+                      source={{
+                        uri: resolveAssetUrl(query.data.source_hand_image_url),
+                      }}
+                      style={[
+                        styles.resultCompareImage,
+                        { backgroundColor: colors.accentSoft },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.resultCompareLabel,
+                        { color: colors.subtext },
+                      ]}
+                    >
+                      原手图
+                    </Text>
+                  </View>
+                ) : null}
+                <View style={styles.resultCompareItem}>
+                  <Image
+                    source={{ uri: resolveAssetUrl(query.data.result_image_url) }}
+                    style={[
+                      styles.resultCompareImage,
+                      { backgroundColor: colors.accentSoft },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.resultCompareLabel,
+                      { color: colors.subtext },
+                    ]}
+                  >
+                    焕甲后
+                  </Text>
+                </View>
+              </View>
+            </View>
             <PrimaryButton
-              label={nextStepLabel}
+              label="选择商家预约"
               onPress={openNextStep}
               disabled={!styleQuery.data}
-            />
-            <PrimaryButton
-              label="返回继续挑选"
-              onPress={() => dismissOverlay?.() ?? navigation.goBack()}
-              variant="ghost"
             />
           </>
         ) : query.data?.status === "failed" ? (
@@ -208,7 +225,40 @@ export function TryOnResultScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { flex: 1, padding: 16, paddingBottom: 120, gap: 14 },
-  resultImage: { width: "100%", aspectRatio: 1, borderRadius: 26 },
+  resultCard: {
+    borderRadius: 26,
+    padding: 16,
+    gap: 14,
+  },
+  resultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  resultTitle: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: "900",
+  },
+  resultCompareRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  resultCompareItem: {
+    flex: 1,
+    gap: 8,
+  },
+  resultCompareImage: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 20,
+  },
+  resultCompareLabel: {
+    fontSize: 13,
+    fontWeight: "800",
+    textAlign: "center",
+  },
   typePill: {
     alignSelf: "flex-start",
     borderRadius: 999,

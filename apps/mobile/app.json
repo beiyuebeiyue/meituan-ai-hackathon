@@ -11,6 +11,10 @@
       "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
+    "androidNavigationBar": {
+      "backgroundColor": "#ffffff",
+      "barStyle": "dark-content"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -53,8 +57,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/app/opening.png",
-          "imageWidth": 360,
-          "resizeMode": "contain",
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff"
         }
       ],
