@@ -1,6 +1,6 @@
-import { Card, Col, Row, Space, Tag, Typography } from "antd";
+import { Card, Col, Row, Tag, Typography } from "antd";
 import type { CSSProperties } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { MapChart } from "echarts/charts";
 import { GeoComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import * as echarts from "echarts/core";
@@ -62,15 +62,6 @@ const provinceHeat = [
   { name: "澳门特别行政区", value: 36 },
 ];
 
-const cityHeat = [
-  { name: "深圳", province: "广东", value: 96, change: "+18%" },
-  { name: "上海", province: "上海", value: 88, change: "+15%" },
-  { name: "广州", province: "广东", value: 82, change: "+13%" },
-  { name: "杭州", province: "浙江", value: 76, change: "+11%" },
-  { name: "北京", province: "北京", value: 72, change: "+10%" },
-  { name: "成都", province: "四川", value: 68, change: "+9%" },
-];
-
 const mockDashboard: OpsDashboard = {
   report_date: "2026-06-06",
   timezone: "Asia/Shanghai",
@@ -127,23 +118,6 @@ function formatNumber(value: number) {
   return value.toLocaleString("zh-CN");
 }
 
-function formatMoney(value: number) {
-  return `${formatNumber(value)} 元`;
-}
-
-function activityEndTimestamp() {
-  return Date.parse("2026-06-10T23:59:59.999+08:00");
-}
-
-function activityCountdown() {
-  const remaining = Math.max(0, activityEndTimestamp() - Date.now());
-  const hours = Math.floor(remaining / 3_600_000);
-  const minutes = Math.floor((remaining % 3_600_000) / 60_000);
-  const seconds = Math.floor((remaining % 60_000) / 1000);
-  const milliseconds = remaining % 1000;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}:${String(milliseconds).padStart(3, "0")}`;
-}
-
 function series(base: number) {
   const seed = Math.max(base, 100);
   return Array.from({ length: 24 }, (_, index) => ({
@@ -185,89 +159,50 @@ function monitorValues(dashboard: OpsDashboard) {
 }
 
 export function MonitorPage() {
-  const [remainingTime, setRemainingTime] = useState(activityCountdown);
   const dashboard = mockDashboard;
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setRemainingTime(activityCountdown()), 100);
-    return () => window.clearInterval(timer);
-  }, []);
 
   const tags = useMemo(() => tagDistribution(dashboard?.popular_nails ?? []), [dashboard]);
 
   const values = monitorValues(dashboard);
   const forecast = series(values.todayRevenue);
-  const topProvince = provinceHeat.reduce((best, item) => (item.value > best.value ? item : best), provinceHeat[0]);
-  const activeProvinceCount = provinceHeat.filter((item) => item.value >= 80).length;
 
   return (
-    <Space direction="vertical" size={18} className="page-stack monitor-page">
-      <div className="monitor-overview-grid">
-        <Metric label="今日交易总额" value={formatMoney(values.todayRevenue)} />
-        <Metric label="活跃省份" value={`${activeProvinceCount} 个`} />
-        <Metric label="最热区域" value={topProvince.name.replace(/省|市|自治区|特别行政区/g, "")} />
-        <Metric label="活动剩余时间" value={remainingTime} />
-      </div>
-
+    <div className="page-stack monitor-page">
       <Row gutter={[24, 24]}>
         <Col xs={24} xl={16}>
           <Card
             className="monitor-card monitor-map-card"
-            title="全国交易热力"
+            title="全国交易热力图"
             extra={<Typography.Text type="secondary">省份数值为今日门店线索量</Typography.Text>}
           >
             <ChinaHeatMap />
           </Card>
         </Col>
         <Col xs={24} xl={8}>
-          <Space direction="vertical" size={16} className="full-width">
-            <Card className="monitor-card monitor-side-card monitor-city-card" title="重点城市">
-              <div className="monitor-city-list">
-                {cityHeat.map((city, index) => (
-                  <div className="monitor-city-row" key={city.name}>
-                    <div className="monitor-city-rank">{index + 1}</div>
-                    <div className="monitor-city-main">
-                      <div className="monitor-city-title">
-                        <strong>{city.name}</strong>
-                        <span>{city.province}</span>
-                      </div>
-                      <div className="monitor-city-bar">
-                        <span style={{ width: `${city.value}%`, backgroundColor: accentColors[index % accentColors.length] }} />
-                      </div>
-                    </div>
-                    <div className="monitor-city-value">
-                      <strong>{city.value}</strong>
-                      <span>{city.change}</span>
-                    </div>
-                  </div>
-                ))}
+          <Card className="monitor-card monitor-side-card monitor-forecast-card" title="活动情况预测">
+            <div className="monitor-forecast-head">
+              <div>
+                <Typography.Text type="secondary">活动状况</Typography.Text>
+                <Typography.Title level={3}>正常</Typography.Title>
               </div>
-            </Card>
-            <Card className="monitor-card monitor-side-card" title="活动情况预测">
-              <div className="monitor-forecast-head">
-                <div>
-                  <Typography.Text type="secondary">活动状况</Typography.Text>
-                  <Typography.Title level={3}>正常</Typography.Title>
-                </div>
-                <Tag color="green">目标 {values.targetRate}%</Tag>
-              </div>
-              <div className="monitor-forecast-labels">
-                <span>{formatNumber(Math.max(values.todayRevenue * 2, 142200))} 元</span>
-                <span>{formatNumber(Math.max(values.todayRevenue, 70800))} 元</span>
-              </div>
-              <ResponsiveContainer width="100%" height={110}>
-                <AreaChart data={forecast}>
-                  <Area type="monotone" dataKey="value" stroke="#2563eb" fill="#dbeafe" strokeWidth={2} />
-                  <Tooltip />
-                </AreaChart>
-              </ResponsiveContainer>
-              <div className="monitor-time-axis">
-                <span>00:00</span>
-                <span>12:00</span>
-                <span>23:00</span>
-              </div>
-            </Card>
-          </Space>
+              <Tag color="green">当前 {values.targetRate}%</Tag>
+            </div>
+            <div className="monitor-forecast-labels">
+              <span>{formatNumber(Math.max(values.todayRevenue * 2, 142200))} 元</span>
+              <span>{formatNumber(Math.max(values.todayRevenue, 70800))} 元</span>
+            </div>
+            <ResponsiveContainer width="100%" height={110}>
+              <AreaChart data={forecast}>
+                <Area type="monotone" dataKey="value" stroke="#2563eb" fill="#dbeafe" strokeWidth={2} />
+                <Tooltip />
+              </AreaChart>
+            </ResponsiveContainer>
+            <div className="monitor-time-axis">
+              <span>00:00</span>
+              <span>12:00</span>
+              <span>23:00</span>
+            </div>
+          </Card>
         </Col>
       </Row>
 
@@ -305,15 +240,6 @@ export function MonitorPage() {
           </Card>
         </Col>
       </Row>
-    </Space>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <Typography.Text type="secondary">{label}</Typography.Text>
-      <div className="monitor-kpi-value">{value}</div>
     </div>
   );
 }
@@ -438,10 +364,10 @@ function Gauge({ value }: { value: number }) {
     <div className="monitor-gauge">
       <svg viewBox="0 0 240 160">
         <path d="M35 125 A85 85 0 0 1 205 125" className="gauge-track" />
-        <path d="M35 125 A85 85 0 0 1 81 49" className="gauge-segment gauge-blue" />
-        <path d="M81 49 A85 85 0 0 1 120 40" className="gauge-segment gauge-green" />
-        <path d="M120 40 A85 85 0 0 1 169 59" className="gauge-segment gauge-yellow" />
-        <path d="M169 59 A85 85 0 0 1 205 125" className="gauge-segment gauge-dark" />
+        <path d="M35 125 A85 85 0 0 1 81 49" className="gauge-segment gauge-dark" />
+        <path d="M81 49 A85 85 0 0 1 120 40" className="gauge-segment gauge-yellow" />
+        <path d="M120 40 A85 85 0 0 1 169 59" className="gauge-segment gauge-green" />
+        <path d="M169 59 A85 85 0 0 1 205 125" className="gauge-segment gauge-blue" />
         <line x1="120" y1="125" x2="120" y2="62" className="gauge-pointer" transform={`rotate(${angle} 120 125)`} />
         <circle cx="120" cy="125" r="12" className="gauge-center" />
       </svg>

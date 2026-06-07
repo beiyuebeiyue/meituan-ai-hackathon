@@ -107,14 +107,14 @@ function funnelColor(index: number) {
 }
 
 function kpiTone(index: number) {
-  return ["is-revenue", "is-order", "is-recommend", "is-tryon", "is-conversion", "is-aov"][index % 6];
+  return ["is-revenue", "is-recommend", "is-order", "is-tryon", "is-conversion"][index % 5];
 }
 
 function kpiIcon(index: number) {
   return [
     <DollarOutlined />,
-    <CheckCircleOutlined />,
     <UserOutlined />,
+    <CheckCircleOutlined />,
     <ThunderboltOutlined />,
     <LineChartOutlined />,
   ][index % 5];
@@ -305,45 +305,38 @@ function AnalyticsKpiGrid({ analytics }: { analytics: OpsAnalyticsOverview }) {
   const revenueConversionRate = DEMO_REVENUE_CONVERSION_RATE;
   const completedOrders = Math.max(kpis.completed_orders, Math.round(revenueCents / Math.max(kpis.average_order_value_cents, 16800)));
   const averageOrderValueCents = Math.round(rate(revenueCents, completedOrders));
-  const bookingSubmits = Math.max(kpis.booking_submits, Math.round(completedOrders / 0.51));
-  const bookingToOrderRate = rate(completedOrders, bookingSubmits);
-  const cumulativeNewUsers = Math.min(kpis.dau, Math.max(kpis.new_users, Math.round(kpis.dau * 0.54)));
-  const arpuCents = Math.round(rate(revenueCents, kpis.dau));
+  const userTotal = Math.max(kpis.dau, 1286);
+  const newUsers = Math.max(kpis.new_users, 62);
+  const merchantTotal = 28;
+  const newMerchants = 3;
+  const tryonUses = Math.max(kpis.tryon_completed, 399);
+  const todayTryons = Math.max(46, Math.round(tryonUses * 0.12));
+  const bookingSubmits = Math.max(kpis.booking_submits, 116);
   const cards = [
     {
       label: "营业额",
       value: formatCents(revenueCents),
-      hint: `ARPU ${formatCents(arpuCents)}`,
-      detail: `${formatNumber(completedOrders)} 单已完成`,
-      progress: revenueConversionRate,
-    },
-    {
-      label: "完成订单",
-      value: formatNumber(completedOrders),
-      hint: `预约提交 ${formatNumber(bookingSubmits)}`,
-      detail: `核销率 ${formatPercent(bookingToOrderRate)}`,
-      progress: bookingToOrderRate,
+      detail: `客单价 ${formatCents(averageOrderValueCents)}`,
     },
     {
       label: "用户数",
-      value: formatNumber(kpis.dau),
-      hint: `日新增用户 ${formatNumber(kpis.new_users)}`,
-      detail: `累计新增 ${formatNumber(cumulativeNewUsers)}`,
-      progress: rate(kpis.new_users, kpis.dau),
+      value: formatNumber(userTotal),
+      detail: `日新增用户 ${formatNumber(newUsers)}`,
+    },
+    {
+      label: "商家数",
+      value: formatNumber(merchantTotal),
+      detail: `新增商家 ${formatNumber(newMerchants)}`,
     },
     {
       label: "焕甲使用次数",
-      value: formatNumber(kpis.tryon_completed),
-      hint: `开始 ${formatNumber(kpis.tryon_started)}`,
-      detail: `完成率 ${formatPercent(kpis.tryon_completion_rate)}`,
-      progress: kpis.tryon_completion_rate,
+      value: formatNumber(tryonUses),
+      detail: `今日使用 ${formatNumber(todayTryons)}`,
     },
     {
-      label: "客单价",
-      value: formatCents(averageOrderValueCents),
-      hint: `收入转化 ${formatPercent(revenueConversionRate)}`,
-      detail: `订单 ${formatNumber(completedOrders)}`,
-      progress: revenueConversionRate,
+      label: "预约提交",
+      value: formatNumber(bookingSubmits),
+      detail: `收入转化 ${formatPercent(revenueConversionRate)}`,
     },
   ];
 
@@ -362,7 +355,6 @@ function AnalyticsKpiGrid({ analytics }: { analytics: OpsAnalyticsOverview }) {
               {valueParts.unit ? <span className="ops-kpi-unit">{valueParts.unit}</span> : null}
             </div>
             <div className="ops-kpi-detail">{card.detail}</div>
-            <Typography.Text className="ops-kpi-hint" type="secondary">{card.hint}</Typography.Text>
           </Card>
         );
       })}
