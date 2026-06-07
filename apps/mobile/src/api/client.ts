@@ -82,8 +82,8 @@ async function appendImageFile(form: FormData, fieldName: string, imageUri: stri
       throw new Error("图片读取失败，请重新选择图片");
     }
     const blob = await response.blob();
-    const uploadBlob = blob.type ? blob : new Blob([blob], { type: mimeType });
-    form.append(fieldName, uploadBlob as never, fileName);
+    const uploadFile = new File([blob], fileName, { type: blob.type || mimeType });
+    form.append(fieldName, uploadFile);
     return;
   }
 

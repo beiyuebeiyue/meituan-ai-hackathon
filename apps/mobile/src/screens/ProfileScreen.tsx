@@ -249,7 +249,6 @@ function ConsumerProfileScreen() {
       key: "bookings",
       icon: "receipt-outline",
       title: "历史订单",
-      subtitle: "预约与历史订单",
     },
     {
       key: "browse-history",
@@ -261,7 +260,6 @@ function ConsumerProfileScreen() {
       key: "following",
       icon: "storefront-outline",
       title: "我的关注",
-      subtitle: "关注的作者和商家",
     },
     {
       key: "likes",
@@ -490,12 +488,14 @@ function ConsumerProfileScreen() {
                 <Text style={[styles.consumerMenuTitle, { color: colors.text }]}>
                   {item.title}
                 </Text>
-                <Text
-                  style={[styles.consumerMenuSubtitle, { color: colors.subtext }]}
-                  numberOfLines={1}
-                >
-                  {item.subtitle}
-                </Text>
+                {"subtitle" in item && item.subtitle ? (
+                  <Text
+                    style={[styles.consumerMenuSubtitle, { color: colors.subtext }]}
+                    numberOfLines={1}
+                  >
+                    {item.subtitle}
+                  </Text>
+                ) : null}
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
             </Pressable>

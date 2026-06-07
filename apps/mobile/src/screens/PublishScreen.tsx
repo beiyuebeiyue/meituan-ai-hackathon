@@ -157,11 +157,6 @@ export function PublishScreen() {
               { backgroundColor: colors.surface, borderColor: colors.border },
             ]}
           >
-            <View style={styles.composeHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                作品封面
-              </Text>
-            </View>
             <Pressable
               style={[
                 styles.uploadCard,
@@ -447,13 +442,6 @@ const styles = StyleSheet.create({
     gap: 12,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  composeHeader: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  sectionTitle: { fontSize: 17, fontWeight: "900" },
   shopNotice: {
     minHeight: 44,
     flexDirection: "row",
