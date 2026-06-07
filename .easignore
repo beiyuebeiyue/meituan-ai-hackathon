@@ -2,12 +2,13 @@
 .env
 .venv
 .openclaw
-data
+/data
 node_modules
 apps/*/node_modules
 apps/mobile/.expo
 apps/mobile/.env
 apps/mobile/builds
+apps/mobile/.export-check
 apps/mobile/dist
 apps/ops-web/dist
 services/api/.venv
