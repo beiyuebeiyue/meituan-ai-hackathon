@@ -419,13 +419,16 @@ class SeedService:
 
     @staticmethod
     def _extract_dominant_colors(image_path: Path) -> list[str]:
-        image = Image.open(image_path).convert("RGB").resize((64, 64))
+        try:
+            image = Image.open(image_path).convert("RGB").resize((64, 64))
+        except Exception:
+            return ["#f4d7c8", "#fff7ef", "#111111"]
         colors = image.getcolors(maxcolors=4096) or []
         colors.sort(key=lambda item: item[0], reverse=True)
         dominant = []
         for _, rgb in colors[:3]:
             dominant.append("#%02x%02x%02x" % rgb)
-        return dominant
+        return dominant or ["#f4d7c8", "#fff7ef", "#111111"]
 
     @staticmethod
     def _color_tags(dominant_colors: list[str]) -> list[str]:
