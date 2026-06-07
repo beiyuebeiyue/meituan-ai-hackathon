@@ -24,7 +24,7 @@ import { useSlideOverlayDismiss } from "../components/SlideOverlayScreen";
 import { RootStackParamList } from "../navigation/RootNavigator";
 import { useAuthStore } from "../store/useAuthStore";
 import { DirectMessage, DirectMessageTarget } from "../types/api";
-import { useThemeColors } from "../utils/theme";
+import { useIsDarkMode, useThemeColors } from "../utils/theme";
 import { defaultAvatarSourceFor } from "../constants/imageSources";
 
 type ScreenRoute = RouteProp<RootStackParamList, "DirectMessage">;
@@ -103,17 +103,13 @@ const emojiGroups = [
   },
 ] as const;
 
-function formatMessageTime(value: string) {
-  const date = new Date(value);
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
-}
-
 export function DirectMessageScreen() {
   const navigation = useNavigation<any>();
   const dismissOverlay = useSlideOverlayDismiss();
   const route = useRoute<ScreenRoute>();
   const queryClient = useQueryClient();
   const colors = useThemeColors();
+  const isDarkMode = useIsDarkMode();
   const currentUser = useAuthStore((state) => state.user);
   const [message, setMessage] = useState("");
   const [emojiPanelOpen, setEmojiPanelOpen] = useState(false);
@@ -465,7 +461,25 @@ export function DirectMessageScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            const isSharedStyleMessage = Boolean(item.shared_style);
+            const useLightSharedCard = isSharedStyleMessage && !isDarkMode;
+            const bubbleBackgroundColor = useLightSharedCard
+              ? "#ffffff"
+              : item.is_mine
+                ? colors.accent
+                : colors.surface;
+            const bubbleTextColor = useLightSharedCard
+              ? colors.text
+              : item.is_mine
+                ? "#ffffff"
+                : colors.text;
+            const bubbleSubtextColor = useLightSharedCard
+              ? colors.subtext
+              : item.is_mine
+                ? "rgba(255,255,255,0.78)"
+                : colors.subtext;
+            return (
             <View
               style={[
                 styles.messageRow,
@@ -486,10 +500,12 @@ export function DirectMessageScreen() {
                   style={[
                     styles.messageBubble,
                     {
-                      backgroundColor: item.is_mine
-                        ? colors.accent
-                        : colors.surface,
-                      borderColor: item.is_mine ? colors.accent : bubbleBorderColor,
+                      backgroundColor: bubbleBackgroundColor,
+                      borderColor: useLightSharedCard
+                        ? bubbleBorderColor
+                        : item.is_mine
+                          ? colors.accent
+                          : bubbleBorderColor,
                     },
                   ]}
                 >
@@ -498,9 +514,7 @@ export function DirectMessageScreen() {
                       style={[
                         styles.tryOnImageLabel,
                         {
-                          color: item.is_mine
-                            ? "rgba(255,255,255,0.82)"
-                            : colors.subtext,
+                          color: bubbleSubtextColor,
                         },
                       ]}
                     >
@@ -518,9 +532,14 @@ export function DirectMessageScreen() {
                       style={[
                         styles.sharedStyleCard,
                         {
-                          backgroundColor: item.is_mine
-                            ? "rgba(255,255,255,0.14)"
-                            : colors.surfaceAlt,
+                          backgroundColor: useLightSharedCard
+                            ? "#ffffff"
+                            : item.is_mine
+                              ? "rgba(255,255,255,0.14)"
+                              : colors.surfaceAlt,
+                          borderColor: useLightSharedCard
+                            ? colors.border
+                            : "transparent",
                         },
                       ]}
                       onPress={() =>
@@ -539,7 +558,7 @@ export function DirectMessageScreen() {
                         <Text
                           style={[
                             styles.sharedStyleTitle,
-                            { color: item.is_mine ? "#ffffff" : colors.text },
+                            { color: bubbleTextColor },
                           ]}
                           numberOfLines={2}
                         >
@@ -549,9 +568,7 @@ export function DirectMessageScreen() {
                           style={[
                             styles.sharedStyleMeta,
                             {
-                              color: item.is_mine
-                                ? "rgba(255,255,255,0.78)"
-                                : colors.subtext,
+                              color: bubbleSubtextColor,
                             },
                           ]}
                           numberOfLines={1}
@@ -640,19 +657,17 @@ export function DirectMessageScreen() {
                     <Text
                       style={[
                         styles.messageText,
-                        { color: item.is_mine ? "#ffffff" : colors.text },
+                        { color: bubbleTextColor },
                       ]}
                     >
                       {item.content}
                     </Text>
                   ) : null}
                 </View>
-                <Text style={[styles.messageTime, { color: colors.subtext }]}>
-                  {formatMessageTime(item.created_at)}
-                </Text>
               </View>
             </View>
-          )}
+            );
+          }}
         />
 
         <View
@@ -1007,10 +1022,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 28,
     paddingTop: 80,
+    paddingBottom: 24,
   },
   emptyText: {
     fontSize: 15,
+    lineHeight: 24,
+    textAlign: "center",
   },
   messageRow: {
     flexDirection: "row",
@@ -1053,6 +1072,7 @@ const styles = StyleSheet.create({
   sharedStyleCard: {
     width: 220,
     borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },
   sharedStyleImage: {
@@ -1109,9 +1129,6 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 15,
     lineHeight: 22,
-  },
-  messageTime: {
-    fontSize: 12,
   },
   composerWrap: {
     borderTopWidth: 1,
