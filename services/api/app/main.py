@@ -4,6 +4,7 @@ import asyncio
 import logging
 import mimetypes
 import os
+import threading
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -19,6 +20,15 @@ from app.core.db import database, init_db
 
 mimetypes.add_type("image/webp", ".webp")
 logger = logging.getLogger(__name__)
+
+
+def _warmup_segmentation_model() -> None:
+    try:
+        from app.services.segmentation_service import get_segmentation_service
+
+        get_segmentation_service().warmup()
+    except Exception:
+        logger.warning("YOLO segmentation warmup failed", exc_info=True)
 
 
 def create_app() -> FastAPI:
@@ -58,6 +68,7 @@ def create_app() -> FastAPI:
         from app.tasks.trend_tasks import start_weekly_trend_campaign_scheduler
 
         start_weekly_trend_campaign_scheduler()
+        threading.Thread(target=_warmup_segmentation_model, daemon=True).start()
 
     app.mount(
         f"{settings.public_files_prefix}/seed",

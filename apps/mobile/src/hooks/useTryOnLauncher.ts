@@ -25,7 +25,7 @@ export function useTryOnLauncher({ onSuccess, onError }: UseTryOnLauncherOptions
         screen: "tryon",
         properties: { hand_source: payload.savedHandPhotoId ? "saved" : payload.handImageUri ? "upload" : "missing" },
       });
-      return api.createTryOnJob(payload);
+      return api.createTryOnJob({ ...payload, prepareOnly: false });
     },
     onSuccess: (job) => {
       void queryClient.invalidateQueries({ queryKey: ["saved-hand-photos"] });

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import time
 from pathlib import Path
 from typing import Any
 
@@ -9,12 +11,16 @@ from app.core.config import Settings, get_settings
 from app.providers.nail_segmentation_provider import NailSegmentationNoNailsError, SegmentationResult
 
 
+logger = logging.getLogger(__name__)
+
+
 class YoloNailSegmentationProvider:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
         self._model: Any | None = None
 
     def segment(self, image_path: Path) -> SegmentationResult:
+        started_at = time.perf_counter()
         model = self._load_model()
         image = Image.open(image_path).convert("RGB")
         original_size = image.size
@@ -49,7 +55,34 @@ class YoloNailSegmentationProvider:
 
         mask_path = image_path.parent / f"{image_path.stem}_yolo_mask.png"
         self._save_alpha_mask(mask, mask_path)
+        logger.info(
+            "YOLO nail segmentation finished in %.2fs: image=%s boxes=%d",
+            time.perf_counter() - started_at,
+            image_path,
+            len(boxes),
+        )
         return SegmentationResult(mask_path=mask_path, roi_boxes=boxes, confidence=confidence)
+
+    def warmup(self) -> None:
+        started_at = time.perf_counter()
+        model = self._load_model()
+        warmup_path = self.settings.tryon_artifact_path / "yolo_warmup.png"
+        warmup_path.parent.mkdir(parents=True, exist_ok=True)
+        if not warmup_path.exists():
+            Image.new("RGB", (128, 128), (255, 255, 255)).save(warmup_path)
+
+        predict_kwargs: dict[str, object] = {
+            "source": str(warmup_path),
+            "imgsz": min(self.settings.nail_yolo_imgsz, 320),
+            "conf": self.settings.nail_yolo_confidence,
+            "iou": self.settings.nail_yolo_iou,
+            "retina_masks": True,
+            "verbose": False,
+        }
+        if self.settings.nail_yolo_device.strip():
+            predict_kwargs["device"] = self.settings.nail_yolo_device.strip()
+        model.predict(**predict_kwargs)
+        logger.info("YOLO nail segmentation warmup finished in %.2fs", time.perf_counter() - started_at)
 
     def _load_model(self) -> Any:
         if self._model is not None:

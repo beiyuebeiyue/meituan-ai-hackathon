@@ -91,9 +91,10 @@ def build_payload(args: argparse.Namespace, env: dict[str, str]) -> dict[str, An
         payload["prompt"] = prompt
     ordered_tryon_urls = [
         args.hand_image_url,
-        args.hand_mask_url if args.include_mask_as_reference else "",
         args.style_image_url,
     ]
+    if args.include_mask_as_reference:
+        ordered_tryon_urls.insert(1, args.hand_mask_url)
     image_urls = [url for url in ordered_tryon_urls if url]
     image_urls.extend(url for url in args.image_url if url)
     if image_urls:
@@ -108,13 +109,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare or submit an EvoLink GPT Image 2 async image task.")
     parser.add_argument("--prompt", default="", help="Prompt for the image task. Defaults to the nail try-on prompt.")
     parser.add_argument("--hand-image-url", default="", help="Original uploaded hand image URL. Placed first in image_urls.")
-    parser.add_argument("--hand-mask-url", default="", help="Generated nail mask URL. Placed second in image_urls and used as mask_url.")
-    parser.add_argument("--style-image-url", default="", help="Target nail style image URL. Placed third in image_urls.")
+    parser.add_argument("--hand-mask-url", default="", help="Generated nail mask URL. Used as mask_url.")
+    parser.add_argument("--style-image-url", default="", help="Target nail style image URL. Placed second in image_urls.")
     parser.add_argument(
-        "--no-mask-reference",
-        action="store_false",
+        "--include-mask-reference",
+        action="store_true",
         dest="include_mask_as_reference",
-        help="Do not include the mask as the second image_urls item; still uses it as mask_url.",
+        help="Also include the mask as the second image_urls item for manual debugging.",
     )
     parser.add_argument("--image-url", action="append", default=[], help="Reference image URL. Can be passed multiple times.")
     parser.add_argument("--mask-url", default="", help="PNG alpha mask URL for image editing.")

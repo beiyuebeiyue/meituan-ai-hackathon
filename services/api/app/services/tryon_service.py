@@ -120,9 +120,9 @@ class TryOnService:
             db.commit()
 
             user_artifact = self.artifact_service.get_or_create(db, hand_image_path, "user_hand")
-            style_artifact = self.artifact_service.get_or_create(db, style_image_path, "style_reference")
 
             if self.remote_gpu_provider.is_configured:
+                style_artifact = self.artifact_service.get_or_create(db, style_image_path, "style_reference")
                 self.artifact_service.mark_processing(db, user_artifact)
                 self.artifact_service.mark_processing(db, style_artifact)
                 generated = self.remote_gpu_provider.render_tryon(
@@ -149,17 +149,6 @@ class TryOnService:
                         HandDetectionResult(landmarks=[], fingertip_rois=[]),
                         user_segmentation,
                     )
-                if style_artifact.status != "succeeded":
-                    self.artifact_service.mark_processing(db, style_artifact)
-                    style_segmentation = self.segmentation_service.segment(style_image_path)
-                    style_artifact = self.artifact_service.mark_succeeded_from_local(
-                        db,
-                        style_artifact,
-                        style_image_path,
-                        HandDetectionResult(landmarks=[], fingertip_rois=[]),
-                        style_segmentation,
-                        create_cutout=True,
-                    )
 
                 job.stage = "generating"
                 db.add(job)
@@ -167,10 +156,9 @@ class TryOnService:
                 user_mask_path = self.artifact_service.local_path(user_artifact.mask_path)
                 if user_mask_path is None:
                     raise RuntimeError("没有检测到可用的指甲 mask，请重新上传一张手部照片")
-                style_reference_path = self.artifact_service.local_path(style_artifact.cutout_path) or style_image_path
                 generated = self.image_edit_service.generate_tryon(
                     hand_image_path=hand_image_path,
-                    style_image_path=style_reference_path,
+                    style_image_path=style_image_path,
                     prompt_text=job.prompt_text,
                     roi_boxes=user_artifact.roi_boxes_json,
                     mask_path=user_mask_path,

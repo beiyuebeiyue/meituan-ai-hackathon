@@ -10,6 +10,7 @@ from app.providers.yolo_nail_segmentation_provider import YoloNailSegmentationPr
 
 class PrimarySegmentationProvider(Protocol):
     def segment(self, image_path: Path) -> SegmentationResult: ...
+    def warmup(self) -> None: ...
 
 
 class SegmentationService:
@@ -21,6 +22,9 @@ class SegmentationService:
 
     def segment(self, image_path: Path) -> SegmentationResult:
         return self.provider.segment(image_path)
+
+    def warmup(self) -> None:
+        self.provider.warmup()
 
 
 @lru_cache(maxsize=1)

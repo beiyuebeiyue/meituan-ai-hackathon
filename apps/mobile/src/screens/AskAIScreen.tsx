@@ -585,6 +585,10 @@ export function AskAIScreen() {
     setHandImageUri(payload.imageUri);
     setNeedsHandFor(null);
     setHandPickerMessage("");
+    if (needsHandFor === "tryon" || selectedStyleId) {
+      setRecommendations([]);
+      setAssistantLine("正在生成焕甲图片");
+    }
 
     if (intent === "hand_match" && askedQuery) {
       const lastMessage = chatMessages[chatMessages.length - 1];
@@ -621,7 +625,7 @@ export function AskAIScreen() {
       setActiveJobId(job.job_id);
       setNeedsHandFor(null);
       setTryOnFeedback("idle");
-      setAssistantLine(getAgentResultPrompt("pending"));
+      setAssistantLine("正在生成焕甲图片");
     },
     onError: (error) => {
       setAssistantLine(
@@ -633,7 +637,7 @@ export function AskAIScreen() {
     mutationFn: (jobId: string) => api.submitTryOnJob(jobId),
     onSuccess: (job) => {
       setActiveJobId(job.job_id);
-      setAssistantLine("正在帮你生成焕甲效果，请耐心等待。");
+      setAssistantLine("正在生成焕甲图片");
       void queryClient.invalidateQueries({ queryKey: ["ask-ai-job", job.job_id] });
       void queryClient.invalidateQueries({ queryKey: ["tryon-history"] });
     },
@@ -823,6 +827,7 @@ export function AskAIScreen() {
     setSelectedStyleId(styleId);
     setTryOnFeedback("idle");
     setActiveJobId(null);
+    setRecommendations([]);
 
     if (!handReady) {
       setNeedsHandFor("tryon");
@@ -837,7 +842,7 @@ export function AskAIScreen() {
     }
 
     setNeedsHandFor(null);
-    setAssistantLine(getAgentResultPrompt("pending"));
+    setAssistantLine("正在生成焕甲图片");
     tryOnLauncher.launchTryOn({
       styleId,
       promptText: askedQuery || promptText,
@@ -1175,7 +1180,9 @@ export function AskAIScreen() {
                 />
               </View>
             </View>
-          ) : tryOnJobQuery.data?.status === "processing" || isStartingTryOn ? (
+          ) : tryOnJobQuery.data?.status === "pending" ||
+            tryOnJobQuery.data?.status === "processing" ||
+            isStartingTryOn ? (
             <View
               style={[
                 styles.processingCard,
@@ -1184,10 +1191,10 @@ export function AskAIScreen() {
             >
               <ActivityIndicator size="large" color={colors.accent} />
               <Text style={[styles.processingTitle, { color: colors.text }]}>
-                正在帮你把美甲上手
+                正在生成焕甲图片
               </Text>
               <Text style={[styles.processingText, { color: colors.subtext }]}>
-                我正在用你选中的手图和款式生成试戴图，通常几秒内就会出来。
+                我正在用你选中的手图、指甲 mask 和款式图生成试戴效果。
               </Text>
             </View>
           ) : null}

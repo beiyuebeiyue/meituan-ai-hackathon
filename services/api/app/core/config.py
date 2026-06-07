@@ -27,12 +27,15 @@ class Settings(BaseSettings):
     openai_base_url: str = ""
     openai_text_model: str = "gpt-5.2"
     openai_image_model: str = "gpt-image-2"
+    evolink_api_key: str = ""
     evolink_gpt_image_2_url: str = "https://evolink.ai/gpt-image-2"
     evolink_api_base_url: str = "https://api.evolink.ai"
-    evolink_image_model: str = "gpt-image-2"
+    evolink_image_model: str = "gemini-3.1-flash-image-preview"
     evolink_image_quality: str = "low"
     evolink_image_size: str = "1:1"
     evolink_image_resolution: str = "1K"
+    evolink_poll_interval_seconds: float = 3.0
+    evolink_poll_timeout_seconds: float = 180.0
     hf_token: str = ""
     longcat_api_key: str = ""
     longcat_base_url: str = "https://api.longcat.chat/openai"
