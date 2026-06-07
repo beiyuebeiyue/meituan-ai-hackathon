@@ -166,7 +166,39 @@ const mockRows = [
   },
 ] as const;
 
-export const mockDiscoverStyles: NailStyle[] = mockRows.map((item) => ({
+const extraSeedRows = [
+  ["013", "这款清透法式美甲很适合夏天", "清透底色搭配细法式边，干净耐看，适合日常通勤。", "9683111116d9a690ab49.png", ["法式", "清透", "通勤", "显白"], "handmade", 3842, 2761, 188],
+  ["014", "裸色猫眼这款上手很显气质", "低饱和裸色加细腻猫眼光，温柔但有细节。", "979acb4859e514c2622f.png", ["猫眼", "裸粉", "约会", "显白"], "handmade", 4528, 3185, 214],
+  ["015", "短甲也能做的温柔奶白美甲", "短甲友好，奶白色系干净自然，不挑手型。", "1727defff41d50951fa1.png", ["奶白", "短甲", "温柔", "通勤"], "handmade", 3316, 2419, 155],
+  ["016", "细闪裸粉美甲真的很显白", "细闪不会太夸张，裸粉底色让手看起来更干净。", "0911c36eb8d93ecb6040.png", ["细闪", "裸粉", "显白", "约会"], "handmade", 4168, 2992, 201],
+  ["017", "这款显白通勤美甲很耐看", "颜色低调但有质感，适合上班和日常穿搭。", "8724edcc98296b6596dc.png", ["通勤", "显白", "温柔", "裸粉"], "handmade", 3624, 2536, 172],
+  ["018", "法式贴钻这款精致感很足", "细法式搭配局部贴钻，适合约会和聚会场景。", "60bfb6eab9427da7bf60.png", ["法式", "贴钻", "节日", "约会"], "handmade", 4936, 3578, 237],
+  ["019", "裸透猫眼美甲上手很高级", "裸透底色降低厚重感，猫眼光泽让整体更有层次。", "0dcf0b32e72f3f6fa4d2.png", ["裸透", "猫眼", "高级", "显白"], "handmade", 4387, 3120, 198],
+  ["020", "这款温柔法式适合第一次做甲", "不夸张也不单调，保留自然甲色，适合新手尝试。", "49c580de6d9b0750fe60.png", ["法式", "温柔", "自然", "通勤"], "handmade", 2926, 2104, 129],
+  ["021", "显白裸粉手工甲最近很火", "裸粉色系更衬肤色，手工甲质感也更自然。", "0386a8c9ad19b50a51e3.png", ["裸粉", "显白", "手工甲", "温柔"], "handmade", 4762, 3405, 224],
+  ["022", "这款奶白亮片美甲很适合拍照", "奶白底色加一点亮片，干净又有氛围感。", "2473c998ab58a921a917.png", ["奶白", "亮片", "节日", "拍照"], "handmade", 3895, 2817, 166],
+  ["023", "猫眼渐变这款美甲太有层次了", "渐变和猫眼结合，光线下更显精致，适合长甲型。", "82b5b1a25cea6d12b975.png", ["猫眼", "渐变", "长甲", "约会"], "handmade", 5218, 3792, 246],
+  ["024", "低调显白的通勤美甲模板", "颜色干净，款式不抢眼，但整体很有精致感。", "2b9f8338d05a25538dee.png", ["通勤", "显白", "低调", "裸粉"], "handmade", 3440, 2369, 148],
+  ["025", "清透裸色穿戴甲备用款", "保留一款穿戴甲作为快速换装选择，适合临时搭配。", "24bdf1782bde4c25cbf0.png", ["裸色", "穿戴甲", "快速", "清透"], "press_on", 1864, 1205, 83],
+] as const;
+
+const extraMockRows = extraSeedRows.map(
+  ([id, title, description, fileName, tags, nailType, likeCount, favoriteCount, commentCount], index) => ({
+    id: `local-style-${id}`,
+    title,
+    description,
+    image_url: `/files/seed/nails/${fileName}`,
+    tags,
+    dominant_colors: ["#eadbd4", "#fff4ef", "#cdb4aa"],
+    popularity_score: 118 + index * 2.7,
+    nail_type: nailType,
+    like_count: likeCount,
+    favorite_count: favoriteCount,
+    comment_count: commentCount,
+  }),
+);
+
+export const mockDiscoverStyles: NailStyle[] = [...mockRows, ...extraMockRows].map((item) => ({
   ...item,
   is_trending: true,
   source_type: "seed_local",

@@ -135,11 +135,11 @@ export const api = {
     return request<User>("/users/me", { method: "PUT", body: form });
   },
   getHot: () => request<NailStyleListResponse>(withXhsPreference("/nails/hot?page=1&page_size=20")),
-  getDiscover: () => Promise.resolve(getMockDiscoverResponse(20)),
+  getDiscover: () => Promise.resolve(getMockDiscoverResponse(30)),
   getDefaultGalleryStyles: () => Promise.resolve(getMockDiscoverResponse(30)),
   getShopStyles: (shopId: string) => request<NailStyleListResponse>(`/nails/by-shop/${shopId}?page=1&page_size=30`),
   searchStyles: async (query: string) => {
-    const localResults = searchMockDiscoverStyles(query, 20);
+    const localResults = searchMockDiscoverStyles(query, 30);
     if (localResults.items.length > 0) {
       return localResults;
     }
