@@ -8,272 +8,51 @@ app_port: 7860
 pinned: false
 ---
 
-# 焕甲
+# 换甲AI
 
-焕甲是一个面向美团 AI 黑客松的美甲试戴 MVP，当前包含用户端、商家端、FastAPI 后端、运营后台和数据脚本。
+换甲AI 是一个面向美甲消费场景的 AI 产品 Demo：用户可以浏览美甲灵感、和 AI 助手沟通偏好、上传手图进行焕甲试戴，并进一步寻找附近可服务的美甲店。
 
-## 仓库结构
+项目同时包含用户端、运营端和后端服务，用于展示从用户体验到运营分析的完整链路。
+
+## 在线体验
+
+### 运营端
+
+运营端用于查看平台数据、用户与商家信息、热门美甲推款、运营周报和 AI 运营助手。
+
+- 运营端地址：https://huanjia.eu.cc/dashboard
+
+### 用户端
+
+用户端原本是为手机 App 设计的，推荐使用 Android App 体验，这样可以获得更完整的交互、页面比例和移动端功能体验。
+
+我们也提供网页版用户端，方便快速预览和分享：
+
+- 用户端网页版：https://huanjia.eu.cc/mobile
+
+需要注意：网页版用户端只是辅助体验入口，功能和视觉体验会有折扣。由于它复用了移动端 App 的界面，在浏览器或非手机屏幕上可能会因为屏幕尺寸、交互方式和系统能力差异，看起来不如原生 App 自然。
+
+## 主要功能
+
+- AI 美甲推荐：根据用户偏好推荐合适的美甲款式。
+- 焕甲试戴：上传手图后进行指甲区域识别，并用于后续 AI 换甲生成。
+- 美甲浏览：展示手工甲、美甲风格、标签和图文内容。
+- 店铺发现：帮助用户寻找附近可服务的美甲店。
+- 运营后台：展示核心转化、营收、用户、商家、热门推款和运营周报。
+- AI 运营助手：辅助运营人员查询数据、理解趋势和处理日常运营问题。
+
+## 项目结构
 
 ```text
 apps/
-  mobile/      # Expo / React Native App
+  mobile/      # 用户端 App / Web
   ops-web/     # 运营后台
 services/
-  api/         # FastAPI 后端
-scripts/       # 种子导入、元数据、demo 指标、日报脚本
-data/          # 种子图、上传图、试戴结果、报告
-openclaw/      # OpenClaw skill 模板
+  api/         # FastAPI 后端服务
+scripts/       # 数据、报告和部署辅助脚本
+data/          # Demo 数据与本地缓存
 ```
 
-## 1. 前置依赖
+## 说明
 
-本地需要：
-
-- Docker Desktop
-- Node.js 18+ / npm
-- Expo Go：真机演示时安装在 iPhone 上
-
-可选能力：
-
-- `OPENAI_API_KEY`：真实 AI 焕甲生成需要
-- 高德 Web 服务 Key：真实市场门店数据需要
-- 远程 GPU 服务：MediaPipe / SAM / 图片融合流水线需要
-
-## 2. 准备环境变量
-
-在仓库根目录执行：
-
-```bash
-cp .env.example .env
-```
-
-最少需要确认这些变量：
-
-```bash
-OPENAI_API_KEY=replace_me
-EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api/v1
-```
-
-如果用 iPhone 真机扫码访问，`127.0.0.1` 指的是手机自己，不是你的 Mac。此时把 `.env` 里的 API 地址改成 Mac 的局域网 IP：
-
-```bash
-ipconfig getifaddr en0
-```
-
-假设输出是 `10.31.206.237`，则改成：
-
-```bash
-EXPO_PUBLIC_API_BASE_URL=http://10.31.206.237:8000/api/v1
-```
-
-修改 `.env` 后需要重启 Expo。
-
-## 3. 启动后端、数据库、运营后台
-
-在仓库根目录执行：
-
-```bash
-docker compose up --build -d postgres redis api ops-web
-```
-
-启动后访问：
-
-- API: `http://127.0.0.1:8000`
-- API 文档: `http://127.0.0.1:8000/docs`
-- 运营后台: `http://127.0.0.1:4173`
-
-当前 `docker-compose.yml` 只把 API 和运营后台绑定到 `127.0.0.1`，默认仅允许本机访问，不暴露给局域网或公网。Postgres 和 Redis 不暴露宿主机端口，只在 Docker 内部网络访问。
-
-查看日志：
-
-```bash
-docker compose logs -f api
-```
-
-## 4. 初始化演示数据
-
-如果是第一次运行这个 demo，或 `data/seed` 下没有素材，先手动下载演示素材：
-
-```bash
-docker compose exec api python /workspace/scripts/download_seed_assets.py --xlsx /workspace/data/命题三美甲评测数据（对外版）.xlsx
-```
-
-这个脚本只读取 xlsx/xlsm 里的两类图片 URL：
-
-- `手图` sheet 的 `手图URL`
-- `款式图` sheet 的 `增强后款式图URL`
-
-下载产物会写入：
-
-```text
-data/seed/hands
-data/seed/nails
-```
-
-它只负责下载素材缓存，不写数据库，也不会生成 manifest。
-
-后端容器启动后，在仓库根目录执行：
-
-```bash
-docker compose exec api python /workspace/scripts/seed_from_xlsx.py --xlsx /workspace/data/命题三美甲评测数据（对外版）.xlsx
-docker compose exec api python /workspace/scripts/enrich_style_metadata.py
-docker compose exec api python /workspace/scripts/generate_demo_metrics.py --days 7
-docker compose exec api python /workspace/scripts/generate_ops_report.py
-```
-
-说明：
-
-- `download_seed_assets.py` 仅首次或素材缺失时需要执行，用来准备本地图片缓存。
-- `seed_from_xlsx.py` 会从 xlsx 导入首页美甲图和测试资产到数据库。
-- `enrich_style_metadata.py` 会补齐标题、标签、文案等展示字段。
-- `generate_demo_metrics.py` 会生成运营后台演示指标。
-- `generate_ops_report.py` 会生成今日运营日报。
-
-如果只是重启服务，已经初始化过的数据不需要每次重新导入。
-
-## 5. 启动移动端
-
-新开一个终端：
-
-```bash
-cd apps/mobile
-npm install
-npx expo start
-```
-
-常用打开方式：
-
-- iPhone 真机：用 Expo Go 扫终端二维码
-- iOS 模拟器：在 Expo 终端按 `i`
-- Android 模拟器：在 Expo 终端按 `a`
-- Web 调试：执行 `npm run web`
-
-如果 Metro 缓存异常：
-
-```bash
-npx expo start --clear
-```
-
-## 6. 演示账号
-
-登录页可切换“我是用户 / 我是商家”。
-
-用户端：
-
-```text
-手机号：13886722665
-密码：admin@123456
-短信验证码：666666
-```
-
-商家端：
-
-```text
-手机号：13886722666
-密码：admin@123456
-短信验证码：666666
-```
-
-当前约定：
-
-- 用户端：浏览、市场、问问小嘉、消息、我的订单、喜爱、手图管理、焕甲记录。
-- 商家端：浏览、预约、发布、消息、我的商户信息。
-- 商家发布的美甲会自动归属到商家默认店铺。
-
-## 7. 常见问题
-
-### 打开网页看到一大段 JSON
-
-你打开的是 Expo 的 `exp://...` manifest，不是 Web 页面。真机应使用 Expo Go 扫码；Web 调试请在 `apps/mobile` 下执行：
-
-```bash
-npm run web
-```
-
-### iPhone 真机请求不到后端
-
-检查 `.env`：
-
-```bash
-EXPO_PUBLIC_API_BASE_URL=http://你的Mac局域网IP:8000/api/v1
-```
-
-然后重启 Expo：
-
-```bash
-npx expo start --clear
-```
-
-### 端口被占用
-
-API 默认占用 `8000`，Expo 默认占用 `8081`。Expo 提示换端口时可以选择 `yes`，但真机扫码时以后端 API 地址为准。
-
-### 市场页没有真实店铺
-
-需要在 `.env` 配置高德 Web 服务 Key：
-
-```bash
-GAODE_API_KEY=你的高德Web服务Key
-```
-
-市场页定位优先级为：手机 GPS > 用户输入城市/区县/商圈 > 默认深圳。默认 GPS 场景走高德周边搜索，用户输入地点时走高德关键字搜索；搜索关键词固定为“美甲”，不使用 IP 定位。
-
-没有可用 Key 或高德接口失败时，市场页会展示不可用提示，不再使用 mock 门店数据。
-
-### AI 焕甲失败
-
-真实生成需要至少配置一种生成能力：
-
-```bash
-OPENAI_API_KEY=...
-```
-
-或配置远程 GPU 服务：
-
-```bash
-REMOTE_GPU_TRYON_URL=...
-REMOTE_GPU_TRYON_API_KEY=...
-```
-
-## 8. 停止与重置
-
-停止后端、数据库和运营后台：
-
-```bash
-docker compose down
-```
-
-停止 Expo：在 Expo 终端按 `Ctrl+C`。
-
-完全清空数据库重新开始：
-
-```bash
-docker compose down -v
-docker compose up --build -d postgres redis api ops-web
-```
-
-注意：`docker compose down -v` 会删除 PostgreSQL volume，数据库里的用户、点赞、评论、预约等都会丢失。
-
-## 9. 测试
-
-后端测试：
-
-```bash
-./.venv/bin/pytest
-```
-
-移动端类型检查：
-
-```bash
-cd apps/mobile
-npx tsc --noEmit
-```
-
-## 10. 推荐演示顺序
-
-1. 启动 Docker 服务。
-2. 初始化 xlsx 种子、元数据、demo 指标和运营日报。
-3. 启动 Expo。
-4. 用户端演示：浏览、同城、详情、评论、焕甲、私信商家、我的订单。
-5. 商家端演示：发布美甲、预约管理、消息回复、商户信息。
-6. 运营后台演示：概览、报告、表现分析、任务日志。
+这是一个 Hackathon Demo 项目，重点展示 AI 试戴、内容推荐、门店连接和运营分析的产品闭环。部分能力会使用 Demo 数据或测试阶段的拦截流程，以避免真实生成服务产生不必要成本。
