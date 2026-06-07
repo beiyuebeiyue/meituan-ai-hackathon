@@ -1,13 +1,3 @@
----
-title: Meituan AI Hackathon
-emoji: 💅
-colorFrom: pink
-colorTo: yellow
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # 焕甲
 
 “焕甲”是一款具备美甲内容社区属性的一站式 AI 美甲服务产品。
