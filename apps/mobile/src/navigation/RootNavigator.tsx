@@ -30,8 +30,10 @@ import { MarketCityPickerScreen } from "../screens/MarketCityPickerScreen";
 import { MarketMapScreen } from "../screens/MarketMapScreen";
 import { MarketScreen } from "../screens/MarketScreen";
 import { MarketShopDetailScreen } from "../screens/MarketShopDetailScreen";
+import { MerchantBookingsScreen } from "../screens/MerchantBookingsScreen";
 import { MerchantMarketDataScreen } from "../screens/MerchantMarketDataScreen";
 import { MerchantOrdersScreen } from "../screens/MerchantOrdersScreen";
+import { MerchantOverviewScreen } from "../screens/MerchantOverviewScreen";
 import { MerchantShopScreen } from "../screens/MerchantShopScreen";
 import { MerchantTrendNotificationsScreen } from "../screens/MerchantTrendNotificationsScreen";
 import { MessagesInboxScreen } from "../screens/MessagesInboxScreen";
@@ -209,7 +211,7 @@ const MerchantOrdersOverlayScreen = createOverlayComponent(
 );
 const MerchantShopOverlayScreen = createOverlayComponent(MerchantShopScreen, {
   showHeader: true,
-  title: "店铺资料",
+  title: "预约管理",
 });
 const MerchantTrendNotificationsOverlayScreen = createOverlayComponent(
   MerchantTrendNotificationsScreen,
@@ -295,30 +297,45 @@ function MainTabs() {
         />
         <Tab.Screen
           name="Market"
-          component={MarketScreen}
+          component={isMerchant ? MerchantBookingsScreen : MarketScreen}
           options={{
-            title: "店铺",
+            title: isMerchant ? "预约管理" : "店铺",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="storefront-outline" size={size} color={color} />
+              <Ionicons
+                name={isMerchant ? "calendar-outline" : "storefront-outline"}
+                size={size}
+                color={color}
+              />
             ),
           }}
         />
         <Tab.Screen
           name="AskAI"
-          component={AskAIScreen}
+          component={isMerchant ? MerchantOverviewScreen : AskAIScreen}
           options={{
-            title: "问问小嘉",
-            tabBarButton: (props) => (
-              <AIButton
-                label="问问小嘉"
-                focused={Boolean(props.accessibilityState?.selected)}
-                status="idle"
-                onPress={props.onPress ?? undefined}
-                onLongPress={props.onLongPress ?? undefined}
-                accessibilityLabel={props.accessibilityLabel}
-                testID={props.testID}
-              />
-            ),
+            title: isMerchant ? "运营状况管理" : "问问小嘉",
+            tabBarIcon: isMerchant
+              ? ({ color, size }) => (
+                  <Ionicons
+                    name="analytics-outline"
+                    size={size}
+                    color={color}
+                  />
+                )
+              : undefined,
+            tabBarButton: isMerchant
+              ? undefined
+              : (props) => (
+                  <AIButton
+                    label="问问小嘉"
+                    focused={Boolean(props.accessibilityState?.selected)}
+                    status="idle"
+                    onPress={props.onPress ?? undefined}
+                    onLongPress={props.onLongPress ?? undefined}
+                    accessibilityLabel={props.accessibilityLabel}
+                    testID={props.testID}
+                  />
+                ),
           }}
         />
         <Tab.Screen

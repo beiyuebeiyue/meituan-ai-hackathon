@@ -17,7 +17,7 @@ export function MerchantShopScreen({ navigation }: any) {
   });
 
   if (!token || user?.role !== "merchant") {
-    return <RequireLogin onLogin={() => navigation.navigate("Login")} message="商家账号登录后查看店铺" />;
+    return <RequireLogin onLogin={() => navigation.navigate("Login")} message="商家账号登录后查看预约管理" />;
   }
 
   const shop = shopsQuery.data?.items[0] ?? null;
@@ -25,7 +25,7 @@ export function MerchantShopScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={[styles.title, { color: colors.text }]}>店铺</Text>
+        <Text style={[styles.title, { color: colors.text }]}>预约管理</Text>
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
           <View style={[styles.iconWrap, { backgroundColor: colors.accentSoft }]}>
             <Ionicons name="storefront-outline" size={30} color={colors.accent} />

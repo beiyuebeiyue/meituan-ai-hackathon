@@ -671,7 +671,7 @@ export function MarketShopDetailScreen() {
           <Pressable style={styles.bottomMiniAction} onPress={handleConsult}>
             <Ionicons name="headset-outline" size={23} color={colors.text} />
             <Text style={[styles.bottomMiniText, { color: colors.text }]}>
-              咨询能否做
+              咨询
             </Text>
           </Pressable>
           <Pressable

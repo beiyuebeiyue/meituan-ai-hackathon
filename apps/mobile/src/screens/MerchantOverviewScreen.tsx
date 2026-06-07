@@ -105,7 +105,7 @@ export function MerchantOverviewScreen({ navigation }: any) {
         <View style={styles.titleRow}>
           <View>
             <Text style={[styles.kicker, { color: colors.accent }]}>
-              店铺后台
+              运营状况管理
             </Text>
             <Text style={[styles.title, { color: colors.text }]}>经营概览</Text>
           </View>
@@ -267,11 +267,15 @@ export function MerchantOverviewScreen({ navigation }: any) {
           </Pressable>
           <Pressable
             style={[styles.quickCard, { backgroundColor: colors.surface }]}
-            onPress={() => navigation.navigate("MerchantShop")}
+            onPress={() => navigation.navigate("MerchantBookings")}
           >
-            <Ionicons name="business-outline" size={22} color={colors.accent} />
+            <Ionicons
+              name="calendar-outline"
+              size={22}
+              color={colors.accent}
+            />
             <Text style={[styles.quickTitle, { color: colors.text }]}>
-              店铺资料
+              预约管理
             </Text>
           </Pressable>
           <Pressable
