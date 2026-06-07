@@ -1,10 +1,14 @@
-import { App, Card, Empty, Select, Space } from "antd";
+import { App, Card, Empty, Segmented, Select, Space } from "antd";
 import { useCallback, useEffect, useState } from "react";
 import { api, OpsHtmlReport, XHS_WEEKLY_REPORT_WEEKS } from "../api/client";
 import type { XhsWeeklyReportWeek } from "../api/client";
+import { buildOpsWeeklyReportHtml } from "../utils/opsWeeklyReportHtml";
+
+type ReportPanel = "ops" | "xhs";
 
 export function ReportsPage() {
   const { message } = App.useApp();
+  const [activePanel, setActivePanel] = useState<ReportPanel>("ops");
   const [selectedWeek, setSelectedWeek] = useState<XhsWeeklyReportWeek>(XHS_WEEKLY_REPORT_WEEKS[0]);
   const [xhsReport, setXhsReport] = useState<OpsHtmlReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -28,27 +32,44 @@ export function ReportsPage() {
   return (
     <Space direction="vertical" size={10} className="page-stack reports-page">
       <div className="report-toolbar">
-        <Select
-          className="report-week-select"
-          value={selectedWeek.week}
-          options={XHS_WEEKLY_REPORT_WEEKS.map((week) => ({ label: week.label, value: week.week }))}
-          onChange={(value) => {
-            const nextWeek = XHS_WEEKLY_REPORT_WEEKS.find((week) => week.week === value);
-            if (nextWeek) setSelectedWeek(nextWeek);
-          }}
+        <Segmented
+          value={activePanel}
+          options={[
+            { label: "运营数据周报", value: "ops" },
+            { label: "美甲趋势周报", value: "xhs" },
+          ]}
+          onChange={(value) => setActivePanel(value as ReportPanel)}
         />
+        {activePanel === "xhs" ? (
+          <Select
+            className="report-week-select"
+            value={selectedWeek.week}
+            options={XHS_WEEKLY_REPORT_WEEKS.map((week) => ({ label: week.label, value: week.week }))}
+            onChange={(value) => {
+              const nextWeek = XHS_WEEKLY_REPORT_WEEKS.find((week) => week.week === value);
+              if (nextWeek) setSelectedWeek(nextWeek);
+            }}
+          />
+        ) : null}
       </div>
 
-      <Card loading={loading}>
-        {xhsReport ? (
+      <Card loading={activePanel === "xhs" && loading}>
+        {activePanel === "ops" ? (
           <iframe
             className="xhs-weekly-report-frame"
-            title="小红书美甲运营周报"
+            title="焕甲运营数据周报"
+            srcDoc={buildOpsWeeklyReportHtml()}
+            sandbox="allow-same-origin"
+          />
+        ) : xhsReport ? (
+          <iframe
+            className="xhs-weekly-report-frame"
+            title="小红书美甲趋势周报"
             srcDoc={xhsReport.html_content}
             sandbox="allow-same-origin"
           />
         ) : (
-          <Empty description="暂无运营周报" />
+          <Empty description="暂无小红书美甲趋势周报" />
         )}
       </Card>
     </Space>
