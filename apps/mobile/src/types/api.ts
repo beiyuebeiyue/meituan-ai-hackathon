@@ -188,7 +188,7 @@ export type AnalyticsEventPayload = {
 export type TryOnJob = {
   job_id: string;
   status: "pending" | "processing" | "awaiting_confirmation" | "succeeded" | "failed";
-  stage?: "pending" | "preprocessing" | "mask_ready" | "generating" | "succeeded" | "failed";
+  stage?: string;
   result_image_url?: string | null;
   source_hand_image_url?: string | null;
   mask_url?: string | null;
@@ -201,7 +201,7 @@ export type TryOnJob = {
 export type TryOnHistoryItem = {
   job_id: string;
   status: "pending" | "processing" | "awaiting_confirmation" | "succeeded" | "failed";
-  stage?: "pending" | "preprocessing" | "mask_ready" | "generating" | "succeeded" | "failed";
+  stage?: string;
   result_image_url?: string | null;
   source_hand_image_url?: string | null;
   prompt_text?: string | null;

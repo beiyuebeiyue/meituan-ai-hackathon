@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
 
@@ -17,8 +18,16 @@ class ImageEditService:
         prompt_text: str,
         roi_boxes: list[dict[str, int]],
         mask_path: Path | None = None,
+        progress_callback: Callable[[int], None] | None = None,
     ) -> GeneratedImageResult:
-        return self.provider.generate_tryon(hand_image_path, style_image_path, prompt_text, roi_boxes, mask_path)
+        return self.provider.generate_tryon(
+            hand_image_path,
+            style_image_path,
+            prompt_text,
+            roi_boxes,
+            mask_path,
+            progress_callback=progress_callback,
+        )
 
 
 @lru_cache(maxsize=1)

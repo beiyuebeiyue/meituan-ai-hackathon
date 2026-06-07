@@ -66,6 +66,14 @@ type ChatDebugEntry = {
 
 const AI_WAITING_MESSAGE = "正在帮你寻找您心怡的美甲，请耐心等待";
 
+function parseTryOnProgress(stage?: string | null): number | null {
+  const match = stage?.match(/^generating:(\d{1,3})$/);
+  if (!match) return null;
+  const progress = Number.parseInt(match[1], 10);
+  if (!Number.isFinite(progress)) return null;
+  return Math.max(0, Math.min(100, progress));
+}
+
 function extractApiErrorMessage(error: unknown) {
   if (!(error instanceof Error)) return "请稍后再试。";
   try {
@@ -568,7 +576,7 @@ export function AskAIScreen() {
       const status = queryState.state.data?.status;
       return status === "succeeded" || status === "failed" || status === "awaiting_confirmation"
         ? false
-        : 2000;
+        : 1000;
     },
   });
   const activeStyleQuery = useQuery({
@@ -940,6 +948,7 @@ export function AskAIScreen() {
   const pendingTryOnMaskUrl = tryOnJobQuery.data?.mask_url
     ? resolveAssetUrl(tryOnJobQuery.data.mask_url)
     : null;
+  const tryOnProgress = parseTryOnProgress(tryOnJobQuery.data?.stage);
   const showingHandChooser = needsHandFor !== null;
   const composerBottomInset = Math.max(tabBarHeight - 74, 12);
   const scrollBottomPadding = composerHeight + 18;
@@ -1192,6 +1201,25 @@ export function AskAIScreen() {
               <ActivityIndicator size="large" color={colors.accent} />
               <Text style={[styles.processingTitle, { color: colors.text }]}>
                 正在为您焕甲
+              </Text>
+              <View
+                style={[
+                  styles.processingProgressTrack,
+                  { backgroundColor: colors.accentSoft },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.processingProgressFill,
+                    {
+                      backgroundColor: colors.accent,
+                      width: `${tryOnProgress ?? 8}%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.processingProgressText, { color: colors.subtext }]}>
+                {tryOnProgress !== null ? `${tryOnProgress}%` : "正在排队"}
               </Text>
               <Text style={[styles.processingText, { color: colors.subtext }]}>
                 我正在用你选中的手图、指甲 mask 和款式图生成试戴效果。
@@ -2127,6 +2155,20 @@ const styles = StyleSheet.create({
   },
   processingTitle: {
     fontSize: 22,
+    fontWeight: "800",
+  },
+  processingProgressTrack: {
+    width: "100%",
+    height: 8,
+    borderRadius: 999,
+    overflow: "hidden",
+  },
+  processingProgressFill: {
+    height: "100%",
+    borderRadius: 999,
+  },
+  processingProgressText: {
+    fontSize: 13,
     fontWeight: "800",
   },
   processingText: {

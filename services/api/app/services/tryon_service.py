@@ -156,12 +156,25 @@ class TryOnService:
                 user_mask_path = self.artifact_service.local_path(user_artifact.mask_path)
                 if user_mask_path is None:
                     raise RuntimeError("没有检测到可用的指甲 mask，请重新上传一张手部照片")
+
+                last_progress = -1
+
+                def update_generation_progress(progress: int) -> None:
+                    nonlocal last_progress
+                    if progress == last_progress:
+                        return
+                    last_progress = progress
+                    job.stage = f"generating:{progress}"
+                    db.add(job)
+                    db.commit()
+
                 generated = self.image_edit_service.generate_tryon(
                     hand_image_path=hand_image_path,
                     style_image_path=style_image_path,
                     prompt_text=job.prompt_text,
                     roi_boxes=user_artifact.roi_boxes_json,
                     mask_path=user_mask_path,
+                    progress_callback=update_generation_progress,
                 )
 
             job.status = "succeeded"

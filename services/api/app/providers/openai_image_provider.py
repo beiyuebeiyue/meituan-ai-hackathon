@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 import time
@@ -43,9 +44,10 @@ class OpenAIImageProvider:
         prompt_text: str,
         roi_boxes: list[dict[str, int]],
         mask_path: Path | None = None,
+        progress_callback: Callable[[int], None] | None = None,
     ) -> GeneratedImageResult:
         if self._evolink_token:
-            return self._generate_with_evolink(hand_image_path, style_image_path, prompt_text, mask_path)
+            return self._generate_with_evolink(hand_image_path, style_image_path, prompt_text, mask_path, progress_callback)
         if self._client is not None:
             return self._generate_with_openai(hand_image_path, style_image_path, prompt_text, mask_path)
         raise RuntimeError("OpenAI image provider is not configured")
@@ -56,6 +58,7 @@ class OpenAIImageProvider:
         style_image_path: Path,
         prompt_text: str,
         mask_path: Path | None,
+        progress_callback: Callable[[int], None] | None,
     ) -> GeneratedImageResult:
         if mask_path is None or not mask_path.exists():
             raise RuntimeError("没有检测到可用的指甲 mask，请重新上传一张手部照片")
@@ -85,12 +88,13 @@ class OpenAIImageProvider:
             response = client.post(create_url, json=payload, headers=headers)
             response.raise_for_status()
             created = response.json()
+            self._emit_evolink_progress(created, progress_callback)
             image_payload = self._extract_evolink_image_payload(created)
             provider_trace_id = self._extract_trace_id(created)
             if image_payload is None:
                 task_id = created.get("id") or created.get("task_id")
                 if isinstance(task_id, str) and task_id:
-                    image_payload = self._poll_evolink_task(client, task_id, headers)
+                    image_payload = self._poll_evolink_task(client, task_id, headers, progress_callback)
                     provider_trace_id = provider_trace_id or task_id
             if image_payload is None:
                 raise RuntimeError(f"EvoLink 没有返回可用图片：{created}")
@@ -119,7 +123,13 @@ class OpenAIImageProvider:
             return base_prompt
         return f"{base_prompt}\n\nUser preference: {prompt_text}"
 
-    def _poll_evolink_task(self, client: httpx.Client, task_id: str, headers: dict[str, str]) -> Any | None:
+    def _poll_evolink_task(
+        self,
+        client: httpx.Client,
+        task_id: str,
+        headers: dict[str, str],
+        progress_callback: Callable[[int], None] | None,
+    ) -> Any | None:
         task_url = f"{self.settings.evolink_api_base_url.rstrip('/')}/v1/tasks/{task_id}"
         deadline = time.monotonic() + self.settings.evolink_poll_timeout_seconds
         while time.monotonic() < deadline:
@@ -127,12 +137,22 @@ class OpenAIImageProvider:
             response = client.get(task_url, headers=headers)
             response.raise_for_status()
             payload = response.json()
+            self._emit_evolink_progress(payload, progress_callback)
             image_payload = self._extract_evolink_image_payload(payload)
             if image_payload is not None:
                 return image_payload
             if payload.get("status") in {"failed", "cancelled", "canceled"}:
                 raise RuntimeError(f"EvoLink 图片生成失败：{payload}")
         raise RuntimeError(f"EvoLink 图片生成超时：{task_id}")
+
+    @staticmethod
+    def _emit_evolink_progress(payload: Any, progress_callback: Callable[[int], None] | None) -> None:
+        if progress_callback is None or not isinstance(payload, dict):
+            return
+        progress = payload.get("progress")
+        if not isinstance(progress, int):
+            return
+        progress_callback(max(0, min(100, progress)))
 
     def _extract_evolink_image_payload(self, payload: Any) -> Any | None:
         if not isinstance(payload, dict):
