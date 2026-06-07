@@ -77,11 +77,6 @@ export const AIButton = memo(function AIButton({
             buttonStyle,
           ]}
         >
-          <View pointerEvents="none" style={styles.prismHalo}>
-            <View style={[styles.prismDot, styles.prismDotPink]} />
-            <View style={[styles.prismDot, styles.prismDotCyan]} />
-            <View style={[styles.prismDot, styles.prismDotGold]} />
-          </View>
           <Ionicons
             name={focused || thinking ? "sparkles" : "sparkles-outline"}
             size={25}
@@ -171,30 +166,5 @@ const styles = StyleSheet.create({
   },
   labelFocused: {
     color: "#fff8c7",
-  },
-  prismHalo: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.42,
-  },
-  prismDot: {
-    position: "absolute",
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-  },
-  prismDotPink: {
-    left: -8,
-    top: -4,
-    backgroundColor: "rgba(255, 112, 203, 0.55)",
-  },
-  prismDotCyan: {
-    right: -8,
-    top: 8,
-    backgroundColor: "rgba(74, 206, 255, 0.58)",
-  },
-  prismDotGold: {
-    left: 18,
-    bottom: -12,
-    backgroundColor: "rgba(255, 231, 91, 0.58)",
   },
 });

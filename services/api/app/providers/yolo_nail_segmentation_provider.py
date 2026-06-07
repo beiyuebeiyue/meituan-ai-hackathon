@@ -171,5 +171,5 @@ class YoloNailSegmentationProvider:
     def _save_alpha_mask(mask: Image.Image, mask_path: Path) -> None:
         grayscale = mask.convert("L")
         mask_rgba = grayscale.convert("RGBA")
-        mask_rgba.putalpha(grayscale)
+        mask_rgba.putalpha(Image.eval(grayscale, lambda value: 255 - value))
         mask_rgba.save(mask_path, format="PNG")

@@ -192,7 +192,10 @@ class ImageProcessingArtifactService:
         image_size = Image.open(image_path).size
         mask = Image.open(mask_path).convert("L").resize(image_size)
         mask_rgba = mask.convert("RGBA")
-        mask_rgba.putalpha(mask)
+        # Image editing masks use transparent pixels as the editable area.
+        # YOLO outputs white nails on black background, so invert only alpha:
+        # nails become editable, everything else stays locked.
+        mask_rgba.putalpha(Image.eval(mask, lambda value: 255 - value))
         target = self._artifact_dir(artifact) / f"{artifact.image_sha256[:16]}-{artifact.id}-mask-alpha.png"
         target.parent.mkdir(parents=True, exist_ok=True)
         mask_rgba.save(target, format="PNG")

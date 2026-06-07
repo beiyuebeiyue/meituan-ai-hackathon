@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     longcat_chat_model: str = "LongCat-2.0-Preview"
     longcat_multimodal_model: str = "LongCat-Flash-Omni-2603"
     longcat_chat_timeout_seconds: float = 25.0
-    image_pipeline_version: str = "yolo-nail26-v1"
+    image_pipeline_version: str = "yolo-nail26-v2-mask-alpha"
     image_provider_config_hash: str = ""
     nail_yolo_model_path: str = ""
     nail_yolo_imgsz: int = 640
