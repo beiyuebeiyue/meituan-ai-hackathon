@@ -266,7 +266,7 @@ function ConsumerProfileScreen() {
     },
     {
       key: "likes",
-      icon: "heart-outline",
+      icon: "star-outline",
       title: "喜爱",
       subtitle: "查看赞过的美甲",
     },
@@ -283,18 +283,9 @@ function ConsumerProfileScreen() {
       subtitle: "管理本地手图",
     },
   ] as const;
-  const quickActions = menuItems.slice(0, 4);
-  const toolActions = menuItems.slice(4);
+  const quickActions = [menuItems[3], menuItems[1], menuItems[4], menuItems[5]] as const;
+  const toolActions = [menuItems[0], menuItems[2]] as const;
   const recentBookings = bookingsQuery.data?.items.slice(0, 2) ?? [];
-  const createdAtTime = user?.created_at
-    ? new Date(user.created_at).getTime()
-    : Number.NaN;
-  const joinDays = Number.isFinite(createdAtTime)
-    ? Math.max(
-        1,
-        Math.ceil((Date.now() - createdAtTime) / (1000 * 60 * 60 * 24)),
-      )
-    : "--";
 
   const openItem = (key: (typeof menuItems)[number]["key"]) => {
     if (key === "bookings") navigation.navigate("ConsumerOrders");
@@ -357,9 +348,16 @@ function ConsumerProfileScreen() {
               ]}
             />
             <View style={styles.consumerHeroText}>
-              <Text style={[styles.consumerName, { color: colors.text }]} numberOfLines={1}>
-                {user?.username ?? "焕甲用户"}
-              </Text>
+              <View style={styles.consumerNameRow}>
+                <Text style={[styles.consumerName, { color: colors.text }]} numberOfLines={1}>
+                  {user?.username ?? "焕甲用户"}
+                </Text>
+                <View style={[styles.consumerLocationBadge, { backgroundColor: colors.surfaceAlt }]}>
+                  <Text style={[styles.consumerLocationText, { color: colors.subtext }]} numberOfLines={1}>
+                    IP属地：{user?.last_login_ip_location ?? "未知"}
+                  </Text>
+                </View>
+              </View>
               <Text style={[styles.consumerMeta, { color: colors.subtext }]}>
                 焕甲号 {user?.uid ?? "--"}
               </Text>
@@ -394,32 +392,6 @@ function ConsumerProfileScreen() {
               </Text>
             </Pressable>
           </View>
-          <View style={[styles.consumerStats, { borderTopColor: colors.border }]}>
-            <View style={styles.consumerStatItem}>
-              <Text style={[styles.consumerStatValue, { color: colors.text }]}>
-                {recentBookings.length}
-              </Text>
-              <Text style={[styles.consumerStatLabel, { color: colors.subtext }]}>
-                近期预约
-              </Text>
-            </View>
-            <View style={styles.consumerStatItem}>
-              <Text style={[styles.consumerStatValue, { color: colors.text }]}>
-                {joinDays}
-              </Text>
-              <Text style={[styles.consumerStatLabel, { color: colors.subtext }]}>
-                使用天数
-              </Text>
-            </View>
-            <View style={styles.consumerStatItem}>
-              <Text style={[styles.consumerStatValue, { color: colors.text }]}>
-                {user?.last_login_ip_location ?? "未知"}
-              </Text>
-              <Text style={[styles.consumerStatLabel, { color: colors.subtext }]}>
-                登录地区
-              </Text>
-            </View>
-          </View>
         </View>
 
         <View
@@ -442,11 +414,11 @@ function ConsumerProfileScreen() {
                 key={item.key}
                 style={[
                   styles.consumerQuickAction,
-                  { backgroundColor: colors.surfaceAlt },
+                  { backgroundColor: isDark ? colors.surfaceAlt : "#ffffff" },
                 ]}
                 onPress={() => openItem(item.key)}
               >
-                <Ionicons name={item.icon} size={22} color={colors.text} />
+                <Ionicons name={item.icon} size={26} color={colors.text} />
                 <Text style={[styles.consumerQuickTitle, { color: colors.text }]}>
                   {item.title}
                 </Text>
@@ -810,6 +782,21 @@ const styles = StyleSheet.create({
   },
   consumerAvatar: { width: 76, height: 76, borderRadius: 38 },
   consumerHeroText: { flex: 1, gap: 4 },
+  consumerNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  consumerLocationBadge: {
+    maxWidth: 118,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  consumerLocationText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
   consumerHeroActions: {
     flexDirection: "row",
     gap: 10,
@@ -831,16 +818,7 @@ const styles = StyleSheet.create({
   },
   consumerEditText: { fontSize: 14, fontWeight: "900" },
   consumerGhostText: { fontSize: 14, fontWeight: "900" },
-  consumerStats: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: 14,
-    flexDirection: "row",
-    gap: 10,
-  },
-  consumerStatItem: { flex: 1, gap: 4 },
-  consumerStatValue: { fontSize: 16, fontWeight: "900" },
-  consumerStatLabel: { fontSize: 11, fontWeight: "700" },
-  consumerName: { fontSize: 24, lineHeight: 30, fontWeight: "900" },
+  consumerName: { flexShrink: 1, fontSize: 24, lineHeight: 30, fontWeight: "900" },
   consumerMeta: { fontSize: 13, lineHeight: 18 },
   consumerBio: { fontSize: 13, lineHeight: 18 },
   consumerCard: {
@@ -859,18 +837,17 @@ const styles = StyleSheet.create({
   consumerSectionLink: { fontSize: 13, fontWeight: "900" },
   consumerQuickGrid: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+    borderRadius: 12,
+    overflow: "hidden",
   },
   consumerQuickAction: {
-    flexGrow: 1,
-    flexBasis: "46%",
-    minHeight: 86,
-    borderRadius: 18,
-    padding: 14,
-    justifyContent: "space-between",
+    flex: 1,
+    minHeight: 76,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
   },
-  consumerQuickTitle: { fontSize: 15, fontWeight: "900" },
+  consumerQuickTitle: { fontSize: 13, fontWeight: "800" },
   bookingRow: {
     flexDirection: "row",
     alignItems: "center",
