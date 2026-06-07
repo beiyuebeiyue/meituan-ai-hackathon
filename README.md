@@ -18,25 +18,23 @@
 
 ### 产品 PRD
 
-这是焕甲的产品 PRD：
-
-- PRD 文档：https://pcn7x0h2nqqh.feishu.cn/docx/ZXnKddUIRoGvFIxyH2ic7D7rnzV
+- https://pcn7x0h2nqqh.feishu.cn/docx/ZXnKddUIRoGvFIxyH2ic7D7rnzV
 
 ### 运营端
 
-运营端用于查看平台数据、用户与商家信息、热门美甲推款、运营周报和 AI 运营助手。
+- https://huanjia.eu.cc/dashboard
 
-- 运营端地址：https://huanjia.eu.cc/dashboard
+用于查看平台数据、用户与商家信息、热门美甲推款、运营报告和 AI 运营助手。
 
 ### 用户端
 
-用户端原本是为手机 App 设计的，推荐使用 Android App 体验，这样可以获得更完整的交互、页面比例和移动端功能体验。
+用户端原本是为手机 App 设计的，推荐使用 Android 手机体验，以获得完整的功能体验。
 
-我们也提供网页版用户端，方便快速预览和分享：
+同时也提供网页版用户端，方便快速预览和分享：
 
-- 用户端网页版：https://huanjia.eu.cc/mobile
+- https://huanjia.eu.cc/mobile
 
-需要注意：网页版用户端只是辅助体验入口，功能和视觉体验会有折扣。由于它复用了移动端 App 的界面，在浏览器或非手机屏幕上可能会因为屏幕尺寸、交互方式和系统能力差异，看起来不如原生 App 自然。
+**需要注意：网页版用户端只是辅助体验入口，功能和视觉体验会有折扣。**
 
 ## 主要功能
 
@@ -61,4 +59,4 @@ data/          # Demo 数据与本地缓存
 
 ## 免责声明
 
-本项目仅用于美团 AI 黑客松 Demo 展示目的，不用于商业化运营或实际商业服务。项目中的数据、功能和服务流程均以演示为主。
+本项目仅用于美团 AI 黑客松 Demo 展示目的，不用于商业目的。
