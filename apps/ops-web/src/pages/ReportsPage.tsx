@@ -1,4 +1,5 @@
-import { App, Card, Empty, Select, Space } from "antd";
+import { App, Card, DatePicker, Empty, Select, Space } from "antd";
+import dayjs from "dayjs";
 import { useCallback, useEffect, useState } from "react";
 import { api, OpsHtmlReport, XHS_WEEKLY_REPORT_WEEKS } from "../api/client";
 import type { XhsWeeklyReportWeek } from "../api/client";
@@ -8,6 +9,7 @@ type ReportPanel = "ops" | "xhs";
 
 export function ReportsPage({ panel }: { panel: ReportPanel }) {
   const { message } = App.useApp();
+  const [selectedOpsDate, setSelectedOpsDate] = useState(() => dayjs());
   const [selectedWeek, setSelectedWeek] = useState<XhsWeeklyReportWeek>(XHS_WEEKLY_REPORT_WEEKS[0]);
   const [xhsReport, setXhsReport] = useState<OpsHtmlReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,8 +34,16 @@ export function ReportsPage({ panel }: { panel: ReportPanel }) {
 
   return (
     <Space direction="vertical" size={10} className="page-stack reports-page">
-      {panel === "xhs" ? (
-        <div className="report-toolbar">
+      <div className="report-toolbar">
+        {panel === "ops" ? (
+          <DatePicker
+            allowClear={false}
+            value={selectedOpsDate}
+            onChange={(value) => {
+              if (value) setSelectedOpsDate(value);
+            }}
+          />
+        ) : (
           <Select
             className="report-week-select"
             value={selectedWeek.week}
@@ -43,15 +53,15 @@ export function ReportsPage({ panel }: { panel: ReportPanel }) {
               if (nextWeek) setSelectedWeek(nextWeek);
             }}
           />
-        </div>
-      ) : null}
+        )}
+      </div>
 
       <Card loading={panel === "xhs" && loading}>
         {panel === "ops" ? (
           <iframe
             className="xhs-weekly-report-frame"
-            title="焕甲运营数据周报"
-            srcDoc={buildOpsWeeklyReportHtml()}
+            title="焕甲运营数据日报"
+            srcDoc={buildOpsWeeklyReportHtml(selectedOpsDate.toDate())}
             sandbox="allow-same-origin"
           />
         ) : xhsReport ? (

@@ -1,10 +1,29 @@
-export function buildOpsWeeklyReportHtml() {
+function formatOpsReportDate(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatOpsReportDateTime(value: Date) {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  const hour = String(value.getHours()).padStart(2, "0");
+  const minute = String(value.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+export function buildOpsWeeklyReportHtml(reportDate = new Date()) {
+  const reportDateText = formatOpsReportDate(reportDate);
+  const generatedAtText = formatOpsReportDateTime(new Date());
+
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>焕甲运营数据周报 2026-W22</title>
+  <title>焕甲运营数据日报 ${reportDateText}</title>
   <style>
     :root {
       --bg: #f4f4f4;
@@ -61,7 +80,7 @@ export function buildOpsWeeklyReportHtml() {
       background: var(--ink);
     }
     .hero::after {
-      content: "WEEKLY / OPERATIONS REVIEW";
+      content: "DAILY / OPERATIONS REVIEW";
       position: absolute;
       right: 18px;
       bottom: 12px;
@@ -458,35 +477,35 @@ export function buildOpsWeeklyReportHtml() {
           <span class="report-chip">2026-W22</span>
           <span class="status-chip"><i class="status-dot"></i> DATA READY</span>
         </div>
-        <p class="eyebrow">OPERATIONS WEEKLY REPORT</p>
-        <h1>焕甲运营数据周报</h1>
-        <p class="period">周期：2026-05-25 至 2026-06-07 · 对比上周 2026-05-18 至 2026-05-24</p>
+        <p class="eyebrow">OPERATIONS DAILY REPORT</p>
+        <h1>焕甲运营数据日报</h1>
+        <p class="period">日期：${reportDateText} · 对比昨日运营表现</p>
         <div class="metrics">
           <div class="metric"><span>营业额</span><strong>¥87,780</strong></div>
-          <div class="metric"><span>用户数</span><strong>1,286</strong></div>
-          <div class="metric"><span>商家数</span><strong>28</strong></div>
+          <div class="metric"><span>活跃用户数</span><strong>1,286</strong></div>
+          <div class="metric"><span>订单完成数</span><strong>506</strong></div>
           <div class="metric"><span>焕甲使用次数</span><strong>399</strong></div>
         </div>
       </div>
       <aside class="judgement">
         <div class="judgement-label">
-          <span>本周判断</span>
+          <span>今日判断</span>
           <span>NO. 01</span>
         </div>
-        <p>本周运营数据整体稳定，用户增长和 AI 焕甲使用继续贡献核心活跃。预约提交保持增长，但从试戴到预约仍是下一阶段最值得优化的转化环节。</p>
+        <p>今日运营数据整体稳定，活跃用户和 AI 焕甲使用继续贡献核心活跃。预约提交保持增长，但从试戴到预约仍是下一阶段最值得优化的转化环节。</p>
       </aside>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <h2>可视化数据概览</h2>
-        <p>用图表快速判断本周增长、转化和履约表现</p>
+        <p>用图表快速判断今日增长、转化和履约表现</p>
       </div>
       <div class="visual-grid">
         <div class="chart-card">
           <div class="chart-title">
             <strong>营业额与焕甲使用趋势</strong>
-            <span>近 7 日模拟运营数据</span>
+            <span>近 7 日运营数据</span>
           </div>
           <svg class="line-chart" viewBox="0 0 720 230" role="img" aria-label="营业额与焕甲使用趋势折线图">
             <line class="chart-grid-line" x1="48" y1="30" x2="688" y2="30" />
@@ -521,7 +540,7 @@ export function buildOpsWeeklyReportHtml() {
             <div class="donut" style="--value: 17%"><strong>17%</strong></div>
             <div class="donut-copy">
               <b>收入转化</b>
-              <span>试戴与预约链路已有正向表现，下周重点优化“试戴后找店”。</span>
+              <span>试戴与预约链路已有正向表现，明日重点优化“试戴后找店”。</span>
             </div>
           </div>
           <div class="donut-card">
@@ -538,15 +557,15 @@ export function buildOpsWeeklyReportHtml() {
     <section class="panel">
       <div class="section-head">
         <h2>核心指标复盘</h2>
-        <p>主指标取当前 Demo 运营看板口径，周环比用于展示趋势判断</p>
+        <p>主指标取当前 Demo 运营看板口径，日环比用于展示趋势判断</p>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>指标</th>
-              <th>本周</th>
-              <th>上周</th>
+              <th>今日</th>
+              <th>昨日</th>
               <th>环比</th>
               <th>解读</th>
             </tr>
@@ -557,14 +576,14 @@ export function buildOpsWeeklyReportHtml() {
               <td><strong>¥87,780</strong></td>
               <td>¥72,460</td>
               <td><span class="trend up">+21.1%</span></td>
-              <td>热门款式和试戴入口带来更多预约线索，收入表现好于上周。</td>
+              <td>热门款式和试戴入口带来更多预约线索，收入表现好于昨日。</td>
             </tr>
             <tr>
-              <td>用户数</td>
+              <td>活跃用户数</td>
               <td><strong>1,286</strong></td>
               <td>1,084</td>
               <td><span class="trend up">+18.6%</span></td>
-              <td>内容浏览和 AI 小嘉推荐带来新增访问，用户池继续扩大。</td>
+              <td>内容浏览和 AI 小嘉推荐带来更多活跃访问，用户使用意愿继续提升。</td>
             </tr>
             <tr>
               <td>日新增用户</td>
@@ -574,11 +593,11 @@ export function buildOpsWeeklyReportHtml() {
               <td>新增速度提升，建议继续在热门款式页强化试戴引导。</td>
             </tr>
             <tr>
-              <td>商家数</td>
-              <td><strong>28</strong></td>
-              <td>24</td>
-              <td><span class="trend up">+16.7%</span></td>
-              <td>商家覆盖提升，热门款式推送后可继续提高“我也能做”的响应率。</td>
+              <td>订单完成数</td>
+              <td><strong>506</strong></td>
+              <td>438</td>
+              <td><span class="trend up">+15.5%</span></td>
+              <td>完成订单增长，说明试戴、预约和到店履约链路保持正向运转。</td>
             </tr>
             <tr>
               <td>新增商家</td>
@@ -640,14 +659,14 @@ export function buildOpsWeeklyReportHtml() {
       </div>
       <div class="panel">
         <div class="section-head">
-          <h2>本周结论</h2>
+          <h2>今日结论</h2>
           <p>运营动作建议</p>
         </div>
         <ol class="insight-list">
           <li><b>1</b><span>继续把 AI 试戴作为用户决策入口，在热门款式卡片和详情页强化“先试戴再预约”。</span></li>
           <li><b>2</b><span>将小红书趋势周报里的高热手工甲款式推送给商家，优先引导商家标记“我也能做”。</span></li>
           <li><b>3</b><span>围绕福田中心等重点商圈补齐商家供给，提高用户试戴后找到附近门店的成功率。</span></li>
-          <li><b>4</b><span>下周重点观察“焕甲使用次数到预约提交”的转化变化，判断推荐理由和试戴效果是否提升成交意愿。</span></li>
+          <li><b>4</b><span>明日重点观察“焕甲使用次数到预约提交”的转化变化，判断推荐理由和试戴效果是否提升成交意愿。</span></li>
         </ol>
         <div class="priority-list">
           <div class="priority-item"><b>优先级高</b><span>把“试戴后找附近门店”做成更明显的下一步动作，降低用户从 AI 试戴到预约的犹豫成本。</span></div>
@@ -657,7 +676,7 @@ export function buildOpsWeeklyReportHtml() {
       </div>
     </section>
 
-    <p class="footer">生成时间：2026-06-07 21:55 · 静态文件：ops_weekly_report.html</p>
+    <p class="footer">生成时间：${generatedAtText} · 静态文件：ops_daily_report.html</p>
   </main>
 </body>
 </html>`;
