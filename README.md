@@ -32,7 +32,7 @@
 
 Android App 下载：
 
-- https://pan.baidu.com/s/1N403ORBb7cyMgHVqKsyu3Q?pwd=2vji
+- https://pan.baidu.com/s/108JtbLsEMc8V9B9wVSZyzg?pwd=942e
 
 由于我们没有苹果开发者账户，因此无法提供 iOS App。
 
