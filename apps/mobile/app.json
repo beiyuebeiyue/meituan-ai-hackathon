@@ -2,14 +2,14 @@
   "expo": {
     "name": "焕甲",
     "slug": "nailtry-ai",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/app/icon.png",
     "splash": {
-      "image": "./assets/app/opening.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#ffffff"
+      "image": "./assets/app/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#737373"
     },
     "androidNavigationBar": {
       "backgroundColor": "#ffffff",
@@ -56,9 +56,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/app/opening.png",
-          "resizeMode": "cover",
-          "backgroundColor": "#ffffff"
+          "image": "./assets/app/splash-icon.png",
+          "imageWidth": 300,
+          "resizeMode": "contain",
+          "backgroundColor": "#737373"
         }
       ],
       "expo-font"

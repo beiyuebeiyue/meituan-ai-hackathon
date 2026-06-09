@@ -1,3 +1,4 @@
 apps/mobile/assets/app/favicon.png filter=lfs diff=lfs merge=lfs -text
 apps/mobile/assets/app/default_shop_cover.png filter=lfs diff=lfs merge=lfs -text
 deploy/hf-openclaw/skills/xhs-popular-nail-posts-crawler/spaces/nail_yolo26/best.pt filter=lfs diff=lfs merge=lfs -text
+apps/mobile/assets/app/splash-icon.png filter=lfs diff=lfs merge=lfs -text

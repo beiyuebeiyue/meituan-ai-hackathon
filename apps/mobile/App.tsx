@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useState } from "react";
-import { Image, Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthSessionGate } from "./src/components/AuthSessionGate";
 import { RootNavigator } from "./src/navigation/RootNavigator";
@@ -16,10 +16,7 @@ import { initAnalytics, trackEvent } from "./src/utils/analytics";
 import { getNavigationTheme } from "./src/utils/theme";
 
 const queryClient = new QueryClient();
-const SPLASH_MIN_VISIBLE_MS = 2000;
-const splashImage = Platform.select({
-  native: require("./assets/app/opening.png"),
-});
+const SPLASH_MIN_VISIBLE_MS = 1000;
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -45,17 +42,13 @@ export default function App() {
   }, []);
 
   const handleRootLayout = useCallback(() => {
-    void SplashScreen.hideAsync();
-  }, []);
+    if (isReady) {
+      void SplashScreen.hideAsync();
+    }
+  }, [isReady]);
 
   if (!isReady) {
-    return (
-      <View style={styles.splashRoot} onLayout={handleRootLayout}>
-        {splashImage ? (
-          <Image source={splashImage} style={StyleSheet.absoluteFillObject} resizeMode="stretch" />
-        ) : null}
-      </View>
-    );
+    return <View style={styles.splashRoot} onLayout={handleRootLayout} />;
   }
 
   return (
