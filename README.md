@@ -21,6 +21,7 @@
 ### 产品 PRD
 
 - https://pcn7x0h2nqqh.feishu.cn/docx/ZXnKddUIRoGvFIxyH2ic7D7rnzV
+展现了该项目完整研究背景、拟解决问题、核心功能定义、模块功能区分等内容。
 
 ### 运营端
 
